@@ -12,7 +12,7 @@ function specialFor(number: number, shape: Shape): SpecialKind {
 
 /**
  * Standard 54-card Nigerian Whot deck composition.
- * Circles/Triangles: 1–14 except 6,9
+ * Circles/Triangles: 1-14 except 6,9
  * Cross/Square: 1,2,3,5,7,10,11,13,14
  * Stars: 1,2,3,4,5,7,8
  * Whot: five × 20
