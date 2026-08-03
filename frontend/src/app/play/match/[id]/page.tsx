@@ -8,19 +8,16 @@ import { GameBoard } from "@/components/GameBoard";
 import { useAccount, usePublicClient, useWatchContractEvent } from "wagmi";
 import { useEscrowActions, useMatch } from "@/hooks/useEscrow";
 import { ADDRESSES, MatchStatus, whotEscrowAbi } from "@/lib/contracts";
-import { createGame, parseAction, reduce, serializeAction } from "@/lib/whot/engine";
+import { createGame, reduce, serializeAction } from "@/lib/whot/engine";
 import type { GameAction, GameState, PlayerId } from "@/lib/whot/types";
 import {
   getMatchNames,
   getSavedDisplayName,
   setMatchPlayerName,
 } from "@/lib/displayName";
-import {
-  isGameAction,
-  loadMatchActions,
-  saveMatchActions,
-} from "@/lib/matchSync";
-import { hexToString, stringToHex, type Address, type Hex } from "viem";
+import { loadMatchActions, saveMatchActions } from "@/lib/matchSync";
+import { fetchMatchMovesOnChain } from "@/lib/fetchMatchMoves";
+import { stringToHex, type Address, type Hex } from "viem";
 
 function rebuildGame(
   seed: string,
@@ -53,17 +50,20 @@ export default function MatchPage() {
 
   const [game, setGame] = useState<GameState | null>(null);
   const [actions, setActions] = useState<GameAction[]>([]);
+  const [chainMoveCount, setChainMoveCount] = useState(0);
   const [msg, setMsg] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [posting, setPosting] = useState(false);
-  const [p1Name, setP1Name] = useState("Player 1");
-  const [p2Name, setP2Name] = useState("Player 2");
+  const [p1Name, setP1Name] = useState("Host");
+  const [p2Name, setP2Name] = useState("Opponent");
   const [syncing, setSyncing] = useState(false);
+  const [republishing, setRepublishing] = useState(false);
 
-  /** Prevent double wallet popups for the same move */
   const postingLock = useRef(false);
   const actionsRef = useRef<GameAction[]>([]);
   actionsRef.current = actions;
+  const namesRef = useRef({ p1: p1Name, p2: p2Name });
+  namesRef.current = { p1: p1Name, p2: p2Name };
 
   const humanPlayer: PlayerId | null = useMemo(() => {
     if (!match || !address) return null;
@@ -105,68 +105,57 @@ export default function MatchPage() {
     [matchKey]
   );
 
-  /** Load full move history from chain (works across two wallets) */
+  /**
+   * Always rebuild from on-chain moves when possible.
+   * Do NOT prefer longer local logs (that desyncs host vs guest).
+   */
   const pullOnChainMoves = useCallback(async () => {
     if (!matchId || !publicClient || !match?.gameSeed || !matchKey) return;
     if (match.status !== MatchStatus.Active) return;
 
     setSyncing(true);
     try {
-      const latest = await publicClient.getBlockNumber();
-      // Look back far enough for a jam match without scanning genesis
-      const fromBlock = latest > 2_000_000n ? latest - 2_000_000n : 0n;
-
-      const logs = await publicClient.getContractEvents({
-        address: ADDRESSES.whotEscrow,
-        abi: whotEscrowAbi,
-        eventName: "MovePosted",
-        args: { matchId },
-        fromBlock,
-        toBlock: "latest",
-      });
-
-      // Sort by block + log index for stable order
-      const sorted = [...logs].sort((a, b) => {
-        if (a.blockNumber !== b.blockNumber) {
-          return a.blockNumber < b.blockNumber ? -1 : 1;
-        }
-        return Number(a.logIndex) - Number(b.logIndex);
-      });
-
-      const list: GameAction[] = [];
-      for (const log of sorted) {
-        try {
-          const raw = JSON.parse(hexToString(log.args.payload as Hex));
-          if (isGameAction(raw)) list.push(raw);
-        } catch {
-          /* skip non-game payloads */
-        }
-      }
-
-      // Prefer longer chain log over shorter local cache
-      const local = loadMatchActions(matchKey);
-      const best = list.length >= local.length ? list : local;
-
-      const names = getMatchNames(matchKey);
-      applyActionList(
-        best,
-        match.gameSeed,
-        names.p1 || p1Name,
-        names.p2 || p2Name
+      const startedAt = Number(match.startedAt || match.createdAt || 0);
+      const { actions: chainActions, error } = await fetchMatchMovesOnChain(
+        publicClient,
+        matchId,
+        startedAt || Math.floor(Date.now() / 1000) - 86400
       );
-    } catch (e) {
-      // Fallback: local cache only
-      const local = loadMatchActions(matchKey);
-      if (match.gameSeed) {
-        const names = getMatchNames(matchKey);
-        applyActionList(
-          local,
-          match.gameSeed,
-          names.p1 || p1Name,
-          names.p2 || p2Name
-        );
+
+      setChainMoveCount(chainActions.length);
+
+      if (error) {
+        setMsg(`Sync warning: ${error}. Showing local moves if any.`);
+        const local = loadMatchActions(matchKey);
+        if (local.length) {
+          applyActionList(
+            local,
+            match.gameSeed,
+            namesRef.current.p1,
+            namesRef.current.p2
+          );
+        } else if (!game) {
+          applyActionList(
+            [],
+            match.gameSeed,
+            namesRef.current.p1,
+            namesRef.current.p2
+          );
+        }
+        return;
       }
-      console.warn("pullOnChainMoves failed", e);
+
+      // Chain is source of truth for multiplayer
+      applyActionList(
+        chainActions,
+        match.gameSeed,
+        namesRef.current.p1,
+        namesRef.current.p2
+      );
+      setMsg(null);
+    } catch (e) {
+      console.warn("pullOnChainMoves", e);
+      setMsg("Could not refresh board from Base. Tap Refresh again.");
     } finally {
       setSyncing(false);
     }
@@ -175,21 +164,22 @@ export default function MatchPage() {
     publicClient,
     match?.gameSeed,
     match?.status,
+    match?.startedAt,
+    match?.createdAt,
     matchKey,
     applyActionList,
-    p1Name,
-    p2Name,
+    game,
   ]);
 
-  // Initial + periodic sync so opponent sees host moves
+  // Initial + periodic sync
   useEffect(() => {
     if (!match || match.status !== MatchStatus.Active) return;
     void pullOnChainMoves();
-    const id = window.setInterval(() => void pullOnChainMoves(), 12_000);
+    const id = window.setInterval(() => void pullOnChainMoves(), 10_000);
     return () => window.clearInterval(id);
-  }, [match?.status, match?.gameSeed, pullOnChainMoves]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match?.status, match?.gameSeed, matchId]);
 
-  // Live updates when either player posts a move
   useWatchContractEvent({
     address: ADDRESSES.whotEscrow,
     abi: whotEscrowAbi,
@@ -201,7 +191,6 @@ export default function MatchPage() {
     },
   });
 
-  // Play a card: update UI, then post once on-chain so the opponent can see it
   const onAction = useCallback(
     async (action: GameAction) => {
       if (!matchKey || !humanPlayer || !matchId || !match?.gameSeed) return;
@@ -210,14 +199,13 @@ export default function MatchPage() {
 
       const before = rebuildGame(
         match.gameSeed,
-        p1Name,
-        p2Name,
+        namesRef.current.p1,
+        namesRef.current.p2,
         actionsRef.current
       );
       if (before.turn !== humanPlayer || before.winner) return;
 
       const after = reduce(before, action);
-      // Illegal move: reduce leaves turn/hand unchanged for that player
       if (
         after.turn === before.turn &&
         after.players[0].hand.length === before.players[0].hand.length &&
@@ -233,20 +221,30 @@ export default function MatchPage() {
 
       postingLock.current = true;
       setPosting(true);
-      setMsg("Confirm move in wallet (so your opponent sees it)…");
-      applyActionList(optimistic, match.gameSeed, p1Name, p2Name);
+      setMsg("Confirm this move in your wallet so your opponent can see it…");
+      applyActionList(
+        optimistic,
+        match.gameSeed,
+        namesRef.current.p1,
+        namesRef.current.p2
+      );
 
       try {
         const payload = stringToHex(serializeAction(action)) as Hex;
         await postMove(matchId, payload);
-        setMsg(null);
+        setMsg("Move sent. Opponent should refresh or wait a few seconds.");
         await pullOnChainMoves();
       } catch (e: unknown) {
-        applyActionList(prior, match.gameSeed, p1Name, p2Name);
+        applyActionList(
+          prior,
+          match.gameSeed,
+          namesRef.current.p1,
+          namesRef.current.p2
+        );
         setMsg(
           e instanceof Error
             ? e.message
-            : "Move not sent. Rejected or failed. Try again."
+            : "Move not sent. Try again and confirm in the wallet."
         );
       } finally {
         postingLock.current = false;
@@ -259,13 +257,117 @@ export default function MatchPage() {
       matchId,
       match?.gameSeed,
       posting,
-      p1Name,
-      p2Name,
       applyActionList,
       postMove,
       pullOnChainMoves,
     ]
   );
+
+  /**
+   * If you played while sync was broken (moves only in this browser),
+   * push local-only moves onto the chain one-by-one so opponent can catch up.
+   */
+  const republishLocalMoves = useCallback(async () => {
+    if (!matchId || !match?.gameSeed || !humanPlayer || republishing) return;
+    const local = loadMatchActions(matchKey);
+    if (!local.length) {
+      setMsg("No local moves to push.");
+      return;
+    }
+
+    setRepublishing(true);
+    setMsg("Pulling chain first…");
+    try {
+      const startedAt = Number(match.startedAt || match.createdAt || 0);
+      const { actions: chainActions } = publicClient
+        ? await fetchMatchMovesOnChain(
+            publicClient,
+            matchId,
+            startedAt || Math.floor(Date.now() / 1000) - 86400
+          )
+        : { actions: [] as GameAction[] };
+
+      setChainMoveCount(chainActions.length);
+
+      // Only post moves that extend the chain (same prefix, then extras)
+      let startIdx = 0;
+      if (chainActions.length > 0) {
+        // If local starts the same as chain, publish from chain.length
+        const prefixOk = chainActions.every(
+          (a, i) => JSON.stringify(a) === JSON.stringify(local[i])
+        );
+        if (prefixOk && local.length > chainActions.length) {
+          startIdx = chainActions.length;
+        } else if (chainActions.length >= local.length) {
+          setMsg(
+            `Chain already has ${chainActions.length} moves. Refresh board on both phones.`
+          );
+          applyActionList(
+            chainActions,
+            match.gameSeed,
+            namesRef.current.p1,
+            namesRef.current.p2
+          );
+          return;
+        } else {
+          // Diverged: still try to append local moves that chain doesn't have
+          // Safer: use chain as base and warn
+          setMsg(
+            `Board was out of sync. Loaded ${chainActions.length} on-chain moves. If you need older local-only plays, finish with cancel/timeout or restart a table.`
+          );
+          applyActionList(
+            chainActions,
+            match.gameSeed,
+            namesRef.current.p1,
+            namesRef.current.p2
+          );
+          return;
+        }
+      }
+
+      const toPost = local.slice(startIdx);
+      if (!toPost.length) {
+        setMsg("Nothing new to push. Both sides should Refresh board.");
+        applyActionList(
+          chainActions.length ? chainActions : local,
+          match.gameSeed,
+          namesRef.current.p1,
+          namesRef.current.p2
+        );
+        return;
+      }
+
+      for (let i = 0; i < toPost.length; i++) {
+        const action = toPost[i];
+        // Only push YOUR past moves (don't re-post opponent's)
+        if (action.player !== humanPlayer) continue;
+        setMsg(
+          `Pushing your move ${i + 1}/${toPost.length}… confirm in wallet`
+        );
+        const payload = stringToHex(serializeAction(action)) as Hex;
+        await postMove(matchId, payload);
+      }
+
+      await pullOnChainMoves();
+      setMsg(
+        "Moves pushed. Opponent: open this match and tap Refresh board."
+      );
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Push failed");
+    } finally {
+      setRepublishing(false);
+    }
+  }, [
+    matchId,
+    match,
+    humanPlayer,
+    republishing,
+    matchKey,
+    publicClient,
+    applyActionList,
+    postMove,
+    pullOnChainMoves,
+  ]);
 
   const onConfirmWinner = useCallback(async () => {
     if (!match || !matchId || !address || !game?.winner || submitted) return;
@@ -344,6 +446,9 @@ export default function MatchPage() {
         : p2Name
       : null;
 
+  const localCount = typeof window !== "undefined" ? loadMatchActions(matchKey).length : 0;
+  const localAhead = localCount > chainMoveCount;
+
   return (
     <div className="ds">
       <SiteNav />
@@ -356,7 +461,7 @@ export default function MatchPage() {
             <button
               type="button"
               className="btn btn-ghost btn-sm"
-              disabled={syncing || posting}
+              disabled={syncing || posting || republishing}
               onClick={() => void pullOnChainMoves()}
             >
               {syncing ? "Syncing…" : "Refresh board"}
@@ -372,16 +477,17 @@ export default function MatchPage() {
           {whoseTurn && (
             <p className="muted" style={{ marginTop: 6 }}>
               Turn: <strong style={{ color: "var(--text)" }}>{whoseTurn}</strong>
-              {humanPlayer &&
-                game &&
-                game.turn === humanPlayer &&
-                " (yours)"}
+              {humanPlayer && game && game.turn === humanPlayer && " (yours)"}
               {humanPlayer &&
                 game &&
                 game.turn !== humanPlayer &&
                 " (waiting for them)"}
             </p>
           )}
+          <p className="muted" style={{ marginTop: 6, fontSize: "0.8rem" }}>
+            On-chain moves: {chainMoveCount}
+            {localAhead ? ` · this device had ${localCount} local (may need push)` : ""}
+          </p>
 
           <div className="stat-row" style={{ marginTop: 12 }}>
             <div className="stat">
@@ -407,13 +513,23 @@ export default function MatchPage() {
               </code>
             </p>
           )}
+
           {match.status === MatchStatus.Active && (
             <p className="muted" style={{ marginTop: 12 }}>
-              Each move is posted on Base (small gas) so your opponent sees it.
-              Tap <strong>Refresh board</strong> if their move does not appear.
-              Winner confirm is a separate step at the end.
+              Each play is saved on Base so both of you see the same turn. Confirm
+              in your wallet when you move. Opponent: tap Refresh board after you
+              move.
             </p>
           )}
+
+          {match.status === MatchStatus.Active && localAhead && humanPlayer && (
+            <div className="alert" style={{ marginTop: 12 }}>
+              This device has moves that may not be on Base yet (from the earlier
+              bug). Tap <strong>Push my moves to opponent</strong> once so match #
+              {matchKey} can catch up.
+            </div>
+          )}
+
           {match.status === MatchStatus.Resolved && (
             <div className="banner win" style={{ marginTop: 12 }}>
               Match over. Both tickets went to the winner.
@@ -426,6 +542,19 @@ export default function MatchPage() {
           <div className="banner">Sending move… confirm once in your wallet.</div>
         )}
 
+        {match.status === MatchStatus.Active && localAhead && humanPlayer && (
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={republishing || posting}
+            onClick={() => void republishLocalMoves()}
+          >
+            {republishing
+              ? "Pushing moves…"
+              : "Push my moves to opponent"}
+          </button>
+        )}
+
         {match.status === MatchStatus.Active && game && humanPlayer && (
           <GameBoard
             seed={match.gameSeed}
@@ -436,7 +565,7 @@ export default function MatchPage() {
             onWin={onWin}
             p1Name={p1Name}
             p2Name={p2Name}
-            readOnly={posting}
+            readOnly={posting || republishing}
           />
         )}
 
