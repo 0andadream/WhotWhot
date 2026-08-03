@@ -142,7 +142,7 @@ export default function HomePage() {
       </section>
 
       <footer className="footer">
-        WhotWhot · Inco × Megapot Game Jam · Base
+        © whotwhot · the card game, online. made by matt
       </footer>
     </div>
   );
