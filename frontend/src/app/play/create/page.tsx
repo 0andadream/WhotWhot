@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SiteNav } from "@/components/SiteNav";
 import { TicketPicker } from "@/components/TicketPicker";
-import { NameField } from "@/components/NameField";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { useAccount, usePublicClient } from "wagmi";
 import {
   useEscrowActions,
@@ -19,7 +19,11 @@ import {
   saveDisplayName,
   setMatchPlayerName,
 } from "@/lib/displayName";
-import { getProfile } from "@/lib/profile";
+import {
+  defaultUsername,
+  ensureProfile,
+  getProfile,
+} from "@/lib/profile";
 import { ADDRESSES, whotEscrowAbi } from "@/lib/contracts";
 import { decodeEventLog, type Address, isAddress } from "viem";
 
@@ -37,22 +41,30 @@ export default function CreateMatchPage() {
   const router = useRouter();
 
   const [ticketId, setTicketId] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [challenge, setChallenge] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    setDisplayName(getProfile(address)?.username || getSavedDisplayName());
-  }, [address]);
+  const profile = address
+    ? getProfile(address) || {
+        username: defaultUsername(address),
+        avatar: "🃏",
+        color: "#c41e3a",
+      }
+    : null;
 
   const onCreate = async () => {
     setError(null);
+    if (!address) {
+      setError("Connect your wallet first.");
+      return;
+    }
+    const ensured = ensureProfile(address);
     const name = sanitizeName(
-      getProfile(address)?.username || displayName || getSavedDisplayName()
+      ensured.username || getSavedDisplayName() || defaultUsername(address)
     );
     if (!name) {
-      setError("Set your profile username first (after connecting).");
+      setError("Could not resolve your username. Open profile in the nav.");
       return;
     }
     if (!ticketId) {
@@ -111,72 +123,91 @@ export default function CreateMatchPage() {
   return (
     <div className="landing-premium ds">
       <SiteNav />
-      <div className="app-shell shell-wide">
-      <header className="header">
-        <Link href="/play" className="btn btn-ghost btn-sm">
-          ← Play
-        </Link>
-      </header>
+      <div className="app-shell shell-wide create-desk">
+        <header className="header create-desk-header">
+          <Link href="/play" className="btn btn-ghost btn-sm">
+            ← Play
+          </Link>
+          {profile && isConnected && (
+            <div className="create-desk-you">
+              <ProfileAvatar profile={profile} size={36} />
+              <div>
+                <strong>{profile.username}</strong>
+                <span className="muted">Playing as</span>
+              </div>
+            </div>
+          )}
+        </header>
 
-      <div className="card-panel stack panel-narrow">
-        <h2>Create match</h2>
-        <p className="muted">
-          Stake <strong>1 Megapot ticket</strong>. Opponent stakes another. Winner
-          gets both NFTs.
-        </p>
+        <div className="create-desk-grid">
+          <section className="card-panel stack create-desk-main">
+            <h2>Create match</h2>
+            <p className="muted">
+              Stake <strong>1 Megapot ticket</strong>. Opponent stakes another.
+              Winner gets both NFTs.
+            </p>
 
-        <NameField value={displayName} onChange={setDisplayName} />
+            <div className="ticket-badge">
+              <div>
+                <div className="muted">Open-draw tickets (stakeable)</div>
+                <strong>{isConnected ? stakeableCount : "-"}</strong>
+              </div>
+            </div>
+            <p className="muted" style={{ fontSize: "0.8rem" }}>
+              Only tickets for the <strong>current Megapot round</strong> can be
+              staked. After you view draw results, no-win NFTs are hidden here so
+              they are not mistaken for a fresh bet.
+            </p>
 
-        <div className="ticket-badge">
-          <div>
-            <div className="muted">Open-draw tickets (stakeable)</div>
-            <strong>{isConnected ? stakeableCount : "-"}</strong>
-          </div>
+            {!escrowReady && (
+              <div className="alert">
+                Escrow not configured ({ADDRESSES.whotEscrow})
+              </div>
+            )}
+
+            {!isConnected ? (
+              <p className="muted">Connect your wallet to see your tickets.</p>
+            ) : (
+              <TicketPicker
+                tickets={stakeableTickets}
+                loading={loading}
+                error={loadError}
+                selectedId={ticketId}
+                onSelect={setTicketId}
+              />
+            )}
+          </section>
+
+          <aside className="card-panel stack create-desk-side">
+            <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800 }}>
+              Table options
+            </h3>
+            <p className="muted" style={{ fontSize: "0.85rem", margin: 0 }}>
+              Leave blank for a public open table. Optionally challenge a wallet
+              directly.
+            </p>
+
+            <label className="muted">Challenge address (optional)</label>
+            <input
+              className="input"
+              placeholder="0x…"
+              value={challenge}
+              onChange={(e) => setChallenge(e.target.value)}
+            />
+
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={
+                !isConnected || !escrowReady || !ticketId || busy || isPending
+              }
+              onClick={onCreate}
+            >
+              {busy ? "Confirm in wallet…" : "Stake & create match"}
+            </button>
+            {error && <div className="alert">{error}</div>}
+          </aside>
         </div>
-        <p className="muted" style={{ fontSize: "0.8rem" }}>
-          Only tickets for the <strong>current Megapot round</strong> can be
-          staked. After you view draw results, no-win NFTs are hidden here so
-          they are not mistaken for a fresh bet.
-        </p>
-
-        {!escrowReady && (
-          <div className="alert">
-            Escrow not configured ({ADDRESSES.whotEscrow})
-          </div>
-        )}
-
-        {!isConnected ? (
-          <p className="muted">Connect your wallet to see your tickets.</p>
-        ) : (
-          <TicketPicker
-            tickets={stakeableTickets}
-            loading={loading}
-            error={loadError}
-            selectedId={ticketId}
-            onSelect={setTicketId}
-          />
-        )}
-
-        <label className="muted">Challenge address (optional)</label>
-        <input
-          className="input"
-          placeholder="0x…"
-          value={challenge}
-          onChange={(e) => setChallenge(e.target.value)}
-        />
-
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={
-            !isConnected || !escrowReady || !ticketId || busy || isPending
-          }
-          onClick={onCreate}
-        >
-          {busy ? "Confirm in wallet…" : "Stake & create match"}
-        </button>
-        {error && <div className="alert">{error}</div>}
-      </div>
       </div>
     </div>
   );

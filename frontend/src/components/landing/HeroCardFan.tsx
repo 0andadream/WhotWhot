@@ -36,19 +36,27 @@ const SPREAD = [
 ];
 
 /**
- * Centerpiece Whot fan + soft floating background cards.
+ * Centerpiece Whot fan. Floating background cards optional (landing only).
  */
-export function HeroCardFan() {
+export function HeroCardFan({
+  showFloaters = true,
+  compact = false,
+}: {
+  /** Soft floating cards behind the fan — landing page only */
+  showFloaters?: boolean;
+  /** Smaller stage for lobby / secondary screens */
+  compact?: boolean;
+}) {
   const reduce = useReducedMotion();
   const [hover, setHover] = useState(false);
   const [active, setActive] = useState<number | null>(null);
 
   return (
-    <div className="hero-stage">
+    <div className={`hero-stage${compact ? " hero-stage-compact" : ""}`}>
       <div className="hero-glow g1" aria-hidden />
       <div className="hero-glow g2" aria-hidden />
 
-      <FloatingWhotCards variant="stage" />
+      {showFloaters && <FloatingWhotCards variant="stage" />}
 
       <div
         className="hero-fan"

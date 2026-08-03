@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 import {
   AVATAR_PRESETS,
   COLOR_PRESETS,
+  compressImageToDataUrl,
+  defaultUsername,
   getProfile,
   hasCompleteProfile,
   saveProfile,
@@ -14,8 +16,9 @@ import {
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 
 /**
- * Profile setup / edit: username + avatar.
+ * Profile setup / edit: username + avatar (emoji or gallery photo).
  * Opens on first connect, or when user clicks profile in nav.
+ * Username defaults from wallet so create/join never need a name field.
  */
 export function ProfileSetup() {
   const { address, isConnected } = useAccount();
@@ -25,6 +28,8 @@ export function ProfileSetup() {
   const [avatar, setAvatar] = useState(AVATAR_PRESETS[0]);
   const [color, setColor] = useState(COLOR_PRESETS[0]);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const loadIntoForm = (addr: string) => {
     const existing = getProfile(addr);
@@ -33,7 +38,7 @@ export function ProfileSetup() {
       setAvatar(existing.avatar);
       setColor(existing.color);
     } else {
-      setUsername("");
+      setUsername(defaultUsername(addr));
       setAvatar(AVATAR_PRESETS[0]);
       setColor(COLOR_PRESETS[0]);
     }
@@ -46,6 +51,7 @@ export function ProfileSetup() {
       return;
     }
     loadIntoForm(address);
+    // First connect still opens if no profile; default username is prefilled
     setOpen(!hasCompleteProfile(address));
     setEditing(false);
   }, [isConnected, address]);
@@ -69,8 +75,10 @@ export function ProfileSetup() {
   const onSave = () => {
     setError(null);
     try {
+      const name =
+        sanitizeUsername(username) || defaultUsername(address);
       saveProfile(address, {
-        username: sanitizeUsername(username),
+        username: name,
         avatar,
         color,
       });
@@ -89,8 +97,23 @@ export function ProfileSetup() {
     setError(null);
   };
 
+  const onPickPhoto = async (file: File | null) => {
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    try {
+      const dataUrl = await compressImageToDataUrl(file);
+      setAvatar(dataUrl);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
   const preview = {
-    username: sanitizeUsername(username) || "You",
+    username: sanitizeUsername(username) || defaultUsername(address),
     avatar,
     color,
   };
@@ -105,16 +128,14 @@ export function ProfileSetup() {
           How friends see you
         </h2>
         <p className="muted" style={{ margin: "0 0 18px", fontSize: "0.9rem" }}>
-          Username and avatar are your ID at the table and in chat — not your
+          Username and photo are your ID at the table and in chat — not your
           wallet address.
         </p>
 
         <div className="profile-preview">
-          <ProfileAvatar profile={preview} size={64} />
+          <ProfileAvatar profile={preview} size={72} />
           <div>
-            <div className="profile-preview-name">
-              {preview.username}
-            </div>
+            <div className="profile-preview-name">{preview.username}</div>
             <div className="muted" style={{ fontSize: "0.75rem" }}>
               {shortWallet(address)}
             </div>
@@ -128,7 +149,7 @@ export function ProfileSetup() {
           className="input"
           value={username}
           maxLength={20}
-          placeholder="e.g. Chioma"
+          placeholder={defaultUsername(address)}
           autoFocus
           onChange={(e) => setUsername(e.target.value)}
           onKeyDown={(e) => {
@@ -137,7 +158,38 @@ export function ProfileSetup() {
         />
 
         <label className="muted" style={{ fontSize: "0.8rem", marginTop: 14 }}>
-          Avatar
+          Profile picture
+        </label>
+        <div className="profile-photo-row">
+          <button
+            type="button"
+            className="prem-btn-ghost sm"
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+          >
+            {uploading ? "Uploading…" : "Upload from gallery"}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            capture={undefined}
+            className="profile-file-input"
+            onChange={(e) => void onPickPhoto(e.target.files?.[0] ?? null)}
+          />
+          {avatar.startsWith("data:image") && (
+            <button
+              type="button"
+              className="prem-btn-ghost sm"
+              onClick={() => setAvatar(AVATAR_PRESETS[0])}
+            >
+              Use emoji instead
+            </button>
+          )}
+        </div>
+
+        <label className="muted" style={{ fontSize: "0.8rem", marginTop: 14 }}>
+          Or pick an emoji
         </label>
         <div className="profile-avatar-grid">
           {AVATAR_PRESETS.map((a) => (
@@ -197,6 +249,7 @@ export function ProfileSetup() {
             className="prem-btn-white"
             style={{ flex: 1, minWidth: 120 }}
             onClick={onSave}
+            disabled={uploading}
           >
             Save profile
           </button>

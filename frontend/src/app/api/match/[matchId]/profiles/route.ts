@@ -6,7 +6,7 @@ import {
   upsertMatchProfile,
 } from "@/lib/profileStore";
 import { loadMatchMeta, rememberMatchMeta } from "@/lib/matchMetaCache";
-import { sanitizeUsername } from "@/lib/profile";
+import { isImageAvatar, MAX_AVATAR_DATA_URL, sanitizeUsername } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -99,10 +99,24 @@ export async function POST(
     }
     rememberMatchMeta(params.matchId, meta);
 
+    const rawAvatar = (body.avatar || "🃏").trim();
+    let avatar: string;
+    if (isImageAvatar(rawAvatar)) {
+      // Gallery photo (data URL) — allow longer payload for match share
+      avatar = rawAvatar.slice(0, MAX_AVATAR_DATA_URL);
+      if (!rawAvatar.startsWith("data:image")) {
+        // Only data:image is stored server-side (no remote http fetch)
+        avatar = "🃏";
+      }
+    } else {
+      // Emoji / short preset
+      avatar = rawAvatar.slice(0, 8) || "🃏";
+    }
+
     const next = await upsertMatchProfile(params.matchId, {
       address,
       username,
-      avatar: (body.avatar || "🃏").slice(0, 8),
+      avatar,
       color: (body.color || "#c41e3a").slice(0, 16),
       updatedAt: Date.now(),
     });

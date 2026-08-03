@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { SiteNav } from "@/components/SiteNav";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { HeroCardFan } from "@/components/landing/HeroCardFan";
 import { useAccount, useConnect, useWriteContract } from "wagmi";
 import {
   useCountdown,
@@ -406,6 +407,9 @@ function ModeSelect({
       transition={{ duration: 0.45, ease }}
     >
       <h1 className="play-v2-title">How do you want to play?</h1>
+
+      <HeroCardFan showFloaters={false} compact />
+
       <div className="play-v2-mode-grid">
         <motion.button
           type="button"
@@ -415,9 +419,6 @@ function ModeSelect({
           whileTap={reduce ? undefined : { scale: 0.99 }}
           transition={{ type: "spring", stiffness: 400, damping: 22 }}
         >
-          <span className="play-v2-mode-icon teal" aria-hidden>
-            <RobotIcon />
-          </span>
           <h2>Play vs AI</h2>
           <p>Practice free · No wallet needed · Learn the rules</p>
           <span className="play-v2-mode-start">Start</span>
@@ -438,9 +439,6 @@ function ModeSelect({
           }
           transition={{ type: "spring", stiffness: 400, damping: 22 }}
         >
-          <span className="play-v2-mode-icon purple" aria-hidden>
-            <FriendsIcon />
-          </span>
           <h2>Play with Friends</h2>
           <p>Stake tickets · Create or join a table · Winner takes both</p>
           <span className="play-v2-mode-start">Start</span>
@@ -593,25 +591,4 @@ function HistoryPast({
   );
 }
 
-function RobotIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="5" y="9" width="14" height="10" rx="2" />
-      <path d="M9 9V7a3 3 0 0 1 6 0v2" />
-      <circle cx="9.5" cy="13.5" r="1" fill="currentColor" />
-      <circle cx="14.5" cy="13.5" r="1" fill="currentColor" />
-      <path d="M12 4v2M8 19v1M16 19v1" />
-    </svg>
-  );
-}
 
-function FriendsIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <circle cx="9" cy="8" r="3" />
-      <path d="M3 19c0-3 2.5-5 6-5s6 2 6 5" />
-      <circle cx="17" cy="9" r="2.5" />
-      <path d="M21 19c0-2.2-1.5-3.8-4-4.5" />
-    </svg>
-  );
-}
