@@ -164,7 +164,7 @@ export default function MatchPage() {
 
   if (!matchId) {
     return (
-      <div className="app-shell">
+      <div className="app-shell shell-wide">
         <div className="alert">Invalid match id</div>
       </div>
     );
@@ -172,7 +172,7 @@ export default function MatchPage() {
 
   if (!match) {
     return (
-      <div className="app-shell">
+      <div className="app-shell shell-wide">
         <header className="header">
           <Link href="/play" className="btn btn-ghost btn-sm connect-btn">
             ← Play
@@ -196,7 +196,7 @@ export default function MatchPage() {
             : "Unknown";
 
   return (
-    <div className="app-shell">
+    <div className="app-shell shell-wide">
       <header className="header">
         <Link href="/play" className="btn btn-ghost btn-sm connect-btn">
           ← Play

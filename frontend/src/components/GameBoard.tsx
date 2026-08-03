@@ -99,8 +99,8 @@ export function GameBoard({
   };
 
   return (
-    <div className="stack game-layout">
-      <div className="stack">
+    <div className="game-layout">
+      <div className="game-main">
         <div
           className={`banner ${state.winner ? "win" : myTurn ? "turn" : ""}`}
         >

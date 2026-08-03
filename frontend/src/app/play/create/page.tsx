@@ -68,7 +68,7 @@ export default function CreateMatchPage() {
   };
 
   return (
-    <div className="app-shell">
+    <div className="app-shell shell-wide">
       <header className="header">
         <Link href="/play" className="btn btn-ghost btn-sm connect-btn">
           ← Play
@@ -76,7 +76,7 @@ export default function CreateMatchPage() {
         <ConnectButton />
       </header>
 
-      <div className="card-panel stack">
+      <div className="card-panel stack panel-narrow">
         <h2>Create match</h2>
         <p className="muted">
           Stake <strong>1 Megapot ticket</strong>. Opponent stakes another. Winner

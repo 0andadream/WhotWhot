@@ -46,7 +46,7 @@ function JoinInner() {
   };
 
   return (
-    <div className="app-shell">
+    <div className="app-shell shell-wide">
       <header className="header">
         <Link href="/play" className="btn btn-ghost btn-sm connect-btn">
           ← Play
@@ -54,7 +54,7 @@ function JoinInner() {
         <ConnectButton />
       </header>
 
-      <div className="card-panel stack">
+      <div className="card-panel stack panel-narrow">
         <h2>Join match</h2>
         <p className="muted">
           Stake your Megapot ticket against the host. Winner takes both.

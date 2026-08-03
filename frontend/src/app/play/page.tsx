@@ -86,7 +86,7 @@ export default function PlayLobbyPage() {
   };
 
   return (
-    <div className="app-shell">
+    <div className="app-shell shell-wide">
       <header className="header">
         <Link href="/" className="logo-row" style={{ textDecoration: "none" }}>
           <div className="logo-mark">W</div>
