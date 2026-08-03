@@ -20,7 +20,25 @@ cp .env.example .env
 # optional: NEXT_PUBLIC_REFERRER_ADDRESS=0x... for Megapot referral fees
 npm run dev
 # → http://localhost:3000
+
+# Production build (same as Vercel)
+npm run build
 ```
+
+### Deploy on Vercel
+
+**Recommended settings** (monorepo):
+
+| Setting | Value |
+| -------- | ----- |
+| Root Directory | `frontend` |
+| Framework | Next.js |
+| Build Command | `npm run build` (default) |
+| Install Command | `npm install` (default) |
+
+Or deploy from **repo root** (uses root `vercel.json`): install at root, `npm run build -w frontend`.
+
+If you previously failed with `@x402/*` / Coinbase CDP errors: pull latest `main` — wallet connect uses `injected` only (MetaMask, Rabby, Coinbase extension, etc.).
 
 ### Deploy escrow (Base)
 
