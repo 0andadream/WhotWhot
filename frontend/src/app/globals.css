@@ -304,9 +304,10 @@ img {
 }
 .brand-logo-img {
   display: block;
-  border-radius: 50%;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  border-radius: 10px; /* square with soft corners — fits nav cleanly */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
+  object-fit: cover;
 }
 .brand-logo-text {
   font-family: var(--font-display);
@@ -314,20 +315,6 @@ img {
   font-size: 1.1rem;
   letter-spacing: -0.025em;
   color: var(--cream);
-}
-.hero-logo {
-  margin: 8px 0 12px;
-}
-.hero-logo .brand-logo-img {
-  width: 72px;
-  height: 72px;
-  box-shadow: 0 8px 28px rgba(139, 0, 0, 0.45);
-}
-@media (min-width: 768px) {
-  .hero-logo .brand-logo-img {
-    width: 88px;
-    height: 88px;
-  }
 }
 .logo-mark {
   padding: 0 !important;
@@ -341,6 +328,7 @@ img {
 .logo-mark .brand-logo-img {
   width: 40px;
   height: 40px;
+  border-radius: 10px;
 }
 .nav .spacer {
   flex: 1;

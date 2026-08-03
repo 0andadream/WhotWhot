@@ -34,9 +34,6 @@ export default function HomePage() {
         <div className="hero-inner">
           <div>
             <div className="eyebrow live">Live on Base</div>
-            <div className="hero-logo">
-              <BrandLogo href="" size={72} withWordmark={false} />
-            </div>
             <div className="wordmark">WhotWhot</div>
             <div className="suit-band" aria-hidden>
               <span style={{ ["--c" as string]: "#8B0000" }} />
