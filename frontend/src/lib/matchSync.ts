@@ -1,7 +1,7 @@
 /**
- * Local multiplayer move sync (no gas).
- * Both players share a match id; we store the action log in localStorage.
- * Same-device / shared browser works; cross-device needs a later relay.
+ * Match action log helpers.
+ * Multiplayer state is driven by on-chain MovePosted events (see match page).
+ * localStorage is only a local cache / same-browser backup.
  */
 
 import type { GameAction } from "@/lib/whot/types";
@@ -20,26 +20,24 @@ export function loadMatchActions(matchId: string): GameAction[] {
   }
 }
 
-export function appendMatchAction(matchId: string, action: GameAction) {
+export function saveMatchActions(matchId: string, actions: GameAction[]) {
   if (typeof window === "undefined") return;
   try {
-    const prev = loadMatchActions(matchId);
-    prev.push(action);
-    localStorage.setItem(key(matchId), JSON.stringify(prev));
-    // Notify other tabs on same origin
-    window.dispatchEvent(
-      new CustomEvent("whotwhot:move", { detail: { matchId, action } })
-    );
+    localStorage.setItem(key(matchId), JSON.stringify(actions));
   } catch {
-    /* ignore quota */
+    /* ignore */
   }
 }
 
-export function clearMatchActions(matchId: string) {
+export function appendMatchAction(matchId: string, action: GameAction) {
   if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem(key(matchId));
-  } catch {
-    /* */
-  }
+  const prev = loadMatchActions(matchId);
+  prev.push(action);
+  saveMatchActions(matchId, prev);
+}
+
+export function isGameAction(x: unknown): x is GameAction {
+  if (!x || typeof x !== "object") return false;
+  const t = (x as GameAction).type;
+  return t === "PLAY_CARD" || t === "DRAW" || t === "ACCEPT_PENALTY";
 }
