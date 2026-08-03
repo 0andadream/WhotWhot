@@ -106,7 +106,7 @@ export default function CreateMatchPage() {
   };
 
   return (
-    <div className="ds">
+    <div className="landing-premium ds">
       <SiteNav />
       <div className="app-shell shell-wide">
       <header className="header">

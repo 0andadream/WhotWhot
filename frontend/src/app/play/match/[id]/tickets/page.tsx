@@ -82,7 +82,7 @@ export default function MatchTicketsPage() {
 
   if (matchId == null) {
     return (
-      <div className="ds">
+      <div className="landing-premium ds">
         <SiteNav />
         <div className="app-shell shell-wide">
           <div className="alert">Invalid match id</div>
@@ -94,7 +94,7 @@ export default function MatchTicketsPage() {
   const boardHref = `/play/match/${matchId.toString()}`;
 
   return (
-    <div className="ds">
+    <div className="landing-premium ds">
       <SiteNav />
       <div className="app-shell shell-wide">
         <header className="header">

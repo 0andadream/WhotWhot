@@ -85,7 +85,7 @@ function JoinInner() {
   };
 
   return (
-    <div className="ds">
+    <div className="landing-premium ds">
       <SiteNav />
       <div className="app-shell shell-wide">
       <header className="header">
@@ -165,7 +165,7 @@ export default function JoinPage() {
   return (
     <Suspense
       fallback={
-        <div className="ds">
+        <div className="landing-premium ds">
           <div className="app-shell">Loading…</div>
         </div>
       }

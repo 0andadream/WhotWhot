@@ -6,38 +6,40 @@ import { PlayGuide } from "@/components/PlayGuide";
 
 export default function GuidePage() {
   return (
-    <div className="ds">
+    <div className="landing-premium ds">
       <SiteNav />
 
-      <main className="guide-page">
-        <header className="guide-hero">
-          <div className="eyebrow" style={{ color: "var(--muted)" }}>
-            Play guide
-          </div>
-          <h1 className="guide-title">The cards &amp; what they do</h1>
-          <p className="guide-subtitle">
-            Nigerian Whot in plain language, shapes, numbers, and every special card.
+      <main className="prem-main">
+        <header className="prem-page-hero">
+          <p className="prem-how-eyebrow">Play guide</p>
+          <h1 className="prem-h1 prem-h1-page">The cards &amp; what they do</h1>
+          <p className="prem-lede">
+            Nigerian Whot in plain language, shapes, numbers, and every special
+            card.
           </p>
-          <div className="ctas" style={{ maxWidth: 360, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link href="/play/ai" className="btn btn-primary">
+          <div className="prem-hero-actions">
+            <Link href="/play/ai" className="prem-btn-white">
               Practice vs AI
             </Link>
-            <Link href="/play" className="btn btn-ghost">
+            <Link href="/play" className="prem-btn-ghost">
               Go to play
             </Link>
           </div>
         </header>
 
-        <PlayGuide />
+        <div className="prem-guide-body">
+          <PlayGuide />
+        </div>
 
-        <div className="guide-footer-cta" style={{ marginTop: 36, display: "flex", justifyContent: "center" }}>
-          <Link href="/play" className="btn btn-primary btn-inline">
-            Ready? Play
+        <div className="prem-guide-footer">
+          <Link href="/play" className="prem-cta-circle" aria-label="Play Whot">
+            <span className="prem-cta-circle-label">Play</span>
+            <span className="prem-cta-circle-sub">Start a game</span>
           </Link>
         </div>
       </main>
 
-      <footer className="landing-footer">
+      <footer className="prem-footer">
         © whotwhot · the card game, online. made by matt
       </footer>
     </div>

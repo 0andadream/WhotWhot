@@ -404,7 +404,7 @@ export default function MatchPage() {
 
   if (!matchId) {
     return (
-      <div className="ds">
+      <div className="landing-premium ds">
         <SiteNav />
         <div className="app-shell shell-wide">
           <div className="alert">Invalid match id</div>
@@ -415,7 +415,7 @@ export default function MatchPage() {
 
   if (!match) {
     return (
-      <div className="ds">
+      <div className="landing-premium ds">
         <SiteNav />
         <div className="app-shell shell-wide">
           <header className="header">
@@ -451,7 +451,7 @@ export default function MatchPage() {
       : null;
 
   return (
-    <div className="ds">
+    <div className="landing-premium ds">
       <SiteNav />
       <div className="app-shell shell-wide">
         <header className="header">

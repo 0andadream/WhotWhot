@@ -95,51 +95,46 @@ export default function PlayLobbyPage() {
   const needsTicket = isConnected && stakeableCount === 0;
 
   return (
-    <div className="ds">
+    <div className="landing-premium ds">
       <SiteNav />
-      <div className="app-shell shell-wide play-lobby">
-        <header className="play-hero">
-          <p className="play-kicker">WhotWhot · Base</p>
-          <h1>Play Whot</h1>
-          <p className="play-lead">
+      <main className="prem-main">
+        <header className="prem-page-hero">
+          <p className="prem-how-eyebrow">Play</p>
+          <h1 className="prem-h1 prem-h1-page">Play Whot</h1>
+          <p className="prem-lede">
             Practice free, or stake one Megapot ticket each. Winner takes both.
           </p>
         </header>
 
-        <section className="play-jackpot card-panel">
-          <div className="play-jackpot-grid">
+        <section className="prem-panel">
+          <div className="prem-stats-grid">
             <div>
-              <div className="label">Jackpot</div>
-              <div className="play-jackpot-value">
+              <div className="prem-stat-label">Jackpot</div>
+              <div className="prem-stat-value">
                 {jackpot.prizePoolUsd ?? "…"}
               </div>
             </div>
             <div>
-              <div className="label">Next draw</div>
-              <div className="play-jackpot-value play-jackpot-countdown">
-                {countdown}
-              </div>
+              <div className="prem-stat-label">Next draw</div>
+              <div className="prem-stat-value prem-stat-sm">{countdown}</div>
             </div>
             <div>
-              <div className="label">Your stake tickets</div>
-              <div className="play-jackpot-value">
+              <div className="prem-stat-label">Your tickets</div>
+              <div className="prem-stat-value">
                 {isConnected ? stakeableCount : "—"}
-                <span className="muted" style={{ fontSize: "0.85rem", fontWeight: 500 }}>
-                  {" "}
-                  open-draw
-                </span>
+                <span className="prem-stat-unit"> open-draw</span>
               </div>
             </div>
           </div>
-          <div className="play-buy-row">
-            <p className="muted" style={{ fontSize: "0.85rem", margin: 0, flex: 1 }}>
+          <div className="prem-panel-footer">
+            <p className="prem-panel-hint">
               {needsTicket
                 ? "Buy a ticket for this Megapot round, then create or join a table."
                 : "Only tickets for the current round can be staked."}
             </p>
             <button
               type="button"
-              className="btn btn-primary"
+              className="prem-btn-white"
               disabled={!isConnected || buyStep !== "idle"}
               onClick={() => void onBuyTicket()}
             >
@@ -152,90 +147,90 @@ export default function PlayLobbyPage() {
                     : `Buy ticket · ${jackpot.ticketPriceUsd ?? "$1"}`}
             </button>
           </div>
-          {statusMsg && <div className="alert" style={{ marginTop: 12 }}>{statusMsg}</div>}
+          {statusMsg && (
+            <div className="alert" style={{ marginTop: 14 }}>
+              {statusMsg}
+            </div>
+          )}
           {error && (
-            <div className="alert" style={{ marginTop: 12 }}>
+            <div className="alert" style={{ marginTop: 14 }}>
               {error.message}
             </div>
           )}
         </section>
 
-        <section className="play-section">
-          <h2 className="play-section-title">Start a game</h2>
-          <div className="mode-grid play-mode-grid">
-            <Link href="/play/ai" className="mode-card play-mode-card">
-              <span className="play-mode-tag">Free</span>
+        <section className="prem-section">
+          <h2 className="prem-section-title">Start a game</h2>
+          <div className="prem-mode-grid">
+            <Link href="/play/ai" className="prem-mode-card">
+              <span className="prem-mode-tag free">Free</span>
               <h3>Practice vs AI</h3>
               <p>Learn the rules. No wallet, no tickets.</p>
-              <span className="btn btn-primary btn-sm">Play free</span>
+              <span className="prem-mode-cta">Play free →</span>
             </Link>
             <Link
               href={escrowReady ? "/play/create" : "#"}
-              className="mode-card play-mode-card"
+              className="prem-mode-card"
               style={
                 !escrowReady
-                  ? { opacity: 0.55, pointerEvents: "none" }
+                  ? { opacity: 0.5, pointerEvents: "none" }
                   : undefined
               }
             >
-              <span className="play-mode-tag stake">Stake</span>
+              <span className="prem-mode-tag stake">Stake</span>
               <h3>Create a table</h3>
               <p>Lock 1 ticket. Share the table with a friend.</p>
-              <span className="btn btn-secondary btn-sm">Create</span>
+              <span className="prem-mode-cta">Create →</span>
             </Link>
             <Link
               href={escrowReady ? "/play/join" : "#"}
-              className="mode-card play-mode-card"
+              className="prem-mode-card"
               style={
                 !escrowReady
-                  ? { opacity: 0.55, pointerEvents: "none" }
+                  ? { opacity: 0.5, pointerEvents: "none" }
                   : undefined
               }
             >
-              <span className="play-mode-tag stake">Stake</span>
+              <span className="prem-mode-tag stake">Stake</span>
               <h3>Join a table</h3>
               <p>Enter the table number your host shared.</p>
-              <span className="btn btn-ghost btn-sm">Join</span>
+              <span className="prem-mode-cta">Join →</span>
             </Link>
           </div>
         </section>
 
-        <section className="play-section">
-          <div className="play-section-head">
-            <h2 className="play-section-title" style={{ margin: 0 }}>
+        <section className="prem-section">
+          <div className="prem-section-head">
+            <h2 className="prem-section-title" style={{ margin: 0 }}>
               Your tables
             </h2>
             <button
               type="button"
-              className="btn btn-ghost btn-sm"
+              className="prem-btn-ghost"
               onClick={() => void refetchMine()}
             >
               Refresh
             </button>
           </div>
-          <p className="muted play-section-hint">
+          <p className="prem-section-hint">
             Live games only. Finished ones move to Past.
           </p>
 
           {!isConnected && (
-            <div className="card-panel play-empty">
-              <p className="muted" style={{ margin: 0 }}>
-                Connect your wallet to see tables you host or joined.
-              </p>
+            <div className="prem-panel prem-empty">
+              <p>Connect your wallet to see tables you host or joined.</p>
             </div>
           )}
           {isConnected && myLoading && (
-            <p className="muted">Loading your tables…</p>
+            <p className="prem-section-hint">Loading your tables…</p>
           )}
           {isConnected && !myLoading && myMatches.length === 0 && (
-            <div className="card-panel play-empty">
-              <p className="muted" style={{ margin: 0 }}>
-                No live tables yet. Create one or join with a table ID.
-              </p>
+            <div className="prem-panel prem-empty">
+              <p>No live tables yet. Create one or join with a table ID.</p>
             </div>
           )}
 
-          <div className="play-table-list">
+          <div className="prem-table-list">
             {myMatches.map((m) => {
               const boardHref =
                 m.status === MatchStatus.Waiting && m.role === "guest"
@@ -243,12 +238,12 @@ export default function PlayLobbyPage() {
                   : `/play/match/${m.id.toString()}`;
               const ticketsHref = `/play/match/${m.id.toString()}/tickets`;
               return (
-                <div key={String(m.id)} className="play-table-card">
-                  <div className="play-table-info">
-                    <div className="play-table-title">
+                <div key={String(m.id)} className="prem-table-card">
+                  <div>
+                    <div className="prem-table-title">
                       Table #{m.id.toString()}
                     </div>
-                    <p className="muted play-table-meta">
+                    <p className="prem-table-meta">
                       {m.role === "host" ? "You host" : "You joined"}
                       {" · "}
                       {m.status === MatchStatus.Active
@@ -258,14 +253,14 @@ export default function PlayLobbyPage() {
                           : statusLabel(m.status)}
                     </p>
                   </div>
-                  <div className="play-table-actions">
-                    <Link href={boardHref} className="btn btn-primary btn-sm">
+                  <div className="prem-table-actions">
+                    <Link href={boardHref} className="prem-btn-white sm">
                       {m.status === MatchStatus.Waiting && m.role === "guest"
                         ? "Join"
                         : "Open board"}
                     </Link>
                     {(m.ticket1 > 0n || m.ticket2 > 0n) && (
-                      <Link href={ticketsHref} className="btn btn-ghost btn-sm">
+                      <Link href={ticketsHref} className="prem-btn-ghost">
                         Tickets
                       </Link>
                     )}
@@ -277,24 +272,24 @@ export default function PlayLobbyPage() {
         </section>
 
         {isConnected && pastMatches.length > 0 && (
-          <section className="play-section">
-            <h2 className="play-section-title">Past</h2>
-            <p className="muted play-section-hint">
+          <section className="prem-section">
+            <h2 className="prem-section-title">Past</h2>
+            <p className="prem-section-hint">
               Finished or cancelled. Check tickets if you need results or claims.
             </p>
-            <div className="play-table-list">
+            <div className="prem-table-list">
               {pastMatches.map((m) => {
                 const ticketsHref = `/play/match/${m.id.toString()}/tickets`;
                 return (
                   <div
                     key={`past-${String(m.id)}`}
-                    className="play-table-card play-table-card-past"
+                    className="prem-table-card past"
                   >
-                    <div className="play-table-info">
-                      <div className="play-table-title">
+                    <div>
+                      <div className="prem-table-title">
                         Table #{m.id.toString()}
                       </div>
-                      <p className="muted play-table-meta">
+                      <p className="prem-table-meta">
                         {m.status === MatchStatus.Resolved
                           ? "Finished"
                           : m.status === MatchStatus.Cancelled
@@ -303,14 +298,9 @@ export default function PlayLobbyPage() {
                       </p>
                     </div>
                     {(m.ticket1 > 0n || m.ticket2 > 0n) && (
-                      <div className="play-table-actions">
-                        <Link
-                          href={ticketsHref}
-                          className="btn btn-ghost btn-sm"
-                        >
-                          Tickets &amp; results
-                        </Link>
-                      </div>
+                      <Link href={ticketsHref} className="prem-btn-ghost">
+                        Tickets &amp; results
+                      </Link>
                     )}
                   </div>
                 );
@@ -318,7 +308,11 @@ export default function PlayLobbyPage() {
             </div>
           </section>
         )}
-      </div>
+      </main>
+
+      <footer className="prem-footer">
+        © whotwhot · the card game, online. made by matt
+      </footer>
     </div>
   );
 }
