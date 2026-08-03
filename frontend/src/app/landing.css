@@ -1,39 +1,53 @@
 /* ═══════════════════════════════════════════════════════════════
-   WhotWhot landing redesign — tokens + homepage-only components
-   Does not replace app game UI; scoped under .landing
+   Landing UI — Epic Games Store–inspired (free-games write-up style)
+   Cool dark surfaces, clean store hierarchy, blue primary CTA.
+   Content/copy unchanged; visual language only. Scoped to .landing
    ═══════════════════════════════════════════════════════════════ */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 
 .landing {
-  --bg: #1a1210;
-  --surface: #221812;
-  --surface-2: #2b1f17;
-  --cream: #f2e9dd;
-  --muted: #a6957f;
-  --gold: #e8a93b;
-  --brick: #c24b34;
-  --moss: #4e7b5c;
-  --dusk: #3e7a8c;
-  --line: rgba(242, 233, 221, 0.1);
-  --line-strong: rgba(242, 233, 221, 0.18);
+  /* Epic-like store palette */
+  --bg: #121212;
+  --bg-elevated: #1a1a1a;
+  --surface: #202020;
+  --surface-2: #2a2a2a;
+  --surface-hover: #303030;
+  --text: #f5f5f5;
+  --text-2: #e7e7e7;
+  --muted: #a0a0a0;
+  --muted-2: #7a7a7a;
+  --blue: #0078f2;
+  --blue-hover: #1a88ff;
+  --blue-soft: rgba(0, 120, 242, 0.15);
+  --green: #0e7c41;
+  --green-soft: rgba(14, 124, 65, 0.2);
+  --green-text: #3dd68c;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.12);
+  --gold: #0078f2; /* map primary accent → store blue for shared tokens */
+  --brick: #e03e3e;
+  --moss: #0e7c41;
+  --dusk: #4a9eff;
+  --cream: #f5f5f5;
 
-  --font-display: "Space Grotesk", system-ui, sans-serif;
-  --font-body: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "Inter", system-ui, -apple-system, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "Inter", system-ui, sans-serif;
 
-  --r-sm: 9px;
-  --r-md: 14px;
-  --r-lg: 18px;
-  --r-xl: 22px;
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
 
   min-height: 100dvh;
   background: var(--bg);
-  color: var(--cream);
+  color: var(--text);
   font-family: var(--font-body);
   font-weight: 400;
-  line-height: 1.6;
-  letter-spacing: -0.011em;
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -46,37 +60,41 @@
   text-decoration: none;
 }
 
-/* ── Nav ─────────────────────────────────────────────────────── */
+/* ── Nav (Epic top bar) ──────────────────────────────────────── */
 .landing-nav {
   position: sticky;
   top: 0;
   z-index: 50;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  background: rgba(26, 18, 16, 0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  gap: 20px;
+  padding: 0 16px;
+  height: 56px;
+  background: #18181c;
   border-bottom: 1px solid var(--line);
 }
 @media (min-width: 768px) {
   .landing-nav {
-    padding: 16px 40px;
-    gap: 24px;
+    padding: 0 32px;
+    height: 60px;
   }
 }
 
 .landing-nav .nav-links {
   display: none;
-  gap: 24px;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
+  gap: 4px;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--muted);
 }
+.landing-nav .nav-links a {
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
+  transition: color 0.12s ease, background 0.12s ease;
+}
 .landing-nav .nav-links a:hover {
-  color: var(--cream);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
 }
 @media (min-width: 640px) {
   .landing-nav .nav-links {
@@ -92,23 +110,23 @@
   display: none;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--line-strong);
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
   background: var(--surface);
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 500;
+  border: 1px solid var(--line);
+  font-size: 0.72rem;
+  font-weight: 600;
   color: var(--muted);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .landing-nav .base-pill::before {
   content: "";
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--moss);
-  box-shadow: 0 0 8px var(--moss);
+  background: var(--green-text);
+  box-shadow: 0 0 6px var(--green-text);
 }
 @media (min-width: 480px) {
   .landing-nav .base-pill {
@@ -116,51 +134,59 @@
   }
 }
 
-/* Connect button in landing nav — gold primary */
+/* Connect → Epic blue primary */
 .landing-nav .btn-primary,
 .landing-nav .connect-btn.btn-primary {
-  background: var(--gold) !important;
-  color: #1a1210 !important;
+  background: var(--blue) !important;
+  color: #fff !important;
   border: none !important;
-  box-shadow: 0 2px 12px rgba(232, 169, 59, 0.28) !important;
-  font-family: var(--font-body);
-  font-weight: 600;
+  border-radius: var(--r-sm) !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  min-height: 36px !important;
+  padding: 8px 16px !important;
+}
+.landing-nav .btn-primary:hover,
+.landing-nav .connect-btn.btn-primary:hover {
+  background: var(--blue-hover) !important;
 }
 .landing-nav .btn-ghost,
 .landing-nav .connect-btn.btn-ghost {
   border-color: var(--line-strong) !important;
-  color: var(--cream) !important;
+  color: var(--text) !important;
+  border-radius: var(--r-sm) !important;
+  background: var(--surface) !important;
 }
 
-/* Brand logo text on landing */
 .landing .brand-logo-text {
   font-family: var(--font-display) !important;
-  font-weight: 600 !important;
-  color: var(--cream) !important;
+  font-weight: 700 !important;
+  font-size: 1rem !important;
   letter-spacing: -0.02em !important;
+  color: var(--text) !important;
+}
+.landing .brand-logo-img {
+  border-radius: 4px !important;
 }
 
-/* ── Hero ────────────────────────────────────────────────────── */
+/* ── Hero (store free-games header style) ────────────────────── */
 .landing-hero {
   position: relative;
-  padding: 40px 20px 56px;
-  overflow: hidden;
-  background:
-    radial-gradient(ellipse 70% 55% at 15% 0%, rgba(194, 75, 52, 0.14), transparent 55%),
-    radial-gradient(ellipse 50% 40% at 90% 80%, rgba(232, 169, 59, 0.08), transparent 50%),
-    var(--bg);
+  padding: 40px 16px 48px;
+  background: var(--bg);
 }
 @media (min-width: 960px) {
   .landing-hero {
-    padding: 64px 40px 80px;
+    padding: 56px 32px 72px;
   }
   .landing-hero-inner {
-    max-width: 1180px;
+    max-width: 1280px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: 1.05fr 0.95fr;
-    gap: 48px;
-    align-items: center;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
   }
 }
 
@@ -168,77 +194,75 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(194, 75, 52, 0.12);
-  border: 1px solid rgba(194, 75, 52, 0.28);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  background: var(--green-soft);
+  border: none;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #e8a090;
-  margin-bottom: 20px;
+  color: var(--green-text);
+  margin-bottom: 16px;
 }
 .landing-eyebrow.live::before {
   content: "";
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--brick);
-  box-shadow: 0 0 8px var(--brick);
-  animation: land-pulse 1.6s ease-in-out infinite;
+  background: var(--green-text);
+  animation: epic-pulse 1.6s ease-in-out infinite;
 }
-@keyframes land-pulse {
+@keyframes epic-pulse {
   0%,
   100% {
     opacity: 1;
   }
   50% {
-    opacity: 0.45;
+    opacity: 0.4;
   }
 }
 
 .landing-wordmark {
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(2.5rem, 9vw, 3.5rem);
+  font-weight: 800;
+  font-size: clamp(2rem, 6vw, 2.75rem);
   letter-spacing: -0.03em;
-  line-height: 1;
-  color: var(--cream);
+  line-height: 1.05;
+  color: var(--text);
   margin: 0 0 12px;
 }
 
 .landing-h1 {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.75rem, 5.5vw, 2.75rem);
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  color: var(--cream);
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  color: var(--text-2);
   margin: 0 0 16px;
-  max-width: 18ch;
+  max-width: 22ch;
 }
 .landing-h1 .hl {
-  color: var(--gold);
+  color: var(--text);
   display: inline;
+  font-weight: 800;
 }
 
 .landing-lede {
-  font-family: var(--font-body);
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 400;
-  line-height: 1.65;
+  line-height: 1.55;
   color: var(--muted);
-  margin: 0 0 28px;
-  max-width: 38em;
+  margin: 0 0 24px;
+  max-width: 42em;
 }
 
 .landing-ctas {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 @media (min-width: 480px) {
   .landing-ctas {
@@ -252,47 +276,43 @@
   align-items: center;
   justify-content: center;
   min-height: 48px;
-  padding: 12px 22px;
-  border-radius: 999px;
+  padding: 12px 24px;
+  border-radius: var(--r-sm);
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   letter-spacing: -0.01em;
   border: 1px solid transparent;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  transition: background 0.12s ease, border-color 0.12s ease;
   cursor: pointer;
   text-align: center;
-}
-.landing-btn:active {
-  transform: scale(0.98);
-}
-.landing-btn-primary {
-  background: var(--gold);
-  color: #1a1210;
-  box-shadow: 0 4px 18px rgba(232, 169, 59, 0.3);
-}
-.landing-btn-primary:hover {
-  box-shadow: 0 8px 24px rgba(232, 169, 59, 0.4);
-  color: #1a1210;
-}
-.landing-btn-ghost {
-  background: transparent;
-  border-color: var(--line-strong);
-  color: var(--cream);
-}
-.landing-btn-ghost:hover {
-  background: rgba(242, 233, 221, 0.04);
-  border-color: rgba(242, 233, 221, 0.28);
-  color: var(--cream);
+  width: 100%;
 }
 @media (min-width: 480px) {
   .landing-btn {
     width: auto;
-    min-width: 140px;
+    min-width: 160px;
   }
 }
+.landing-btn-primary {
+  background: var(--blue);
+  color: #fff;
+}
+.landing-btn-primary:hover {
+  background: var(--blue-hover);
+  color: #fff;
+}
+.landing-btn-ghost {
+  background: var(--surface-2);
+  border-color: transparent;
+  color: var(--text);
+}
+.landing-btn-ghost:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
 
-/* Rule chips */
+/* Meta chips — store tag style */
 .rule-chips {
   display: flex;
   flex-wrap: wrap;
@@ -302,35 +322,39 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 11px;
+  padding: 6px 10px;
   border-radius: var(--r-sm);
   background: var(--surface);
   border: 1px solid var(--line);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--muted);
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
 }
 .rule-chip strong {
-  color: var(--gold);
-  font-weight: 600;
+  color: var(--text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-/* ── Live table card fan ─────────────────────────────────────── */
+/* ── Live table card (store product card) ────────────────────── */
 .live-table {
-  margin-top: 40px;
-  padding: 20px 16px 24px;
+  margin-top: 32px;
+  padding: 0;
   background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-xl);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
-  position: relative;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  box-shadow: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.live-table:hover {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
 }
 @media (min-width: 960px) {
   .live-table {
     margin-top: 0;
-    padding: 28px 24px 32px;
   }
 }
 
@@ -339,71 +363,73 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-elevated);
 }
 .live-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: rgba(194, 75, 52, 0.15);
-  border: 1px solid rgba(194, 75, 52, 0.35);
-  font-family: var(--font-mono);
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  background: var(--green);
+  border: none;
   font-size: 0.65rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  color: #f0a898;
+  letter-spacing: 0.06em;
+  color: #fff;
   text-transform: uppercase;
 }
 .live-badge::before {
   content: "";
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background: var(--brick);
-  animation: land-pulse 1.4s ease-in-out infinite;
+  background: #fff;
+  animation: epic-pulse 1.4s ease-in-out infinite;
 }
 .live-table-id {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--muted);
+  font-size: 0.75rem;
   font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .card-fan {
   position: relative;
-  height: 200px;
+  height: 220px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  margin: 8px 0 16px;
+  margin: 0;
+  padding: 24px 16px 8px;
   perspective: 800px;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--bg-elevated) 100%);
 }
 @media (min-width: 480px) {
   .card-fan {
-    height: 230px;
+    height: 250px;
   }
 }
 @media (min-width: 960px) {
   .card-fan {
-    height: 260px;
+    height: 280px;
+    padding: 32px 24px 12px;
   }
 }
 
 .card-fan .fan-card {
   position: absolute;
-  bottom: 20px;
+  bottom: 28px;
   transform-origin: center bottom;
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease;
-  /* override whot-card absolute stacking */
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .card-fan .fan-card .whot-card {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
 }
 
-/* Fan positions — rest */
 .card-fan .fan-card:nth-child(1) {
   transform: translateX(-88px) rotate(-16deg);
   z-index: 1;
@@ -425,140 +451,139 @@
   z-index: 1;
 }
 
-/* Spread on hover */
 @media (hover: hover) and (pointer: fine) {
   .card-fan:hover .fan-card:nth-child(1) {
-    transform: translateX(-120px) rotate(-22deg) translateY(-12px);
+    transform: translateX(-118px) rotate(-20deg) translateY(-10px);
   }
   .card-fan:hover .fan-card:nth-child(2) {
-    transform: translateX(-60px) rotate(-11deg) translateY(-18px);
+    transform: translateX(-58px) rotate(-10deg) translateY(-16px);
   }
   .card-fan:hover .fan-card:nth-child(3) {
-    transform: translateX(0) rotate(0deg) translateY(-28px) scale(1.04);
+    transform: translateX(0) rotate(0deg) translateY(-24px) scale(1.03);
   }
   .card-fan:hover .fan-card:nth-child(4) {
-    transform: translateX(60px) rotate(11deg) translateY(-18px);
+    transform: translateX(58px) rotate(10deg) translateY(-16px);
   }
   .card-fan:hover .fan-card:nth-child(5) {
-    transform: translateX(120px) rotate(22deg) translateY(-12px);
+    transform: translateX(118px) rotate(20deg) translateY(-10px);
   }
 }
 
 @media (max-width: 400px) {
   .card-fan .fan-card:nth-child(1) {
-    transform: translateX(-64px) rotate(-14deg);
+    transform: translateX(-60px) rotate(-12deg);
   }
   .card-fan .fan-card:nth-child(2) {
-    transform: translateX(-32px) rotate(-7deg);
+    transform: translateX(-30px) rotate(-6deg);
   }
   .card-fan .fan-card:nth-child(4) {
-    transform: translateX(32px) rotate(7deg);
+    transform: translateX(30px) rotate(6deg);
   }
   .card-fan .fan-card:nth-child(5) {
-    transform: translateX(64px) rotate(14deg);
+    transform: translateX(60px) rotate(12deg);
   }
 }
 
 .live-table-caption {
-  text-align: center;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
+  text-align: left;
+  font-size: 0.875rem;
   color: var(--muted);
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.45;
+  padding: 14px 16px 18px;
+  border-top: 1px solid var(--line);
 }
 
-/* ── Sections ────────────────────────────────────────────────── */
+/* ── Sections (store content blocks) ─────────────────────────── */
 .landing-section {
-  padding: 64px 20px;
+  padding: 48px 16px 56px;
 }
 .landing-section.cream {
-  background: var(--cream);
-  color: #1a1210;
+  /* Epic free-games band: slightly elevated dark, not warm cream */
+  background: var(--bg-elevated);
+  color: var(--text);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 .landing-section.surface {
-  background: var(--surface);
-  color: var(--cream);
-  border-top: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
 }
 @media (min-width: 768px) {
   .landing-section {
-    padding: 80px 40px;
+    padding: 64px 32px 72px;
   }
 }
 
 .landing-section-inner {
-  max-width: 1100px;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
 .landing-section .sec-eyebrow {
   display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--gold);
-  margin-bottom: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
 }
 .landing-section.cream .sec-eyebrow {
-  color: #b8791f;
+  color: var(--green-text);
 }
 
 .landing-section h2 {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.5rem, 3.5vw, 2.15rem);
-  letter-spacing: -0.025em;
-  line-height: 1.15;
-  margin: 0 0 12px;
+  font-size: clamp(1.35rem, 3vw, 1.85rem);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0 0 8px;
+  color: var(--text);
 }
 .landing-section .sec-sub {
-  font-family: var(--font-body);
-  font-size: 1.02rem;
-  line-height: 1.65;
+  font-size: 0.95rem;
+  line-height: 1.55;
   color: var(--muted);
-  margin: 0 0 36px;
-  max-width: 40em;
+  margin: 0 0 28px;
+  max-width: 52em;
 }
 .landing-section.cream .sec-sub {
-  color: rgba(26, 18, 16, 0.58);
+  color: var(--muted);
 }
 
-/* ── How it works — 3 steps + dashed line ────────────────────── */
+/* ── How it works — store card row ───────────────────────────── */
 .how-steps {
   display: grid;
-  gap: 20px;
+  gap: 12px;
   position: relative;
 }
 @media (min-width: 800px) {
   .how-steps {
     grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
+    gap: 16px;
   }
   .how-steps::before {
-    content: "";
-    position: absolute;
-    top: 28px;
-    left: 12%;
-    right: 12%;
-    height: 0;
-    border-top: 1.5px dashed rgba(26, 18, 16, 0.18);
-    z-index: 0;
-    pointer-events: none;
+    display: none; /* Epic style: clean cards, no dashed connector */
   }
 }
 
 .how-step {
   position: relative;
   z-index: 1;
-  background: #fff;
-  border: 1px solid rgba(26, 18, 16, 0.08);
-  border-radius: var(--r-lg);
-  padding: 24px 20px 22px;
-  box-shadow: 0 4px 16px rgba(26, 18, 16, 0.06);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 20px 18px 22px;
+  box-shadow: none;
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
+.how-step:hover {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+}
+
 .how-step-badge {
   display: inline-flex;
   align-items: center;
@@ -566,53 +591,53 @@
   margin-bottom: 14px;
 }
 .how-step-num {
-  font-family: var(--font-mono);
   font-size: 0.75rem;
   font-weight: 700;
-  color: #1a1210;
+  color: var(--muted);
   letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
 }
 .how-step-pip {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  border: 1.5px solid rgba(26, 18, 16, 0.12);
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  border: none;
 }
 .how-step-pip.c1 {
-  background: var(--gold);
+  background: var(--blue);
 }
 .how-step-pip.c2 {
   background: var(--dusk);
 }
 .how-step-pip.c3 {
-  background: var(--moss);
+  background: var(--green-text);
 }
 
 .how-step h4 {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 1.1rem;
-  letter-spacing: -0.02em;
+  font-size: 1rem;
+  letter-spacing: -0.015em;
   margin: 0 0 8px;
-  color: #1a1210;
+  color: var(--text);
 }
 .how-step p {
   margin: 0;
-  font-size: 0.92rem;
-  line-height: 1.55;
-  color: rgba(26, 18, 16, 0.58);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--muted);
 }
 
-/* ── Megapot escrow module ───────────────────────────────────── */
+/* ── Megapot / escrow panel (store module) ───────────────────── */
 .escrow-panel {
-  background: var(--surface-2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-xl);
-  padding: 28px 20px 32px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 24px 18px 28px;
 }
 @media (min-width: 768px) {
   .escrow-panel {
-    padding: 36px 32px 40px;
+    padding: 32px 28px 36px;
   }
 }
 
@@ -621,7 +646,7 @@
   flex-direction: column;
   align-items: stretch;
   gap: 0;
-  margin-top: 28px;
+  margin-top: 24px;
 }
 @media (min-width: 720px) {
   .escrow-flow {
@@ -634,40 +659,50 @@
 
 .escrow-node {
   flex: 1;
-  text-align: center;
-  padding: 16px 12px;
+  text-align: left;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  margin-bottom: 8px;
 }
+@media (min-width: 720px) {
+  .escrow-node {
+    margin-bottom: 0;
+    text-align: left;
+  }
+}
+
 .escrow-icon {
-  width: 52px;
-  height: 52px;
-  margin: 0 auto 14px;
-  border-radius: 14px;
+  width: 40px;
+  height: 40px;
+  margin: 0 0 12px;
+  border-radius: var(--r-sm);
   display: grid;
   place-items: center;
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  color: var(--gold);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--blue);
 }
 .escrow-icon.moss {
-  color: var(--moss);
-  border-color: rgba(78, 123, 92, 0.35);
+  color: var(--green-text);
 }
 .escrow-icon.brick {
-  color: var(--brick);
-  border-color: rgba(194, 75, 52, 0.35);
+  color: #ff6b6b;
 }
+
 .escrow-node h4 {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 0.98rem;
-  letter-spacing: -0.02em;
+  font-size: 0.95rem;
+  letter-spacing: -0.015em;
   margin: 0 0 6px;
-  color: var(--cream);
+  color: var(--text);
 }
 .escrow-node p {
   margin: 0;
   font-size: 0.82rem;
-  line-height: 1.5;
+  line-height: 1.45;
   color: var(--muted);
 }
 
@@ -675,20 +710,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--muted);
-  opacity: 0.5;
+  color: var(--muted-2);
+  opacity: 0.7;
   padding: 4px 0;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.15em;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  font-weight: 600;
 }
 @media (min-width: 720px) {
   .escrow-arrow {
-    flex: 0 0 40px;
-    padding-top: 28px;
-  }
-  .escrow-arrow span {
-    transform: rotate(0deg);
+    flex: 0 0 32px;
+    padding-top: 36px;
   }
 }
 @media (max-width: 719px) {
@@ -699,25 +731,25 @@
 }
 
 .escrow-cta {
-  margin-top: 28px;
+  margin-top: 24px;
 }
 
 /* ── Footer ──────────────────────────────────────────────────── */
 .landing-footer {
   text-align: center;
-  padding: 32px 20px 40px;
+  padding: 28px 16px 40px;
   border-top: 1px solid var(--line);
-  background: #120e0c;
-  font-size: 0.82rem;
-  color: var(--muted);
+  background: #0e0e10;
+  font-size: 0.8rem;
+  color: var(--muted-2);
   letter-spacing: 0.01em;
 }
 
 /* ── Scroll reveal ───────────────────────────────────────────── */
 .reveal {
   opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.55s ease, transform 0.55s ease;
+  transform: translateY(12px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
 }
 .reveal.in {
   opacity: 1;
