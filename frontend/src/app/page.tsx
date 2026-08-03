@@ -25,6 +25,7 @@ export default function HomePage() {
         </Link>
         <div className="links">
           <Link href="/play">Play</Link>
+          <Link href="/guide">Guide</Link>
         </div>
         <div className="spacer" />
         <ConnectButton />
@@ -55,9 +56,9 @@ export default function HomePage() {
               <Link href="/play" className="btn btn-primary">
                 Play
               </Link>
-              <a href="#how" className="btn btn-ghost">
-                How it works
-              </a>
+              <Link href="/guide" className="btn btn-ghost">
+                Play guide
+              </Link>
             </div>
           </div>
 

@@ -1284,6 +1284,174 @@ img {
   box-shadow: var(--shadow-lg) !important;
 }
 
+/* ── Play guide ───────────────────────────────────────────────── */
+.guide-page {
+  max-width: min(960px, 94vw);
+  margin: 0 auto;
+  padding: 32px 20px 48px;
+}
+
+.guide-hero {
+  margin-bottom: 36px;
+}
+.guide-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.85rem, 4.5vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--cream);
+  margin: 14px 0 12px;
+  line-height: 1.12;
+}
+.guide-subtitle {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  line-height: 1.55;
+  max-width: 36em;
+  margin: 0 0 24px;
+}
+
+.play-guide {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.guide-block {
+  background: linear-gradient(165deg, var(--charcoal-3) 0%, var(--charcoal-2) 100%);
+  border: 1px solid rgba(248, 241, 227, 0.08);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  box-shadow: var(--shadow-md);
+}
+.guide-block.guide-stake {
+  border-color: rgba(232, 93, 4, 0.25);
+}
+
+.guide-heading {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--cream);
+  margin: 0 0 10px;
+  letter-spacing: -0.02em;
+}
+.guide-lead {
+  margin: 0 0 16px;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.guide-lead strong {
+  color: var(--cream);
+  font-weight: 600;
+}
+
+.guide-list {
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+.guide-list li {
+  margin-bottom: 6px;
+}
+.guide-list strong {
+  color: var(--cream);
+}
+
+.guide-shape-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 20px;
+  justify-content: flex-start;
+}
+.guide-shape-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.guide-shape-item span {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.guide-special-grid {
+  display: grid;
+  gap: 14px;
+}
+@media (min-width: 720px) {
+  .guide-special-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+}
+@media (min-width: 1100px) {
+  .guide-special-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.guide-special-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  align-items: start;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(248, 241, 227, 0.06);
+}
+.guide-special-art {
+  flex-shrink: 0;
+}
+.guide-special-copy h3 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--cream);
+  letter-spacing: -0.015em;
+}
+.guide-aka {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--orange);
+  margin-bottom: 8px;
+}
+.guide-special-copy p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.guide-footer-cta {
+  margin-top: 36px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Compact guide inside play lobby rules tab */
+.play-guide.compact .guide-block {
+  padding: 18px 16px;
+}
+.play-guide.compact .guide-special-grid {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 720px) {
+  .play-guide.compact .guide-special-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 /* Forms: readable width on wide screens, still left-aligned in shell */
 @media (min-width: 960px) {
   .panel-narrow {

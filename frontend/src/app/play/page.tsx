@@ -12,9 +12,10 @@ import {
 } from "@/hooks/useMegapot";
 import { useEscrowReady, useOpenMatches } from "@/hooks/useEscrow";
 import { ADDRESSES, erc20Abi, randomBuyerAbi } from "@/lib/contracts";
+import { PlayGuide } from "@/components/PlayGuide";
 import { stringToHex, parseUnits } from "viem";
 
-type Tab = "modes" | "tables" | "rules";
+type Tab = "modes" | "tables" | "guide";
 
 export default function PlayLobbyPage() {
   const { isConnected, address } = useAccount();
@@ -136,14 +137,14 @@ export default function PlayLobbyPage() {
       {error && <div className="alert">{error.message}</div>}
 
       <div className="tabs">
-        {(["modes", "tables", "rules"] as Tab[]).map((t) => (
+        {(["modes", "tables", "guide"] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
             className={tab === t ? "active" : ""}
             onClick={() => setTab(t)}
           >
-            {t === "modes" ? "Modes" : t === "tables" ? "Tables" : "Rules"}
+            {t === "modes" ? "Modes" : t === "tables" ? "Tables" : "Guide"}
           </button>
         ))}
       </div>
@@ -201,27 +202,23 @@ export default function PlayLobbyPage() {
         </div>
       )}
 
-      {tab === "rules" && (
-        <div className="card-panel stack">
-          <h2>How to play</h2>
-          <p className="muted">
-            Match the top card by <strong>shape</strong> (Circle, Triangle, Cross,
-            Square, Star) or <strong>number</strong>. First to empty their hand wins.
-          </p>
-          <p className="muted">
-            <strong>1</strong> Hold On · <strong>2</strong> Pick Two ·{" "}
-            <strong>5</strong> Pick Three · <strong>8</strong> Suspension ·{" "}
-            <strong>14</strong> General Market · <strong>20</strong> Whot (wild)
-          </p>
-          <p className="muted">
-            Legal cards glow gold. On mobile, swipe your hand and tap big cards.
-          </p>
+      {tab === "guide" && (
+        <div className="stack">
+          <PlayGuide compact />
+          <Link href="/guide" className="btn btn-ghost">
+            Open full guide
+          </Link>
         </div>
       )}
 
-      <Link href="/" className="btn btn-ghost">
-        Back to home
-      </Link>
+      <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+        <Link href="/guide" className="btn btn-ghost btn-sm">
+          Play guide
+        </Link>
+        <Link href="/" className="btn btn-ghost btn-sm">
+          Home
+        </Link>
+      </div>
     </div>
   );
 }
