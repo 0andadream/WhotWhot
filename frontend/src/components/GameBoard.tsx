@@ -153,28 +153,21 @@ export function GameBoard({
 
   return (
     <div
-      className="game-layout game-fit"
+      className="game-layout"
       onPointerDown={() => unlockMoveSound()}
     >
       <div className="game-main">
-        <div className="game-fit-top">
+        {(showSoundToggle || vsAi) && !externalState && (
           <div
-            className={`banner game-fit-banner ${state.winner ? "win" : myTurn ? "turn" : ""}`}
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginBottom: 8,
+            }}
           >
-            {state.winner
-              ? state.winner === humanPlayer
-                ? "You win! 🎉"
-                : `${opp.name} wins`
-              : state.pendingPenalty
-                ? `⚡ Pick ${state.pendingPenalty.amount} or stack`
-                : myTurn
-                  ? "Your turn"
-                  : `${opp.name}'s turn…`}
-          </div>
-          {(showSoundToggle || vsAi) && !externalState && (
             <button
               type="button"
-              className="btn btn-ghost btn-sm game-fit-sound"
+              className="btn btn-ghost btn-sm"
               onClick={() => {
                 unlockMoveSound();
                 const next = !soundMuted;
@@ -183,21 +176,34 @@ export function GameBoard({
                 if (!next) playOpponentMoveSound();
               }}
             >
-              {soundMuted ? "🔇" : "🔊"}
+              {soundMuted ? "Sound off" : "Sound on"}
             </button>
-          )}
+          </div>
+        )}
+        <div
+          className={`banner ${state.winner ? "win" : myTurn ? "turn" : ""}`}
+        >
+          {state.winner
+            ? state.winner === humanPlayer
+              ? "You win! 🎉 Empty hand."
+              : `${opp.name} wins`
+            : state.pendingPenalty
+              ? `⚡ Pick ${state.pendingPenalty.amount}, stack same card or accept`
+              : myTurn
+                ? "Your turn, match shape or number"
+                : `${opp.name}'s turn…`}
         </div>
 
-        <div className="felt-table game-fit-felt">
-          <div className="game-fit-opp-label">
-            {opp.name} · {opp.hand.length}
+        <div className="felt-table">
+          <div className="muted" style={{ textAlign: "center", marginBottom: 6, position: "relative", zIndex: 1 }}>
+            {opp.name} · {opp.hand.length} cards
           </div>
           <div className="opp-hand">
-            {opp.hand.slice(0, 10).map((c) => (
+            {opp.hand.slice(0, 12).map((c) => (
               <WhotCard key={c.id} faceDown small />
             ))}
-            {opp.hand.length > 10 && (
-              <span className="pill">+{opp.hand.length - 10}</span>
+            {opp.hand.length > 12 && (
+              <span className="pill">+{opp.hand.length - 12}</span>
             )}
           </div>
 
@@ -220,12 +226,7 @@ export function GameBoard({
             <div className="table-stack">
               <WhotCard card={top} />
               <span className="pill" style={{ gap: 6 }}>
-                <SuitIcon
-                  shape={
-                    state.currentShape === "whot" ? "circle" : state.currentShape
-                  }
-                  size={14}
-                />
+                <SuitIcon shape={state.currentShape === "whot" ? "circle" : state.currentShape} size={14} />
                 {SHAPE_LABEL[state.currentShape]}
                 {state.currentNumber !== 20 ? ` · #${state.currentNumber}` : ""}
               </span>
@@ -234,46 +235,24 @@ export function GameBoard({
         </div>
 
         {pickingShape && (
-          <div className="game-fit-shape">
-            <span className="muted">Call a shape</span>
+          <div className="card-panel">
+            <h2>Call a shape</h2>
+            <p className="muted" style={{ marginBottom: 10 }}>
+              WHOT 20, pick what opponents must play
+            </p>
             <div className="shape-picker">
               {PLAYABLE_SHAPES.map((sh) => (
-                <button
-                  key={sh}
-                  type="button"
-                  onClick={() => confirmWhot(sh)}
-                  aria-label={sh}
-                >
-                  <SuitIcon shape={sh} size={22} />
+                <button key={sh} type="button" onClick={() => confirmWhot(sh)} aria-label={sh}>
+                  <SuitIcon shape={sh} size={28} />
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        <div className="hand-dock game-fit-hand">
-          <div className="game-fit-hand-label">
+        <div className="hand-dock">
+          <div className="muted" style={{ marginBottom: 2, paddingLeft: 4 }}>
             Your hand · {me.hand.length}
-            {myTurn && !state.pendingPenalty && (
-              <button
-                type="button"
-                className="game-fit-market-btn"
-                onClick={() => apply({ type: "DRAW", player: humanPlayer })}
-              >
-                Market
-              </button>
-            )}
-            {myTurn && state.pendingPenalty && (
-              <button
-                type="button"
-                className="game-fit-market-btn accept"
-                onClick={() =>
-                  apply({ type: "ACCEPT_PENALTY", player: humanPlayer })
-                }
-              >
-                Accept pick {state.pendingPenalty.amount}
-              </button>
-            )}
           </div>
           <div className="hand">
             {me.hand.map((c) => (
@@ -286,6 +265,39 @@ export function GameBoard({
               />
             ))}
           </div>
+
+          {myTurn && (
+            <div className="action-bar" style={{ marginTop: 8 }}>
+              {state.pendingPenalty ? (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() =>
+                    apply({ type: "ACCEPT_PENALTY", player: humanPlayer })
+                  }
+                >
+                  Accept pick {state.pendingPenalty.amount}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => apply({ type: "DRAW", player: humanPlayer })}
+                >
+                  Go to market
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="card-panel">
+        <h2>Match log</h2>
+        <div className="log">
+          {[...state.log].reverse().map((line, i) => (
+            <div key={i}>{line}</div>
+          ))}
         </div>
       </div>
     </div>
