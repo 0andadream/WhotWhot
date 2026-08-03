@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useState } from "react";
 import { WhotCard } from "@/components/WhotCard";
 import type { Card } from "@/lib/whot/types";
-import { WHOT_EASE } from "./motion";
+import { FloatingWhotCards } from "./FloatingWhotCards";
 
 /** Authentic shapes: circle, star, triangle, square, cross, WHOT 20 */
 const HERO_CARDS: Card[] = [
@@ -35,29 +35,6 @@ const SPREAD = [
   { x: 200, y: 18, rotate: 36, rotateY: -22, z: 1 },
 ];
 
-const FLOATERS: { card: Card; className: string; delay: number }[] = [
-  {
-    card: { id: "bg1", shape: "circle", number: 1, special: "hold_on" },
-    className: "hero-float f1",
-    delay: 0,
-  },
-  {
-    card: { id: "bg2", shape: "star", number: 3, special: null },
-    className: "hero-float f2",
-    delay: 0.4,
-  },
-  {
-    card: { id: "bg3", shape: "triangle", number: 11, special: null },
-    className: "hero-float f3",
-    delay: 0.8,
-  },
-  {
-    card: { id: "bg4", shape: "cross", number: 5, special: "pick_three" },
-    className: "hero-float f4",
-    delay: 1.2,
-  },
-];
-
 /**
  * Centerpiece Whot fan + soft floating background cards.
  */
@@ -68,43 +45,11 @@ export function HeroCardFan() {
 
   return (
     <div className="hero-stage">
-      {/* Soft ambient glows */}
       <div className="hero-glow g1" aria-hidden />
       <div className="hero-glow g2" aria-hidden />
 
-      {/* Floating depth cards */}
-      {!reduce &&
-        FLOATERS.map((f) => (
-          <motion.div
-            key={f.card.id}
-            className={f.className}
-            aria-hidden
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: 0.22,
-              y: [0, -12, 0],
-              rotate: [f.className.includes("f1") ? -18 : 12, f.className.includes("f1") ? -14 : 16, f.className.includes("f1") ? -18 : 12],
-            }}
-            transition={{
-              opacity: { duration: 0.8, delay: 0.5 + f.delay },
-              y: {
-                duration: 5 + f.delay,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: f.delay,
-              },
-              rotate: {
-                duration: 7 + f.delay,
-                repeat: Infinity,
-                ease: "easeInOut",
-              },
-            }}
-          >
-            <WhotCard card={f.card} />
-          </motion.div>
-        ))}
+      <FloatingWhotCards variant="stage" />
 
-      {/* Main fan */}
       <div
         className="hero-fan"
         aria-hidden
