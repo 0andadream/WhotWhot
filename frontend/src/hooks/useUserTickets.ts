@@ -1,9 +1,20 @@
 "use client";
 
-import { useAccount, usePublicClient, useReadContract } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
+import {
+  createPublicClient,
+  fallback,
+  http,
+  type Address,
+} from "viem";
+import { base } from "viem/chains";
 import { ADDRESSES, jackpotAbi, jackpotTicketNftAbi } from "@/lib/contracts";
+import { baseRpcUrls } from "@/lib/baseRpcUrls";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { isDrawnTicketHidden } from "@/lib/seenDrawnTickets";
+import {
+  isDrawnTicketHidden,
+  markDrawnTicketsSeen,
+} from "@/lib/seenDrawnTickets";
 
 export type OwnedTicket = {
   ticketId: bigint;
@@ -12,25 +23,55 @@ export type OwnedTicket = {
   bonusball: number;
   /** Megapot draw for this ticket has already settled */
   drawn: boolean;
-  /** Safe to stake in a new Whot match (open draw only) */
+  /** Safe to stake in a new Whot match (current open draw only) */
   stakeable: boolean;
-  /** User already viewed no-win / finished results; hide from stake UI */
+  /** Hidden from inventory after results seen / past draw */
   resultsSeen: boolean;
 };
 
-const DRAWINGS_TO_SCAN = 14n; // current + recent past (held tickets)
+const DRAWINGS_TO_SCAN = 14n;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let ticketRpcClient: any = null;
+
+function getTicketRpc() {
+  if (ticketRpcClient) return ticketRpcClient;
+  ticketRpcClient = createPublicClient({
+    chain: base,
+    batch: { multicall: false },
+    transport: fallback(
+      baseRpcUrls().map((url) =>
+        http(url, { timeout: 12_000, retryCount: 2, retryDelay: 350 })
+      ),
+      { rank: false }
+    ),
+  });
+  return ticketRpcClient;
+}
+
+function winningTicketOf(state: unknown): bigint {
+  if (!state || typeof state !== "object") return 0n;
+  const s = state as Record<string, unknown> & { winningTicket?: bigint };
+  if (s.winningTicket !== undefined && s.winningTicket !== null) {
+    return BigInt(s.winningTicket as bigint | number | string);
+  }
+  // tuple-style
+  if (Array.isArray(state) && state[8] !== undefined) {
+    return BigInt(state[8] as bigint | number | string);
+  }
+  return 0n;
+}
 
 /**
  * Loads Megapot tickets the connected wallet still owns.
- * Marks already-drawn NFTs so create/join cannot stake spent lottery tickets.
+ * Only the **current open draw** is stakeable / counted.
+ * Past-draw NFTs (including no-win leftovers) never count as “1 ticket to stake”.
  */
 export function useUserTickets() {
   const { address } = useAccount();
-  const publicClient = usePublicClient({ chainId: 8453 });
   const [tickets, setTickets] = useState<OwnedTicket[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** Bump after results page marks tickets seen so lists re-filter */
   const [seenEpoch, setSeenEpoch] = useState(0);
 
   const { data: currentDrawingId, refetch: refetchDrawing } = useReadContract({
@@ -42,26 +83,42 @@ export function useUserTickets() {
   });
 
   const load = useCallback(async () => {
-    if (!address || !publicClient || currentDrawingId === undefined) {
+    if (!address || currentDrawingId === undefined) {
       setTickets([]);
       return;
     }
     setLoading(true);
     setError(null);
+    const client = getTicketRpc();
+    const current = currentDrawingId as bigint;
+
     try {
-      const current = currentDrawingId as bigint;
+      // Is the *current* drawing still open?
+      let currentOpen = true;
+      try {
+        const curState = await client.readContract({
+          address: ADDRESSES.jackpot,
+          abi: jackpotAbi,
+          functionName: "getDrawingState",
+          args: [current],
+        });
+        currentOpen = winningTicketOf(curState) === 0n;
+      } catch {
+        currentOpen = true; // assume open if RPC blip
+      }
+
       const start = current > DRAWINGS_TO_SCAN ? current - DRAWINGS_TO_SCAN : 1n;
       const drawingIds: bigint[] = [];
       for (let d = start; d <= current; d++) drawingIds.push(d);
 
       const results = await Promise.all(
         drawingIds.map((drawingId) =>
-          publicClient
+          client
             .readContract({
               address: ADDRESSES.jackpotTicketNft,
               abi: jackpotTicketNftAbi,
               functionName: "getUserTickets",
-              args: [address, drawingId],
+              args: [address as Address, drawingId],
             })
             .catch(
               () =>
@@ -75,57 +132,40 @@ export function useUserTickets() {
         )
       );
 
-      const candidates: Omit<
-        OwnedTicket,
-        "drawn" | "stakeable" | "resultsSeen"
-      >[] = [];
+      type Cand = {
+        ticketId: bigint;
+        drawingId: bigint;
+        normals: number[];
+        bonusball: number;
+      };
+      const candidates: Cand[] = [];
       const seen = new Set<string>();
-      for (const batch of results) {
+
+      for (let i = 0; i < drawingIds.length; i++) {
+        const scannedDrawing = drawingIds[i];
+        const batch = results[i] || [];
         for (const t of batch) {
           const key = t.ticketId.toString();
           if (seen.has(key)) continue;
           seen.add(key);
+          // Prefer on-ticket drawing id; fall back to the drawing we queried
+          const fromTicket = t.ticket?.drawingId;
+          const drawingId =
+            fromTicket !== undefined && fromTicket !== null && fromTicket !== 0n
+              ? BigInt(fromTicket)
+              : scannedDrawing;
           candidates.push({
             ticketId: t.ticketId,
-            drawingId: t.ticket?.drawingId ?? 0n,
+            drawingId,
             normals: [...(t.normals || [])].map(Number),
             bonusball: Number(t.bonusball ?? 0),
           });
         }
       }
 
-      // Which drawings have already settled? (winningTicket != 0)
-      const uniqueDrawings = [
-        ...new Set(candidates.map((c) => c.drawingId.toString())),
-      ].map((s) => BigInt(s));
-
-      const drawSettled = new Map<string, boolean>();
-      await Promise.all(
-        uniqueDrawings.map(async (drawingId) => {
-          try {
-            const state = (await publicClient.readContract({
-              address: ADDRESSES.jackpot,
-              abi: jackpotAbi,
-              functionName: "getDrawingState",
-              args: [drawingId],
-            })) as { winningTicket: bigint };
-            drawSettled.set(
-              drawingId.toString(),
-              state.winningTicket !== 0n
-            );
-          } catch {
-            // Safer: treat unknown past drawings as drawn if < current
-            drawSettled.set(
-              drawingId.toString(),
-              drawingId < current
-            );
-          }
-        })
-      );
-
       const ownership = await Promise.all(
         candidates.map((c) =>
-          publicClient
+          client
             .readContract({
               address: ADDRESSES.jackpotTicketNft,
               abi: jackpotTicketNftAbi,
@@ -133,28 +173,41 @@ export function useUserTickets() {
               args: [c.ticketId],
             })
             .then(
-              (owner) =>
-                (owner as string).toLowerCase() === address.toLowerCase()
+              (owner: string) =>
+                owner.toLowerCase() === (address as string).toLowerCase()
             )
             .catch(() => false)
         )
       );
 
-      const flat: OwnedTicket[] = candidates
-        .filter((_, i) => ownership[i])
-        .map((c) => {
-          const drawn = drawSettled.get(c.drawingId.toString()) === true;
-          const resultsSeen = drawn && isDrawnTicketHidden(c.ticketId);
-          return {
-            ...c,
-            drawn,
-            // Only open (unsettled) drawings may be staked for Whot
-            stakeable: !drawn,
-            resultsSeen,
-          };
-        });
+      const owned = candidates.filter((_, i) => ownership[i]);
 
-      // Stakeable first, then newest drawing
+      // Past-draw tickets: always non-stakeable; auto-hide from inventory
+      const pastIds = owned
+        .filter((c) => c.drawingId < current || (c.drawingId === current && !currentOpen))
+        .map((c) => c.ticketId);
+      if (pastIds.length) {
+        markDrawnTicketsSeen(pastIds);
+      }
+
+      const flat: OwnedTicket[] = owned.map((c) => {
+        const isPast =
+          c.drawingId < current ||
+          (c.drawingId === current && !currentOpen);
+        const drawn = isPast;
+        // ONLY current open-draw tickets are stakeable / counted
+        const stakeable =
+          c.drawingId === current && currentOpen && !drawn;
+        const resultsSeen =
+          drawn || isDrawnTicketHidden(c.ticketId);
+        return {
+          ...c,
+          drawn,
+          stakeable,
+          resultsSeen,
+        };
+      });
+
       flat.sort((a, b) => {
         if (a.stakeable !== b.stakeable) return a.stakeable ? -1 : 1;
         if (a.drawingId !== b.drawingId)
@@ -168,13 +221,12 @@ export function useUserTickets() {
     } finally {
       setLoading(false);
     }
-  }, [address, publicClient, currentDrawingId, seenEpoch]);
+  }, [address, currentDrawingId, seenEpoch]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  // Re-filter when results page marks no-win tickets seen (same tab or other)
   useEffect(() => {
     const bump = () => setSeenEpoch((n) => n + 1);
     const onStorage = (e: StorageEvent) => {
@@ -192,40 +244,22 @@ export function useUserTickets() {
     () => tickets.filter((t) => t.stakeable),
     [tickets]
   );
-  /** Drawn but user has not opened results yet (brief visibility) */
-  const spentVisible = useMemo(
-    () => tickets.filter((t) => t.drawn && !t.resultsSeen),
-    [tickets]
-  );
-  /** Drawn and results already viewed — hide from stake UI / counts */
-  const spentHidden = useMemo(
-    () => tickets.filter((t) => t.drawn && t.resultsSeen),
-    [tickets]
-  );
-
-  /** Tickets shown in create/join pickers and wallet badges */
-  const visibleTickets = useMemo(
-    () => tickets.filter((t) => t.stakeable || !t.resultsSeen),
-    [tickets]
-  );
 
   return {
     tickets,
-    visibleTickets,
-    /** Only tickets for an open Megapot draw — safe to stake */
+    /** Only open-draw tickets — safe to stake and show as “your tickets” */
     stakeableTickets: stakeable,
-    /** Drawn, results not yet acknowledged on tickets page */
-    spentTickets: spentVisible,
-    spentHiddenCount: spentHidden.length,
+    visibleTickets: stakeable,
+    spentTickets: tickets.filter((t) => t.drawn && !t.resultsSeen),
+    spentHiddenCount: tickets.filter((t) => t.drawn).length,
     loading,
     error,
-    /** Count for UI: open-draw + not-yet-seen drawn only */
-    count: visibleTickets.length,
+    /** Always open-draw only (never raw NFT balance) */
+    count: stakeable.length,
     stakeableCount: stakeable.length,
-    spentCount: spentVisible.length,
+    spentCount: tickets.filter((t) => t.drawn).length,
     currentDrawingId:
       currentDrawingId !== undefined ? (currentDrawingId as bigint) : null,
-    /** Call after marking results seen so this hook re-filters */
     notifyResultsSeen: () => setSeenEpoch((n) => n + 1),
     refetch: async () => {
       await refetchDrawing();

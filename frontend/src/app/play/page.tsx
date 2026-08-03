@@ -126,12 +126,15 @@ export default function PlayLobbyPage() {
       <div className="ticket-badge">
         <div>
           <div className="muted" style={{ fontSize: "0.75rem" }}>
-            Open-draw tickets (can stake)
+            Ready to stake (current Megapot round only)
           </div>
           <strong>{isConnected ? stakeableCount : "-"}</strong>
+          <span className="muted" style={{ marginLeft: 6 }}>
+            {stakeableCount === 1 ? "ticket" : "tickets"}
+          </span>
           <p className="muted" style={{ fontSize: "0.72rem", marginTop: 4 }}>
-            No-win tickets are hidden after you open Tickets &amp; results.
-            Buy a new ticket for the current round to play again.
+            Past-draw NFTs (no-win leftovers after a claim) do not count. Buy a
+            new ticket for this round to play.
           </p>
         </div>
         <button
