@@ -25,8 +25,6 @@ export default function HomePage() {
         </Link>
         <div className="links">
           <Link href="/play">Play</Link>
-          <a href="#how">How it works</a>
-          <a href="#megapot">Megapot</a>
         </div>
         <div className="spacer" />
         <ConnectButton />
