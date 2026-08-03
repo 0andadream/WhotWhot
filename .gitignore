@@ -10,4 +10,5 @@ typechain-types
 coverage
 .DS_Store
 broadcast
-lib
+contracts/lib
+*.tsbuildinfo
