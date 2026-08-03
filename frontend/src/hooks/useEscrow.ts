@@ -225,68 +225,87 @@ export function useEscrowActions() {
    * Megapot NFT may not be enumerable — UI asks user to paste token id,
    * or we scan Transfer events (heavy). For jam: user provides ticket id.
    */
-  const createMatch = async (ticketId: bigint) => {
-    await ensureApproval();
-    return writeContractAsync({
-      address: ADDRESSES.whotEscrow,
-      abi: whotEscrowAbi,
-      functionName: "createMatch",
-      args: [ticketId],
-      chainId: 8453,
-    });
-  };
+  const createMatch = useCallback(
+    async (ticketId: bigint) => {
+      await ensureApproval();
+      return writeContractAsync({
+        address: ADDRESSES.whotEscrow,
+        abi: whotEscrowAbi,
+        functionName: "createMatch",
+        args: [ticketId],
+        chainId: 8453,
+      });
+    },
+    [ensureApproval, writeContractAsync]
+  );
 
-  const createChallenge = async (ticketId: bigint, challenged: Address) => {
-    await ensureApproval();
-    return writeContractAsync({
-      address: ADDRESSES.whotEscrow,
-      abi: whotEscrowAbi,
-      functionName: "createChallenge",
-      args: [ticketId, challenged],
-      chainId: 8453,
-    });
-  };
+  const createChallenge = useCallback(
+    async (ticketId: bigint, challenged: Address) => {
+      await ensureApproval();
+      return writeContractAsync({
+        address: ADDRESSES.whotEscrow,
+        abi: whotEscrowAbi,
+        functionName: "createChallenge",
+        args: [ticketId, challenged],
+        chainId: 8453,
+      });
+    },
+    [ensureApproval, writeContractAsync]
+  );
 
-  const joinMatch = async (matchId: bigint, ticketId: bigint) => {
-    await ensureApproval();
-    return writeContractAsync({
-      address: ADDRESSES.whotEscrow,
-      abi: whotEscrowAbi,
-      functionName: "joinMatch",
-      args: [matchId, ticketId],
-      chainId: 8453,
-    });
-  };
+  const joinMatch = useCallback(
+    async (matchId: bigint, ticketId: bigint) => {
+      await ensureApproval();
+      return writeContractAsync({
+        address: ADDRESSES.whotEscrow,
+        abi: whotEscrowAbi,
+        functionName: "joinMatch",
+        args: [matchId, ticketId],
+        chainId: 8453,
+      });
+    },
+    [ensureApproval, writeContractAsync]
+  );
 
-  const submitResult = async (matchId: bigint, winner: Address) => {
-    return writeContractAsync({
-      address: ADDRESSES.whotEscrow,
-      abi: whotEscrowAbi,
-      functionName: "submitResult",
-      args: [matchId, winner],
-      chainId: 8453,
-    });
-  };
+  const submitResult = useCallback(
+    async (matchId: bigint, winner: Address) => {
+      return writeContractAsync({
+        address: ADDRESSES.whotEscrow,
+        abi: whotEscrowAbi,
+        functionName: "submitResult",
+        args: [matchId, winner],
+        chainId: 8453,
+      });
+    },
+    [writeContractAsync]
+  );
 
-  const postMove = async (matchId: bigint, payload: `0x${string}`) => {
-    return writeContractAsync({
-      address: ADDRESSES.whotEscrow,
-      abi: whotEscrowAbi,
-      functionName: "postMove",
-      args: [matchId, payload],
-      chainId: 8453,
-    });
-  };
+  /** Optional — not used for gameplay (gas spam). Kept for advanced sync. */
+  const postMove = useCallback(
+    async (matchId: bigint, payload: `0x${string}`) => {
+      return writeContractAsync({
+        address: ADDRESSES.whotEscrow,
+        abi: whotEscrowAbi,
+        functionName: "postMove",
+        args: [matchId, payload],
+        chainId: 8453,
+      });
+    },
+    [writeContractAsync]
+  );
 
-  const cancelWaiting = async (matchId: bigint) => {
-    return writeContractAsync({
-      address: ADDRESSES.whotEscrow,
-      abi: whotEscrowAbi,
-      functionName: "cancelWaiting",
-      args: [matchId],
-      chainId: 8453,
-    });
-  };
+  const cancelWaiting = useCallback(
+    async (matchId: bigint) => {
+      return writeContractAsync({
+        address: ADDRESSES.whotEscrow,
+        abi: whotEscrowAbi,
+        functionName: "cancelWaiting",
+        args: [matchId],
+        chainId: 8453,
+      });
+    },
+    [writeContractAsync]
+  );
 
   return {
     createMatch,

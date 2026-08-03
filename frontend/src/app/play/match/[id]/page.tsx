@@ -2,28 +2,24 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConnectButton } from "@/components/ConnectButton";
 import { GameBoard } from "@/components/GameBoard";
-import { useAccount, usePublicClient, useWatchContractEvent } from "wagmi";
+import { useAccount } from "wagmi";
 import { useEscrowActions, useMatch } from "@/hooks/useEscrow";
-import { ADDRESSES, MatchStatus, whotEscrowAbi } from "@/lib/contracts";
-import {
-  createGame,
-  parseAction,
-  reduce,
-  serializeAction,
-} from "@/lib/whot/engine";
+import { MatchStatus } from "@/lib/contracts";
+import { createGame, reduce } from "@/lib/whot/engine";
 import type { GameAction, GameState, PlayerId } from "@/lib/whot/types";
 import {
   getMatchNames,
   getSavedDisplayName,
-  isNameAction,
-  saveDisplayName,
   setMatchPlayerName,
-  type NameAction,
 } from "@/lib/displayName";
-import { hexToString, stringToHex, type Address, type Hex } from "viem";
+import {
+  appendMatchAction,
+  loadMatchActions,
+} from "@/lib/matchSync";
+import type { Address } from "viem";
 
 export default function MatchPage() {
   const params = useParams();
@@ -38,15 +34,14 @@ export default function MatchPage() {
   const matchKey = matchId != null ? matchId.toString() : "";
   const { address } = useAccount();
   const { match, refetch } = useMatch(matchId);
-  const { submitResult, postMove, isPending } = useEscrowActions();
-  const publicClient = usePublicClient({ chainId: 8453 });
+  const { submitResult, isPending } = useEscrowActions();
 
   const [game, setGame] = useState<GameState | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [p1Name, setP1Name] = useState("Player 1");
   const [p2Name, setP2Name] = useState("Player 2");
-  const [nameAnnounced, setNameAnnounced] = useState(false);
+  const gameInitRef = useRef(false);
 
   const humanPlayer: PlayerId | null = useMemo(() => {
     if (!match || !address) return null;
@@ -55,7 +50,7 @@ export default function MatchPage() {
     return null;
   }, [match, address]);
 
-  // Resolve names: local storage + defaults
+  // Names — local only (never on-chain; no gas)
   useEffect(() => {
     if (!match || !matchKey) return;
     const stored = getMatchNames(matchKey);
@@ -64,202 +59,124 @@ export default function MatchPage() {
     let n1 = stored.p1 || "Host";
     let n2 = stored.p2 || "Opponent";
 
-    if (humanPlayer === "p1" && mine) {
-      n1 = mine;
-      setMatchPlayerName(matchKey, "p1", mine);
+    if (humanPlayer === "p1") {
+      n1 = mine || "You";
+      if (mine) setMatchPlayerName(matchKey, "p1", mine);
+      if (!stored.p2) n2 = "Opponent";
     }
-    if (humanPlayer === "p2" && mine) {
-      n2 = mine;
-      setMatchPlayerName(matchKey, "p2", mine);
+    if (humanPlayer === "p2") {
+      n2 = mine || "You";
+      if (mine) setMatchPlayerName(matchKey, "p2", mine);
+      if (!stored.p1) n1 = "Host";
     }
-
-    // Friendly defaults for self
-    if (humanPlayer === "p1") n1 = mine || "You";
-    if (humanPlayer === "p2") n2 = mine || "You";
-    if (humanPlayer === "p1" && !stored.p2) n2 = "Opponent";
-    if (humanPlayer === "p2" && !stored.p1) n1 = "Host";
 
     setP1Name(n1);
     setP2Name(n2);
-  }, [match, matchKey, humanPlayer, address]);
+  }, [match, matchKey, humanPlayer]);
 
-  // Announce our name on-chain so opponent can see it (via postMove)
+  // Init game once when match becomes Active — rebuild from local action log
   useEffect(() => {
     if (!match || match.status !== MatchStatus.Active) return;
-    if (!humanPlayer || !matchId || nameAnnounced) return;
-    const mine = getSavedDisplayName() || "Player";
-    saveDisplayName(mine);
-    setMatchPlayerName(matchKey, humanPlayer, mine);
-    if (humanPlayer === "p1") setP1Name(mine);
-    else setP2Name(mine);
+    if (!match.gameSeed || !matchKey) return;
+    if (gameInitRef.current && game) return;
 
-    const action: NameAction = {
-      type: "SET_NAME",
-      player: humanPlayer,
-      name: mine,
+    const names = getMatchNames(matchKey);
+    const n1 =
+      names.p1 ||
+      (humanPlayer === "p1" ? getSavedDisplayName() || "You" : p1Name);
+    const n2 =
+      names.p2 ||
+      (humanPlayer === "p2" ? getSavedDisplayName() || "You" : p2Name);
+
+    let s = createGame(match.gameSeed, n1, n2);
+    for (const action of loadMatchActions(matchKey)) {
+      s = reduce(s, action);
+    }
+    setGame(s);
+    gameInitRef.current = true;
+  }, [match?.status, match?.gameSeed, matchKey, humanPlayer]);
+
+  // Poll localStorage for opponent moves (same browser / shared storage)
+  useEffect(() => {
+    if (!matchKey || !match || match.status !== MatchStatus.Active) return;
+
+    const rebuild = () => {
+      if (!match.gameSeed) return;
+      const names = getMatchNames(matchKey);
+      let s = createGame(
+        match.gameSeed,
+        names.p1 || p1Name,
+        names.p2 || p2Name
+      );
+      for (const action of loadMatchActions(matchKey)) {
+        s = reduce(s, action);
+      }
+      setGame(s);
     };
-    (async () => {
-      try {
-        const payload = stringToHex(JSON.stringify(action)) as Hex;
-        await postMove(matchId, payload);
-        setNameAnnounced(true);
-      } catch {
-        setNameAnnounced(true); // don't loop
-      }
-    })();
-  }, [
-    match?.status,
-    humanPlayer,
-    matchId,
-    matchKey,
-    nameAnnounced,
-    postMove,
-  ]);
 
-  const applyNameAction = useCallback(
-    (action: NameAction) => {
-      const clean = action.name.trim().slice(0, 24);
-      if (!clean || !matchKey) return;
-      setMatchPlayerName(matchKey, action.player, clean);
-      if (action.player === "p1") setP1Name(clean);
-      else setP2Name(clean);
-      setGame((prev) => {
-        if (!prev) return prev;
-        const players = [...prev.players] as GameState["players"];
-        const idx = action.player === "p1" ? 0 : 1;
-        players[idx] = { ...players[idx], name: clean };
-        return { ...prev, players };
-      });
-    },
-    [matchKey]
-  );
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === `whotwhot:moves:${matchKey}`) rebuild();
+    };
+    const onCustom = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { matchId?: string };
+      if (detail?.matchId === matchKey) rebuild();
+    };
 
-  // Init game from on-chain seed when Active
-  useEffect(() => {
-    if (!match || match.status !== MatchStatus.Active) return;
-    if (game) return;
-    const seed = match.gameSeed;
-    setGame(createGame(seed, p1Name, p2Name));
-  }, [match, game, p1Name, p2Name]);
-
-  // Load historical moves + name announcements
-  useEffect(() => {
-    if (!matchId || !publicClient || !match || match.status !== MatchStatus.Active)
-      return;
-    if (!match.gameSeed) return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const logs = await publicClient.getContractEvents({
-          address: ADDRESSES.whotEscrow,
-          abi: whotEscrowAbi,
-          eventName: "MovePosted",
-          args: { matchId },
-          fromBlock: 0n,
-          toBlock: "latest",
-        });
-        if (cancelled) return;
-
-        let names = { p1: p1Name, p2: p2Name };
-        const stored = getMatchNames(matchKey);
-        if (stored.p1) names.p1 = stored.p1;
-        if (stored.p2) names.p2 = stored.p2;
-
-        for (const log of logs) {
-          try {
-            const raw = JSON.parse(hexToString(log.args.payload as Hex));
-            if (isNameAction(raw)) {
-              names = {
-                ...names,
-                [raw.player]: raw.name.trim().slice(0, 24) || names[raw.player],
-              };
-              setMatchPlayerName(matchKey, raw.player, names[raw.player]);
-            }
-          } catch {
-            /* */
-          }
-        }
-        setP1Name(names.p1);
-        setP2Name(names.p2);
-
-        let s = createGame(match.gameSeed, names.p1, names.p2);
-        for (const log of logs) {
-          try {
-            const raw = JSON.parse(hexToString(log.args.payload as Hex));
-            if (isNameAction(raw)) continue;
-            s = reduce(s, parseAction(JSON.stringify(raw)));
-          } catch {
-            /* skip bad */
-          }
-        }
-        setGame(s);
-      } catch {
-        /* RPC may not support full history */
-      }
-    })();
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("whotwhot:move", onCustom);
+    const interval = window.setInterval(rebuild, 2000);
     return () => {
-      cancelled = true;
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("whotwhot:move", onCustom);
+      window.clearInterval(interval);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchId, publicClient, match?.gameSeed, match?.status]);
+  }, [matchKey, match?.status, match?.gameSeed, p1Name, p2Name]);
 
-  useWatchContractEvent({
-    address: ADDRESSES.whotEscrow,
-    abi: whotEscrowAbi,
-    eventName: "MovePosted",
-    args: matchId != null ? { matchId } : undefined,
-    chainId: 8453,
-    onLogs(logs) {
-      for (const log of logs) {
-        try {
-          const raw = JSON.parse(hexToString(log.args.payload as Hex));
-          if (isNameAction(raw)) {
-            applyNameAction(raw);
-            continue;
-          }
-          setGame((prev) => (prev ? reduce(prev, parseAction(JSON.stringify(raw))) : prev));
-        } catch {
-          /* */
-        }
-      }
-    },
-  });
-
+  // Play cards offline — NO wallet fee per move
   const onAction = useCallback(
-    async (action: GameAction) => {
-      if (!matchId || !humanPlayer) return;
+    (action: GameAction) => {
+      if (!matchKey || !humanPlayer) return;
       if (action.player !== humanPlayer) return;
 
-      setGame((s) => (s ? reduce(s, action) : s));
-
-      try {
-        const payload = stringToHex(serializeAction(action)) as Hex;
-        await postMove(matchId, payload);
-      } catch (e: unknown) {
-        setMsg(e instanceof Error ? e.message : "Move tx failed");
-      }
+      setGame((s) => {
+        if (!s) return s;
+        return reduce(s, action);
+      });
+      appendMatchAction(matchKey, action);
     },
-    [matchId, humanPlayer, postMove]
+    [matchKey, humanPlayer]
   );
 
-  const onWin = useCallback(
-    async (winner: PlayerId) => {
-      if (!match || !matchId || !address || submitted) return;
-      const winnerAddr =
-        winner === "p1" ? (match.player1 as Address) : (match.player2 as Address);
-      try {
-        setMsg("Submitting winner on-chain…");
-        await submitResult(matchId, winnerAddr);
-        setSubmitted(true);
-        setMsg("Result submitted. Waiting for opponent confirmation…");
-        refetch();
-      } catch (e: unknown) {
-        setMsg(e instanceof Error ? e.message : "Submit failed");
-      }
-    },
-    [match, matchId, address, submitted, submitResult, refetch]
-  );
+  // Single on-chain confirm when the game is over (user must click button)
+  const onConfirmWinner = useCallback(async () => {
+    if (!match || !matchId || !address || !game?.winner || submitted) return;
+    const winnerAddr =
+      game.winner === "p1"
+        ? (match.player1 as Address)
+        : (match.player2 as Address);
+    try {
+      setMsg("Confirm in wallet once — this settles the tickets.");
+      await submitResult(matchId, winnerAddr);
+      setSubmitted(true);
+      setMsg("Result submitted. Waiting for opponent to confirm too…");
+      refetch();
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Submit failed");
+    }
+  }, [
+    match,
+    matchId,
+    address,
+    game?.winner,
+    submitted,
+    submitResult,
+    refetch,
+  ]);
+
+  // Do NOT auto-submit on win (that spammed wallet fees)
+  const onWin = useCallback((_winner: PlayerId) => {
+    setMsg("Game over — confirm the winner below when both agree.");
+  }, []);
 
   if (!matchId) {
     return (
@@ -336,6 +253,12 @@ export default function MatchPage() {
             </code>
           </p>
         )}
+        {match.status === MatchStatus.Active && (
+          <p className="muted" style={{ marginTop: 12 }}>
+            Playing is free (no gas). You only pay once to stake tickets and once
+            each to confirm the winner.
+          </p>
+        )}
         {match.status === MatchStatus.Resolved && (
           <div className="banner win" style={{ marginTop: 12 }}>
             Match over. Both tickets went to the winner.
@@ -366,11 +289,11 @@ export default function MatchPage() {
             type="button"
             className="btn btn-primary"
             disabled={isPending || submitted}
-            onClick={() => onWin(game.winner!)}
+            onClick={() => void onConfirmWinner()}
           >
             {submitted
               ? "Submitted — await opponent"
-              : "Confirm winner on-chain"}
+              : `Confirm ${game.winner === humanPlayer ? "you won" : "opponent won"}`}
           </button>
         )}
 

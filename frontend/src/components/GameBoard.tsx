@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { WhotCard } from "./WhotCard";
 import { SuitIcon } from "./SuitIcon";
 import {
@@ -41,6 +41,10 @@ export function GameBoard({
   const state = externalState ?? local;
   const [selected, setSelected] = useState<Card | null>(null);
   const [pickingShape, setPickingShape] = useState(false);
+  /** Prevents onWin from re-firing wallet prompts on every re-render */
+  const winFiredRef = useRef(false);
+  const onWinRef = useRef(onWin);
+  onWinRef.current = onWin;
 
   const apply = (action: Parameters<typeof reduce>[1]) => {
     if (onAction) {
@@ -51,19 +55,23 @@ export function GameBoard({
   };
 
   useEffect(() => {
-    if (state.winner && onWin) onWin(state.winner);
-  }, [state.winner, onWin]);
+    if (!state.winner || winFiredRef.current) return;
+    winFiredRef.current = true;
+    onWinRef.current?.(state.winner);
+  }, [state.winner]);
 
   useEffect(() => {
     if (!vsAi || externalState || state.winner) return;
     const ai: PlayerId = humanPlayer === "p1" ? "p2" : "p1";
     if (state.turn !== ai) return;
     const t = setTimeout(() => {
-      const action = aiChooseAction(state, ai);
-      setLocal((s) => reduce(s, action));
+      setLocal((s) => {
+        if (s.winner || s.turn !== ai) return s;
+        return reduce(s, aiChooseAction(s, ai));
+      });
     }, 700);
     return () => clearTimeout(t);
-  }, [state, vsAi, humanPlayer, externalState]);
+  }, [state.turn, state.winner, state.log.length, vsAi, humanPlayer, externalState]);
 
   const me = state.players[humanPlayer === "p1" ? 0 : 1];
   const opp = state.players[humanPlayer === "p1" ? 1 : 0];
