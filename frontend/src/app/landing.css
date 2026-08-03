@@ -976,7 +976,8 @@
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
-  overflow: hidden;
+  /* visible so dealt / fanned cards are not clipped mid-card */
+  overflow: visible;
   box-shadow: none;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
@@ -989,7 +990,6 @@
     margin-top: 0;
   }
 }
-
 .live-table-head {
   display: flex;
   align-items: center;
@@ -998,6 +998,7 @@
   padding: 14px 16px;
   border-bottom: 1px solid var(--line);
   background: var(--bg-elevated);
+  border-radius: var(--r-md) var(--r-md) 0 0;
 }
 .live-badge {
   display: inline-flex;
@@ -1031,25 +1032,28 @@
 
 .card-fan {
   position: relative;
-  height: 220px;
+  height: 280px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   margin: 0;
-  padding: 24px 16px 8px;
+  padding: 48px 28px 28px;
   perspective: 900px;
   transform-style: preserve-3d;
+  overflow: visible;
   background: linear-gradient(180deg, var(--surface) 0%, var(--bg-elevated) 100%);
+  border-radius: 0;
 }
 @media (min-width: 480px) {
   .card-fan {
-    height: 250px;
+    height: 300px;
+    padding: 52px 36px 32px;
   }
 }
 @media (min-width: 960px) {
   .card-fan {
-    height: 280px;
-    padding: 32px 24px 12px;
+    height: 320px;
+    padding: 56px 40px 36px;
   }
 }
 
@@ -1133,6 +1137,8 @@
   line-height: 1.45;
   padding: 14px 16px 18px;
   border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--r-md) var(--r-md);
+  background: var(--surface);
 }
 
 /* ── Sections (store content blocks) ─────────────────────────── */

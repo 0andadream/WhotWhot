@@ -75,21 +75,46 @@ export function GameBoard({
     onWinRef.current?.(state.winner);
   }, [state.winner]);
 
+  /**
+   * AI turn runner. Hold On / Suspension keep turn on the AI — chain extra
+   * moves instead of relying on effect re-fire (turn may not change).
+   */
   useEffect(() => {
     if (!vsAi || externalState || state.winner) return;
     const ai: PlayerId = humanPlayer === "p1" ? "p2" : "p1";
     if (state.turn !== ai) return;
-    const t = setTimeout(() => {
+
+    let cancelled = false;
+    const timers: number[] = [];
+
+    const schedule = (ms: number, fn: () => void) => {
+      const id = window.setTimeout(fn, ms);
+      timers.push(id);
+    };
+
+    const playAiOnce = () => {
+      if (cancelled) return;
       setLocal((s) => {
-        if (s.winner || s.turn !== ai) return s;
+        if (cancelled || s.winner || s.turn !== ai) return s;
         const next = reduce(s, aiChooseAction(s, ai));
-        // Chime after AI acts so you know it's your turn again
-        queueMicrotask(() => playOpponentMoveSound());
+        // Extra turn (Hold On = 1, Suspension, etc.)
+        if (!next.winner && next.turn === ai) {
+          schedule(650, playAiOnce);
+        } else if (!next.winner) {
+          queueMicrotask(() => playOpponentMoveSound());
+        }
         return next;
       });
-    }, 700);
-    return () => clearTimeout(t);
-  }, [state.turn, state.winner, state.log.length, vsAi, humanPlayer, externalState]);
+    };
+
+    schedule(700, playAiOnce);
+
+    return () => {
+      cancelled = true;
+      timers.forEach((id) => window.clearTimeout(id));
+    };
+    // Only re-enter when turn flips to AI (not on every log line)
+  }, [state.turn, state.winner, vsAi, humanPlayer, externalState]);
 
   const me = state.players[humanPlayer === "p1" ? 0 : 1];
   const opp = state.players[humanPlayer === "p1" ? 1 : 0];

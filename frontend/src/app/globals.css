@@ -935,12 +935,14 @@ img {
   display: flex;
   justify-content: center;
   gap: 0;
-  min-height: 68px;
+  min-height: 88px;
   flex-wrap: nowrap;
-  overflow: hidden;
-  padding: 6px 8px;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 12px 12px 8px;
   position: relative;
   z-index: 1;
+  -webkit-overflow-scrolling: touch;
 }
 .opp-hand .whot-card {
   margin-left: -20px;
@@ -971,11 +973,13 @@ img {
   gap: 0;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 22px 8px 14px;
+  padding: 28px 12px 18px;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   justify-content: flex-start;
+  /* room for hover lift so cards are not clipped */
+  margin-top: 4px;
 }
 .hand::-webkit-scrollbar {
   display: none;
