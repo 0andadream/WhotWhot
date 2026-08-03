@@ -40,7 +40,25 @@ npm run build
 
 Or deploy from **repo root** (uses root `vercel.json`): install at root, `npm run build -w frontend`.
 
-Env: `NEXT_PUBLIC_WHOT_ESCROW_ADDRESS=0xEC8cA16E0C751f45c3Bea800c9cB4be7710A81D8`
+Env:
+
+```
+NEXT_PUBLIC_WHOT_ESCROW_ADDRESS=0xEC8cA16E0C751f45c3Bea800c9cB4be7710A81D8
+# Required on Vercel for multiplayer (free Upstash Redis)
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+```
+
+### Multiplayer move relay (no wallet popups mid-game)
+
+| Action | Wallet? | Where |
+|--------|---------|--------|
+| Create / join (stake tickets) | Yes | On-chain escrow |
+| Each card / draw | **No** | Relay API (`/api/match/:id/moves`) |
+| Confirm winner | Yes (once each) | On-chain `submitResult` |
+
+Both players poll the relay so every play shows on both phones.  
+Locally, memory store works. On **Vercel**, set free [Upstash Redis](https://console.upstash.com) env vars so instances share the same log.
 
 ### Deploy escrow (Base)
 
@@ -131,6 +149,7 @@ Full player-facing guide: `/guide` in the app.
 
 ## Jam notes
 
-- Gameplay is **client-side** (local move sync); only stake / cancel / confirm winner are on-chain.
+- Gameplay is **off-chain via relay** (both ends see every move); only stake / cancel / confirm winner are on-chain.
 - Payout is **trust-minimized** via dual confirmation (both players must agree on the winner).
 - Inco confidential compute not integrated in v1 (escrow + public play is enough for a playable demo).
+
