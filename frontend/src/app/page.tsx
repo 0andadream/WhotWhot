@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
-import { LandingNav } from "@/components/landing/LandingNav";
+import { SiteNav } from "@/components/SiteNav";
 import { HeroCardFan } from "@/components/landing/HeroCardFan";
 import { SplitHeadline, WHOT_EASE } from "@/components/landing/motion";
 
@@ -16,7 +16,7 @@ export default function HomePage() {
 
   return (
     <div className="landing landing-premium">
-      <LandingNav />
+      <SiteNav />
 
       <main className="prem-main">
         {/* ── Hero ── */}
@@ -179,14 +179,15 @@ function HowSection() {
               reduce
                 ? undefined
                 : {
-                    scale: 1.04,
+                    scale: 1.05,
                     transition: { type: "spring", stiffness: 400, damping: 16 },
                   }
             }
-            whileTap={reduce ? undefined : { scale: 0.98 }}
+            whileTap={reduce ? undefined : { scale: 0.97 }}
           >
-            <Link href="/play" className="prem-cta-btn">
-              Go to play
+            <Link href="/play" className="prem-cta-circle" aria-label="Play Whot">
+              <span className="prem-cta-circle-label">Play</span>
+              <span className="prem-cta-circle-sub">Start a game</span>
             </Link>
           </motion.div>
         </motion.div>
