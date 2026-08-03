@@ -480,6 +480,12 @@
 .ds .ticket-pick-check {
   color: var(--cta-red);
 }
+.ds .ticket-pick-disabled,
+.ds .ticket-pick:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-style: dashed;
+}
 
 /* Guide content inside ds */
 .ds .guide-page {

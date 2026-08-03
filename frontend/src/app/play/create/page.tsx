@@ -24,7 +24,15 @@ import { decodeEventLog, type Address, isAddress } from "viem";
 
 export default function CreateMatchPage() {
   const { isConnected } = useAccount();
-  const { tickets, loading, error: loadError, count } = useUserTickets();
+  const {
+    tickets,
+    stakeableTickets,
+    loading,
+    error: loadError,
+    count,
+    stakeableCount,
+    spentCount,
+  } = useUserTickets();
   const escrowReady = useEscrowReady();
   const { createMatch, createChallenge, isPending } = useEscrowActions();
   const publicClient = usePublicClient({ chainId: 8453 });
@@ -49,6 +57,15 @@ export default function CreateMatchPage() {
     }
     if (!ticketId) {
       setError("Tap a ticket below to stake it.");
+      return;
+    }
+    const chosen = stakeableTickets.find(
+      (t) => t.ticketId.toString() === ticketId
+    );
+    if (!chosen) {
+      setError(
+        "That ticket is from a draw that already finished. Buy a fresh Megapot ticket for the current round."
+      );
       return;
     }
     saveDisplayName(name);
@@ -112,11 +129,23 @@ export default function CreateMatchPage() {
 
         <div className="ticket-badge">
           <div>
-            <div className="muted">You have</div>
-            <strong>{isConnected ? count : "-"}</strong>
-            <span className="muted"> tickets</span>
+            <div className="muted">Stakeable (open draw)</div>
+            <strong>{isConnected ? stakeableCount : "-"}</strong>
+            <span className="muted">
+              {" "}
+              of {isConnected ? count : "-"} NFT
+              {count === 1 ? "" : "s"}
+              {spentCount > 0
+                ? ` · ${spentCount} already drawn (not stakeable)`
+                : ""}
+            </span>
           </div>
         </div>
+        <p className="muted" style={{ fontSize: "0.8rem" }}>
+          Only tickets for the <strong>current Megapot round</strong> can be
+          staked. After a draw, winners are claimed (NFT may burn); losers stay
+          in your wallet but cannot be used for a new Whot match.
+        </p>
 
         {!escrowReady && (
           <div className="alert">

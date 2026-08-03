@@ -30,7 +30,15 @@ function JoinInner() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const { isConnected } = useAccount();
-  const { tickets, loading, error: loadError, count } = useUserTickets();
+  const {
+    tickets,
+    stakeableTickets,
+    loading,
+    error: loadError,
+    count,
+    stakeableCount,
+    spentCount,
+  } = useUserTickets();
   const escrowReady = useEscrowReady();
   const { joinMatch, isPending } = useEscrowActions();
   const router = useRouter();
@@ -54,6 +62,15 @@ function JoinInner() {
     }
     if (!ticketId) {
       setError("Tap a ticket below to stake it.");
+      return;
+    }
+    const chosen = stakeableTickets.find(
+      (t) => t.ticketId.toString() === ticketId
+    );
+    if (!chosen) {
+      setError(
+        "That ticket is from a draw that already finished. Buy a fresh Megapot ticket for the current round."
+      );
       return;
     }
     saveDisplayName(name);
@@ -90,11 +107,22 @@ function JoinInner() {
 
         <div className="ticket-badge">
           <div>
-            <div className="muted">You have</div>
-            <strong>{isConnected ? count : "-"}</strong>
-            <span className="muted"> tickets</span>
+            <div className="muted">Stakeable (open draw)</div>
+            <strong>{isConnected ? stakeableCount : "-"}</strong>
+            <span className="muted">
+              {" "}
+              of {isConnected ? count : "-"} NFT
+              {count === 1 ? "" : "s"}
+              {spentCount > 0
+                ? ` · ${spentCount} already drawn (not stakeable)`
+                : ""}
+            </span>
           </div>
         </div>
+        <p className="muted" style={{ fontSize: "0.8rem" }}>
+          Only current-round Megapot tickets can be staked. Already-drawn NFTs
+          (including losers left after claim) cannot be used for a new match.
+        </p>
 
         <label className="muted">Match ID</label>
         <input

@@ -1279,6 +1279,16 @@ img {
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
+.ticket-pick-disabled,
+.ticket-pick:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+.ticket-pick-disabled:hover,
+.ticket-pick:disabled:hover {
+  border-color: rgba(248, 241, 227, 0.1);
+}
 
 /* ── Content sections ─────────────────────────────────────────── */
 .section {

@@ -123,10 +123,14 @@ export default function PlayLobbyPage() {
       <div className="ticket-badge">
         <div>
           <div className="muted" style={{ fontSize: "0.75rem" }}>
-            Your Megapot tickets
+            Your Megapot ticket NFTs
           </div>
           <strong>{isConnected ? (count ?? "…") : "-"}</strong>
-          <span className="muted"> tickets</span>
+          <span className="muted"> in wallet</span>
+          <p className="muted" style={{ fontSize: "0.72rem", marginTop: 4 }}>
+            Only tickets for the open draw can stake. Already-drawn NFTs (e.g.
+            losers after claim) do not count as a fresh bet.
+          </p>
         </div>
         <button
           type="button"
