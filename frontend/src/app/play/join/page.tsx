@@ -31,13 +31,10 @@ function JoinInner() {
   const [busy, setBusy] = useState(false);
   const { isConnected } = useAccount();
   const {
-    tickets,
     stakeableTickets,
     loading,
     error: loadError,
-    count,
     stakeableCount,
-    spentCount,
   } = useUserTickets();
   const escrowReady = useEscrowReady();
   const { joinMatch, isPending } = useEscrowActions();
@@ -107,21 +104,13 @@ function JoinInner() {
 
         <div className="ticket-badge">
           <div>
-            <div className="muted">Stakeable (open draw)</div>
+            <div className="muted">Open-draw tickets (stakeable)</div>
             <strong>{isConnected ? stakeableCount : "-"}</strong>
-            <span className="muted">
-              {" "}
-              of {isConnected ? count : "-"} NFT
-              {count === 1 ? "" : "s"}
-              {spentCount > 0
-                ? ` · ${spentCount} already drawn (not stakeable)`
-                : ""}
-            </span>
           </div>
         </div>
         <p className="muted" style={{ fontSize: "0.8rem" }}>
-          Only current-round Megapot tickets can be staked. Already-drawn NFTs
-          (including losers left after claim) cannot be used for a new match.
+          Only current-round tickets can be staked. No-win tickets are hidden
+          after you view draw results.
         </p>
 
         <label className="muted">Match ID</label>
@@ -142,7 +131,7 @@ function JoinInner() {
           <p className="muted">Connect your wallet to see your tickets.</p>
         ) : (
           <TicketPicker
-            tickets={tickets}
+            tickets={stakeableTickets}
             loading={loading}
             error={loadError}
             selectedId={ticketId}

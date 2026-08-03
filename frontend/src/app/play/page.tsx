@@ -7,9 +7,9 @@ import { useAccount, useWriteContract } from "wagmi";
 import {
   useCountdown,
   useJackpotInfo,
-  useTicketCount,
   useBuyRandomTicket,
 } from "@/hooks/useMegapot";
+import { useUserTickets } from "@/hooks/useUserTickets";
 import {
   useEscrowReady,
   useOpenMatches,
@@ -26,7 +26,10 @@ type Tab = "modes" | "tables" | "guide";
 export default function PlayLobbyPage() {
   const { isConnected, address } = useAccount();
   const jackpot = useJackpotInfo();
-  const { count, refetch: refetchTickets } = useTicketCount();
+  const {
+    stakeableCount,
+    refetch: refetchTickets,
+  } = useUserTickets();
   const countdown = useCountdown(jackpot.drawingTime);
   const [tick, setTick] = useState(0);
   const [tab, setTab] = useState<Tab>("modes");
@@ -123,13 +126,12 @@ export default function PlayLobbyPage() {
       <div className="ticket-badge">
         <div>
           <div className="muted" style={{ fontSize: "0.75rem" }}>
-            Your Megapot ticket NFTs
+            Open-draw tickets (can stake)
           </div>
-          <strong>{isConnected ? (count ?? "…") : "-"}</strong>
-          <span className="muted"> in wallet</span>
+          <strong>{isConnected ? stakeableCount : "-"}</strong>
           <p className="muted" style={{ fontSize: "0.72rem", marginTop: 4 }}>
-            Only tickets for the open draw can stake. Already-drawn NFTs (e.g.
-            losers after claim) do not count as a fresh bet.
+            No-win tickets are hidden after you open Tickets &amp; results.
+            Buy a new ticket for the current round to play again.
           </p>
         </div>
         <button

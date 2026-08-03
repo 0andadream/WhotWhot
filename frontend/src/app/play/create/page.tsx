@@ -25,13 +25,10 @@ import { decodeEventLog, type Address, isAddress } from "viem";
 export default function CreateMatchPage() {
   const { isConnected } = useAccount();
   const {
-    tickets,
     stakeableTickets,
     loading,
     error: loadError,
-    count,
     stakeableCount,
-    spentCount,
   } = useUserTickets();
   const escrowReady = useEscrowReady();
   const { createMatch, createChallenge, isPending } = useEscrowActions();
@@ -129,22 +126,14 @@ export default function CreateMatchPage() {
 
         <div className="ticket-badge">
           <div>
-            <div className="muted">Stakeable (open draw)</div>
+            <div className="muted">Open-draw tickets (stakeable)</div>
             <strong>{isConnected ? stakeableCount : "-"}</strong>
-            <span className="muted">
-              {" "}
-              of {isConnected ? count : "-"} NFT
-              {count === 1 ? "" : "s"}
-              {spentCount > 0
-                ? ` · ${spentCount} already drawn (not stakeable)`
-                : ""}
-            </span>
           </div>
         </div>
         <p className="muted" style={{ fontSize: "0.8rem" }}>
           Only tickets for the <strong>current Megapot round</strong> can be
-          staked. After a draw, winners are claimed (NFT may burn); losers stay
-          in your wallet but cannot be used for a new Whot match.
+          staked. After you view draw results, no-win NFTs are hidden here so
+          they are not mistaken for a fresh bet.
         </p>
 
         {!escrowReady && (
@@ -157,7 +146,7 @@ export default function CreateMatchPage() {
           <p className="muted">Connect your wallet to see your tickets.</p>
         ) : (
           <TicketPicker
-            tickets={tickets}
+            tickets={stakeableTickets}
             loading={loading}
             error={loadError}
             selectedId={ticketId}

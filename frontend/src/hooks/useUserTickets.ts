@@ -3,6 +3,7 @@
 import { useAccount, usePublicClient, useReadContract } from "wagmi";
 import { ADDRESSES, jackpotAbi, jackpotTicketNftAbi } from "@/lib/contracts";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { isDrawnTicketHidden } from "@/lib/seenDrawnTickets";
 
 export type OwnedTicket = {
   ticketId: bigint;
@@ -13,6 +14,8 @@ export type OwnedTicket = {
   drawn: boolean;
   /** Safe to stake in a new Whot match (open draw only) */
   stakeable: boolean;
+  /** User already viewed no-win / finished results; hide from stake UI */
+  resultsSeen: boolean;
 };
 
 const DRAWINGS_TO_SCAN = 14n; // current + recent past (held tickets)
@@ -27,6 +30,8 @@ export function useUserTickets() {
   const [tickets, setTickets] = useState<OwnedTicket[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Bump after results page marks tickets seen so lists re-filter */
+  const [seenEpoch, setSeenEpoch] = useState(0);
 
   const { data: currentDrawingId, refetch: refetchDrawing } = useReadContract({
     address: ADDRESSES.jackpot,
@@ -70,7 +75,10 @@ export function useUserTickets() {
         )
       );
 
-      const candidates: Omit<OwnedTicket, "drawn" | "stakeable">[] = [];
+      const candidates: Omit<
+        OwnedTicket,
+        "drawn" | "stakeable" | "resultsSeen"
+      >[] = [];
       const seen = new Set<string>();
       for (const batch of results) {
         for (const t of batch) {
@@ -136,11 +144,13 @@ export function useUserTickets() {
         .filter((_, i) => ownership[i])
         .map((c) => {
           const drawn = drawSettled.get(c.drawingId.toString()) === true;
+          const resultsSeen = drawn && isDrawnTicketHidden(c.ticketId);
           return {
             ...c,
             drawn,
             // Only open (unsettled) drawings may be staked for Whot
             stakeable: !drawn,
+            resultsSeen,
           };
         });
 
@@ -158,31 +168,65 @@ export function useUserTickets() {
     } finally {
       setLoading(false);
     }
-  }, [address, publicClient, currentDrawingId]);
+  }, [address, publicClient, currentDrawingId, seenEpoch]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  // Re-filter when results page marks no-win tickets seen (same tab or other)
+  useEffect(() => {
+    const bump = () => setSeenEpoch((n) => n + 1);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "whotwhot:seenDrawnTickets") bump();
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("whotwhot:seenDrawn", bump);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("whotwhot:seenDrawn", bump);
+    };
+  }, []);
+
   const stakeable = useMemo(
     () => tickets.filter((t) => t.stakeable),
     [tickets]
   );
-  const spent = useMemo(() => tickets.filter((t) => t.drawn), [tickets]);
+  /** Drawn but user has not opened results yet (brief visibility) */
+  const spentVisible = useMemo(
+    () => tickets.filter((t) => t.drawn && !t.resultsSeen),
+    [tickets]
+  );
+  /** Drawn and results already viewed — hide from stake UI / counts */
+  const spentHidden = useMemo(
+    () => tickets.filter((t) => t.drawn && t.resultsSeen),
+    [tickets]
+  );
+
+  /** Tickets shown in create/join pickers and wallet badges */
+  const visibleTickets = useMemo(
+    () => tickets.filter((t) => t.stakeable || !t.resultsSeen),
+    [tickets]
+  );
 
   return {
     tickets,
+    visibleTickets,
     /** Only tickets for an open Megapot draw — safe to stake */
     stakeableTickets: stakeable,
-    /** Already drawn; still in wallet but not stakeable */
-    spentTickets: spent,
+    /** Drawn, results not yet acknowledged on tickets page */
+    spentTickets: spentVisible,
+    spentHiddenCount: spentHidden.length,
     loading,
     error,
-    count: tickets.length,
+    /** Count for UI: open-draw + not-yet-seen drawn only */
+    count: visibleTickets.length,
     stakeableCount: stakeable.length,
-    spentCount: spent.length,
+    spentCount: spentVisible.length,
     currentDrawingId:
       currentDrawingId !== undefined ? (currentDrawingId as bigint) : null,
+    /** Call after marking results seen so this hook re-filters */
+    notifyResultsSeen: () => setSeenEpoch((n) => n + 1),
     refetch: async () => {
       await refetchDrawing();
       await load();

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Address } from "viem";
 import { MatchStatus } from "@/lib/contracts";
 import { formatUsdc, shortAddr, shortTicketId } from "@/lib/megapotTicket";
+import { markDrawnTicketsSeen } from "@/lib/seenDrawnTickets";
 import {
   useClaimWinnings,
   useMatchTickets,
@@ -171,6 +172,20 @@ export function MatchTicketsPanel({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuccess]);
+
+  /**
+   * After the user opens this page and sees a no-win on a settled draw,
+   * hide that NFT from stake pickers and ticket counts (not a fresh bet).
+   * This panel still shows the result for the match.
+   */
+  useEffect(() => {
+    if (!tickets.rows.length || tickets.loading) return;
+    const toHide = tickets.rows
+      .filter((row) => row.drawn && !row.prize.hasPrize)
+      .map((row) => row.ticketId);
+    if (!toHide.length) return;
+    markDrawnTicketsSeen(toHide);
+  }, [tickets.rows, tickets.loading]);
 
   const me = address?.toLowerCase();
   const isPlayer =
