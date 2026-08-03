@@ -3,9 +3,9 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "WhotWhot — Play Whot onchain · Megapot",
+  title: "WhotWhot — the card game, online",
   description:
-    "Multiplayer Nigerian Whot on Base. Stake Megapot tickets — winner takes both. Mobile & web.",
+    "Classic Nigerian Whot, modernized for web3. Practice free or stake Megapot tickets on Base.",
   appleWebApp: {
     capable: true,
     title: "WhotWhot",
@@ -19,7 +19,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#0f1320",
+  themeColor: "#1A1210",
 };
 
 export default function RootLayout({

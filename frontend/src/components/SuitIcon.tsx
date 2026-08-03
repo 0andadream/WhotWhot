@@ -2,8 +2,9 @@
 
 import type { Shape } from "@/lib/whot/types";
 
-/** Classic original Whot: all shapes in bold red on cream */
-const RED = "#b71c1c";
+/** Traditional Whot: bold geometric shapes in deep red */
+const RED = "#8B0000";
+const RED_MID = "#C41E3A";
 
 export function SuitIcon({
   shape,
@@ -25,28 +26,28 @@ export function SuitIcon({
     case "circle":
       return (
         <svg {...common}>
-          <circle cx="32" cy="32" r="24" fill="none" stroke={color} strokeWidth="5" />
-          <circle cx="32" cy="32" r="14" fill={color} />
+          <circle cx="32" cy="32" r="26" fill={color} />
+          <circle cx="32" cy="32" r="14" fill="none" stroke="#F8F1E3" strokeWidth="3.5" opacity="0.35" />
         </svg>
       );
     case "triangle":
       return (
         <svg {...common}>
+          <polygon points="32,4 60,58 4,58" fill={color} />
           <polygon
-            points="32,6 58,56 6,56"
+            points="32,18 48,50 16,50"
             fill="none"
-            stroke={color}
-            strokeWidth="5"
-            strokeLinejoin="round"
+            stroke="#F8F1E3"
+            strokeWidth="2.5"
+            opacity="0.3"
           />
-          <polygon points="32,18 48,50 16,50" fill={color} />
         </svg>
       );
     case "cross":
       return (
         <svg {...common}>
           <path
-            d="M22 8h20v14h14v20H42v14H22V42H8V22h14V8z"
+            d="M24 4h16v20h20v16H40v20H24V40H4V24h20V4z"
             fill={color}
           />
         </svg>
@@ -54,24 +55,25 @@ export function SuitIcon({
     case "square":
       return (
         <svg {...common}>
+          <rect x="6" y="6" width="52" height="52" rx="3" fill={color} />
           <rect
-            x="10"
-            y="10"
-            width="44"
-            height="44"
-            rx="2"
+            x="16"
+            y="16"
+            width="32"
+            height="32"
+            rx="1"
             fill="none"
-            stroke={color}
-            strokeWidth="5"
+            stroke="#F8F1E3"
+            strokeWidth="2.5"
+            opacity="0.3"
           />
-          <rect x="18" y="18" width="28" height="28" rx="1" fill={color} />
         </svg>
       );
     case "star":
       return (
         <svg {...common}>
           <polygon
-            points="32,4 39,24 60,24 43,37 50,58 32,45 14,58 21,37 4,24 25,24"
+            points="32,2 40,24 64,24 45,38 52,60 32,46 12,60 19,38 0,24 24,24"
             fill={color}
           />
         </svg>
@@ -80,15 +82,15 @@ export function SuitIcon({
     default:
       return (
         <svg {...common}>
-          <circle cx="32" cy="32" r="26" fill="none" stroke={color} strokeWidth="4" />
+          <circle cx="32" cy="32" r="28" fill="none" stroke={color} strokeWidth="4" />
           <text
             x="32"
-            y="40"
+            y="41"
             textAnchor="middle"
-            fill={color}
-            fontSize="20"
-            fontWeight="900"
-            fontFamily="Georgia, 'Times New Roman', serif"
+            fill={RED_MID}
+            fontSize="22"
+            fontWeight="800"
+            fontFamily="Georgia, serif"
           >
             W
           </text>

@@ -13,8 +13,8 @@ interface Props {
 }
 
 /**
- * Classic Nigerian Whot card: cream face, bold red number + shape,
- * dual corner indices, deep red back with WHOT wordmark.
+ * Traditional Nigerian Whot card:
+ * cream face · bold red geometry · large numbers · deep red back with white “Whot”
  */
 export function WhotCard({
   card,
@@ -45,8 +45,8 @@ export function WhotCard({
     .join(" ");
 
   const num = isWhot ? 20 : card.number;
-  const shapeSize = small ? 26 : 48;
-  const cornerSize = small ? 11 : 16;
+  const shapeSize = small ? 28 : 52;
+  const cornerSize = small ? 12 : 18;
 
   const inner = (
     <>

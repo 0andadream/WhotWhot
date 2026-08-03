@@ -36,11 +36,11 @@ export default function HomePage() {
             <div className="eyebrow live">Live on Base</div>
             <div className="wordmark">WhotWhot</div>
             <div className="suit-band" aria-hidden>
-              <span style={{ ["--c" as string]: "#b71c1c" }} />
-              <span style={{ ["--c" as string]: "#b71c1c" }} />
-              <span style={{ ["--c" as string]: "#b71c1c" }} />
-              <span style={{ ["--c" as string]: "#b71c1c" }} />
-              <span style={{ ["--c" as string]: "#b71c1c" }} />
+              <span style={{ ["--c" as string]: "#8B0000" }} />
+              <span style={{ ["--c" as string]: "#C41E3A" }} />
+              <span style={{ ["--c" as string]: "#E85D04" }} />
+              <span style={{ ["--c" as string]: "#C41E3A" }} />
+              <span style={{ ["--c" as string]: "#8B0000" }} />
             </div>
             <h1>
               Play Whot online,{" "}
