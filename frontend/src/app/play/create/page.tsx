@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConnectButton } from "@/components/ConnectButton";
 import { TicketPicker } from "@/components/TicketPicker";
+import { NameField } from "@/components/NameField";
 import { useAccount, usePublicClient } from "wagmi";
 import {
   useEscrowActions,
@@ -12,6 +13,12 @@ import {
   rememberMatchId,
 } from "@/hooks/useEscrow";
 import { useUserTickets } from "@/hooks/useUserTickets";
+import {
+  getSavedDisplayName,
+  sanitizeName,
+  saveDisplayName,
+  setMatchPlayerName,
+} from "@/lib/displayName";
 import { ADDRESSES, whotEscrowAbi } from "@/lib/contracts";
 import { decodeEventLog, type Address, isAddress } from "viem";
 
@@ -24,16 +31,27 @@ export default function CreateMatchPage() {
   const router = useRouter();
 
   const [ticketId, setTicketId] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [challenge, setChallenge] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    setDisplayName(getSavedDisplayName());
+  }, []);
+
   const onCreate = async () => {
     setError(null);
+    const name = sanitizeName(displayName || getSavedDisplayName());
+    if (!name) {
+      setError("Enter a name so your opponent knows who you are.");
+      return;
+    }
     if (!ticketId) {
       setError("Tap a ticket below to stake it.");
       return;
     }
+    saveDisplayName(name);
     const id = BigInt(ticketId);
     setBusy(true);
     try {
@@ -56,6 +74,7 @@ export default function CreateMatchPage() {
             if (decoded.eventName === "MatchCreated") {
               const matchId = (decoded.args as { matchId: bigint }).matchId;
               rememberMatchId(matchId);
+              setMatchPlayerName(matchId.toString(), "p1", name);
               router.push(`/play/match/${matchId.toString()}`);
               return;
             }
@@ -87,6 +106,8 @@ export default function CreateMatchPage() {
           Stake <strong>1 Megapot ticket</strong>. Opponent stakes another. Winner
           gets both NFTs.
         </p>
+
+        <NameField value={displayName} onChange={setDisplayName} />
 
         <div className="ticket-badge">
           <div>

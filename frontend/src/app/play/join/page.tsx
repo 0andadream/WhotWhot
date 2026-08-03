@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { ConnectButton } from "@/components/ConnectButton";
 import { TicketPicker } from "@/components/TicketPicker";
+import { NameField } from "@/components/NameField";
 import { useAccount } from "wagmi";
 import {
   useEscrowActions,
@@ -13,12 +14,19 @@ import {
   rememberMatchId,
 } from "@/hooks/useEscrow";
 import { useUserTickets } from "@/hooks/useUserTickets";
+import {
+  getSavedDisplayName,
+  sanitizeName,
+  saveDisplayName,
+  setMatchPlayerName,
+} from "@/lib/displayName";
 
 function JoinInner() {
   const params = useSearchParams();
   const initial = params.get("matchId") || "";
   const [matchId, setMatchId] = useState(initial);
   const [ticketId, setTicketId] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const { isConnected } = useAccount();
@@ -29,8 +37,17 @@ function JoinInner() {
   const mid = matchId.trim() ? BigInt(matchId.trim()) : null;
   const { match } = useMatch(mid);
 
+  useEffect(() => {
+    setDisplayName(getSavedDisplayName());
+  }, []);
+
   const onJoin = async () => {
     setError(null);
+    const name = sanitizeName(displayName || getSavedDisplayName());
+    if (!name) {
+      setError("Enter a name so your opponent knows who you are.");
+      return;
+    }
     if (!matchId.trim()) {
       setError("Enter a match ID.");
       return;
@@ -39,10 +56,12 @@ function JoinInner() {
       setError("Tap a ticket below to stake it.");
       return;
     }
+    saveDisplayName(name);
     setBusy(true);
     try {
       await joinMatch(BigInt(matchId.trim()), BigInt(ticketId));
       rememberMatchId(matchId.trim());
+      setMatchPlayerName(matchId.trim(), "p2", name);
       router.push(`/play/match/${matchId.trim()}`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Join failed");
@@ -66,6 +85,8 @@ function JoinInner() {
           Stake your Megapot ticket against the host. Winner takes both.
         </p>
 
+        <NameField value={displayName} onChange={setDisplayName} />
+
         <div className="ticket-badge">
           <div>
             <div className="muted">You have</div>
@@ -84,11 +105,7 @@ function JoinInner() {
 
         {match && (
           <div className="pill">
-            Host: {match.player1.slice(0, 6)}…{match.player1.slice(-4)} · ticket #
-            {match.ticket1.toString().length > 10
-              ? `${match.ticket1.toString().slice(0, 4)}…${match.ticket1.toString().slice(-4)}`
-              : match.ticket1.toString()}{" "}
-            · status {match.status}
+            Host is ready · table #{matchId || "—"}
           </div>
         )}
 
