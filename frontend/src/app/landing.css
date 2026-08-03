@@ -487,6 +487,105 @@
   border-style: dashed;
 }
 
+/* Match page: board + live chat side by side */
+.ds .match-play-row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+@media (min-width: 960px) {
+  .ds .match-play-row {
+    flex-direction: row;
+    align-items: stretch;
+  }
+  .ds .match-play-main {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .ds .match-chat {
+    flex: 0 0 300px;
+    width: 300px;
+    max-width: 100%;
+  }
+}
+.ds .match-chat {
+  display: flex;
+  flex-direction: column;
+  min-height: 320px;
+  max-height: min(70vh, 560px);
+  padding: 14px 12px;
+}
+.ds .match-chat-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+.ds .match-chat-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.ds .match-chat-log {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px 8px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  min-height: 180px;
+}
+.ds .match-chat-bubble {
+  max-width: 92%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.ds .match-chat-bubble.mine {
+  align-self: flex-end;
+  background: rgba(196, 30, 58, 0.18);
+  border: 1px solid rgba(196, 30, 58, 0.35);
+}
+.ds .match-chat-bubble.theirs {
+  align-self: flex-start;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+}
+.ds .match-chat-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.ds .match-chat-meta strong {
+  color: var(--text-2);
+  font-weight: 600;
+}
+.ds .match-chat-text {
+  color: var(--text);
+}
+.ds .match-chat-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: center;
+}
+.ds .match-chat-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 40px;
+}
+
 /* Guide content inside ds */
 .ds .guide-page {
   max-width: min(960px, 94vw);

@@ -28,6 +28,7 @@ import {
   setMoveSoundMuted,
   unlockMoveSound,
 } from "@/lib/moveSound";
+import { MatchChat } from "@/components/MatchChat";
 import type { Address } from "viem";
 
 function rebuildGame(
@@ -592,39 +593,74 @@ export default function MatchPage() {
 
         {msg && <div className="alert">{msg}</div>}
 
-        {match.status === MatchStatus.Active && game && humanPlayer && (
-          <GameBoard
-            seed={match.gameSeed}
-            humanPlayer={humanPlayer}
-            vsAi={false}
-            externalState={game}
-            onAction={(a) => void onAction(a)}
-            onWin={onWin}
-            p1Name={p1Name}
-            p2Name={p2Name}
-            readOnly={posting}
-          />
-        )}
+        <div className="match-play-row">
+          <div className="match-play-main">
+            {match.status === MatchStatus.Active && game && humanPlayer && (
+              <GameBoard
+                seed={match.gameSeed}
+                humanPlayer={humanPlayer}
+                vsAi={false}
+                externalState={game}
+                onAction={(a) => void onAction(a)}
+                onWin={onWin}
+                p1Name={p1Name}
+                p2Name={p2Name}
+                readOnly={posting}
+              />
+            )}
 
-        {match.status === MatchStatus.Active &&
-          game &&
-          humanPlayer &&
-          game.winner && (
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={isPending || submitted}
-              onClick={() => void onConfirmWinner()}
-            >
-              {submitted
-                ? "Submitted. Await opponent"
-                : `Confirm ${game.winner === humanPlayer ? "you won" : "opponent won"}`}
-            </button>
+            {match.status === MatchStatus.Active &&
+              game &&
+              humanPlayer &&
+              game.winner && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ marginTop: 12 }}
+                  disabled={isPending || submitted}
+                  onClick={() => void onConfirmWinner()}
+                >
+                  {submitted
+                    ? "Submitted. Await opponent"
+                    : `Confirm ${game.winner === humanPlayer ? "you won" : "opponent won"}`}
+                </button>
+              )}
+
+            {match.status === MatchStatus.Active && !humanPlayer && (
+              <p className="muted">
+                Spectating. Connect as a match player to act.
+              </p>
+            )}
+
+            {match.status === MatchStatus.Waiting && (
+              <p className="muted" style={{ marginTop: 8 }}>
+                Chat unlocks for the host now; opponent can chat after they join.
+              </p>
+            )}
+          </div>
+
+          {(match.status === MatchStatus.Waiting ||
+            match.status === MatchStatus.Active ||
+            match.status === MatchStatus.Resolved) && (
+            <MatchChat
+              matchId={matchKey}
+              address={address}
+              displayName={
+                humanPlayer === "p1"
+                  ? p1Name
+                  : humanPlayer === "p2"
+                    ? p2Name
+                    : getSavedDisplayName() || "Player"
+              }
+              canChat={
+                match.status === MatchStatus.Waiting ||
+                match.status === MatchStatus.Active ||
+                match.status === MatchStatus.Resolved
+              }
+              isPlayer={!!humanPlayer}
+            />
           )}
-
-        {match.status === MatchStatus.Active && !humanPlayer && (
-          <p className="muted">Spectating. Connect as a match player to act.</p>
-        )}
+        </div>
       </div>
     </div>
   );
