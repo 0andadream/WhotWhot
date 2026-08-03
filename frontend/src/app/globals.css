@@ -4,7 +4,9 @@
    Mobile-first (≈ iPhone 15 Pro 393pt), app-store polish
    ═══════════════════════════════════════════════════════════════════ */
 
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&display=swap");
+/* Typography: Satoshi (Fontshare) + Inter (Google Fonts) */
+@import url("https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700,800,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 :root {
   /* Brand */
@@ -55,8 +57,9 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
 
-  --font: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  /* Product / Web3 typography */
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Satoshi", "Inter", system-ui, sans-serif;
   --font-card: Georgia, "Times New Roman", "Palatino Linotype", serif;
 
   /* Legacy aliases (components still reference these) */
@@ -90,13 +93,89 @@ body {
   min-height: 100%;
   min-height: 100dvh;
   font-family: var(--font);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: -0.011em;
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
-  font-feature-settings: "ss01", "kern";
+  font-feature-settings: "ss01", "cv11", "kern";
+}
+
+/* Heading hierarchy — Satoshi, premium product feel */
+h1,
+h2,
+h3,
+h4,
+.wordmark,
+.logo,
+.logo-row h1,
+.nav .logo,
+.guide-title,
+.guide-heading,
+.mode-card h3,
+.card-panel h2,
+.step h4,
+.stat .value,
+.ticket-badge strong {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+h1 {
+  font-size: clamp(1.85rem, 5vw, 3rem);
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+}
+h2 {
+  font-size: clamp(1.4rem, 3.2vw, 2rem);
+  letter-spacing: -0.025em;
+}
+h3 {
+  font-size: clamp(1.1rem, 2.2vw, 1.35rem);
+  letter-spacing: -0.02em;
+}
+
+/* Body copy */
+p,
+.lede,
+.muted,
+.guide-lead,
+.guide-subtitle,
+.step p,
+.mode-card p,
+.guide-list,
+.footer {
+  font-family: var(--font);
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: -0.011em;
+}
+
+.lede,
+.guide-subtitle {
+  font-weight: 400;
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.btn,
+.tabs button,
+.eyebrow,
+.nav .links,
+.pill {
+  font-family: var(--font);
+  font-weight: 500;
   letter-spacing: -0.01em;
+}
+
+.btn {
+  font-weight: 600;
 }
 
 a {
@@ -200,7 +279,7 @@ img {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.15rem;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   color: var(--cream);
 }
 .nav .logo span {
@@ -271,9 +350,9 @@ img {
   font-family: var(--font-display);
   color: var(--cream);
   font-size: clamp(2.75rem, 11vw, 3.75rem);
-  line-height: 0.95;
+  line-height: 0.98;
   margin: 12px 0 16px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.03em;
 }
 
@@ -360,14 +439,18 @@ img {
 .hero h1 .hl {
   color: var(--orange);
   display: inline;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 .hero .lede {
-  font-size: 1.05rem;
+  font-family: var(--font);
+  font-size: 1.0625rem;
   color: var(--text-muted);
   max-width: 34em;
   line-height: 1.65;
   margin: 0 0 32px;
   font-weight: 400;
+  letter-spacing: -0.011em;
 }
 
 .hero-phone {
