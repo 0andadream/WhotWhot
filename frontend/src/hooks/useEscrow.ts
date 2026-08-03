@@ -50,7 +50,7 @@ export function useOpenMatches() {
     chainId: 8453,
     query: {
       enabled: escrowReady,
-      refetchInterval: 10_000,
+      refetchInterval: 20_000,
     },
   });
   return { matchIds: (data as bigint[] | undefined) ?? [], refetch, isLoading };
@@ -74,7 +74,7 @@ export function useMyMatches() {
     chainId: 8453,
     query: {
       enabled: escrowReady,
-      refetchInterval: 8_000,
+      refetchInterval: 20_000,
     },
   });
 
@@ -192,7 +192,8 @@ export function useMatch(matchId: bigint | null) {
     chainId: 8453,
     query: {
       enabled: escrowReady && matchId != null,
-      refetchInterval: 5_000,
+      // Match status rarely changes mid-game; avoid burning public RPC quota
+      refetchInterval: 15_000,
     },
   });
   return { match: data, refetch, isLoading };

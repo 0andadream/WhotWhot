@@ -1,19 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useAccount,
-  usePublicClient,
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import type { Address, PublicClient } from "viem";
+import { createPublicClient, fallback, http, type Address } from "viem";
+import { base } from "viem/chains";
 import {
   ADDRESSES,
   jackpotAbi,
   jackpotTicketNftAbi,
   MatchStatus,
 } from "@/lib/contracts";
+import { baseRpcUrls } from "@/lib/baseRpcUrls";
 import {
   prizeLabel,
   scoreTicket,
@@ -30,7 +31,6 @@ export type MatchTicketRow = {
   drawingId: bigint;
   normals: number[];
   bonusball: number;
-  /** Draw settled (winningTicket != 0) */
   drawn: boolean;
   winNormals: number[];
   winBonus: number;
@@ -39,7 +39,6 @@ export type MatchTicketRow = {
   tierId: number;
   payoutUsdc: bigint;
   prize: ReturnType<typeof prizeLabel>;
-  /** Owner can call claimWinnings */
   claimable: boolean;
 };
 
@@ -53,8 +52,44 @@ export type MatchTicketsState = {
   lockedInEscrow: boolean;
 };
 
+const CACHE_TTL_MS = 5 * 60_000;
+const rowCache = new Map<string, { at: number; row: MatchTicketRow }>();
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let browserClient: any = null;
+
+/** Dedicated client with multi-RPC fallback (avoids single public RPC rate limits). */
+function getTicketClient() {
+  if (browserClient) return browserClient;
+  browserClient = createPublicClient({
+    chain: base,
+    batch: { multicall: false },
+    transport: fallback(
+      baseRpcUrls().map((url) =>
+        http(url, { timeout: 12_000, retryCount: 2, retryDelay: 350 })
+      ),
+      { rank: false }
+    ),
+  });
+  return browserClient;
+}
+
+function friendlyRpcError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (/rate limit|over rate/i.test(msg)) {
+    return "Base RPC is busy (rate limited). Wait a few seconds and tap Refresh.";
+  }
+  if (msg.length > 220) return msg.slice(0, 220) + "…";
+  return msg || "Could not load ticket results";
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 async function loadTicketRow(
-  client: PublicClient,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
   opts: {
     slot: "ticket1" | "ticket2";
     ticketId: bigint;
@@ -64,6 +99,23 @@ async function loadTicketRow(
   }
 ): Promise<MatchTicketRow | null> {
   if (opts.ticketId === 0n) return null;
+
+  const cacheKey = `${opts.ticketId}:${opts.viewer || ""}`;
+  const cached = rowCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+    // Recompute ownership flags for current viewer/escrow
+    const row = { ...cached.row };
+    row.ownedByEscrow =
+      !!row.owner && row.owner.toLowerCase() === opts.escrow.toLowerCase();
+    row.ownedByYou =
+      !!row.owner &&
+      !!opts.viewer &&
+      row.owner.toLowerCase() === opts.viewer.toLowerCase();
+    row.claimable = row.prize.hasPrize && row.ownedByYou;
+    row.staker = opts.staker;
+    row.slot = opts.slot;
+    return row;
+  }
 
   let owner: Address | null = null;
   try {
@@ -123,7 +175,7 @@ async function loadTicketRow(
       winBonus = Number(unpacked[1] ?? 0);
       score = scoreTicket(normals, bonusball, winNormals, winBonus);
     } catch {
-      /* keep empty win numbers */
+      /* keep empty */
     }
 
     try {
@@ -162,7 +214,7 @@ async function loadTicketRow(
     owner.toLowerCase() === opts.viewer.toLowerCase();
   const claimable = prize.hasPrize && ownedByYou;
 
-  return {
+  const row: MatchTicketRow = {
     slot: opts.slot,
     ticketId: opts.ticketId,
     staker: opts.staker,
@@ -182,6 +234,9 @@ async function loadTicketRow(
     prize,
     claimable,
   };
+
+  rowCache.set(cacheKey, { at: Date.now(), row });
+  return row;
 }
 
 /**
@@ -200,7 +255,6 @@ export function useMatchTickets(
     | undefined
 ) {
   const { address } = useAccount();
-  const publicClient = usePublicClient({ chainId: 8453 });
   const [state, setState] = useState<MatchTicketsState>({
     loading: false,
     error: null,
@@ -210,82 +264,115 @@ export function useMatchTickets(
     anyPrize: false,
     lockedInEscrow: false,
   });
+  const loadingRef = useRef(false);
 
-  const load = useCallback(async () => {
-    if (!publicClient || !match) {
-      setState((s) => ({
-        ...s,
-        loading: false,
-        rows: [],
-        claimableIds: [],
-        anyPrize: false,
-        lockedInEscrow: false,
-      }));
-      return;
-    }
-    setState((s) => ({ ...s, loading: true, error: null }));
-    try {
+  const load = useCallback(
+    async (opts?: { force?: boolean }) => {
+      if (!match) {
+        setState((s) => ({
+          ...s,
+          loading: false,
+          rows: [],
+          claimableIds: [],
+          anyPrize: false,
+          lockedInEscrow: false,
+        }));
+        return;
+      }
+      if (loadingRef.current) return;
+      loadingRef.current = true;
+      setState((s) => ({ ...s, loading: true, error: null }));
+
+      const client = getTicketClient();
       const escrow = ADDRESSES.whotEscrow;
-      const [r1, r2, cur] = await Promise.all([
-        loadTicketRow(publicClient, {
+
+      if (opts?.force) {
+        // Drop cache for these ticket ids
+        for (const id of [match.ticket1, match.ticket2]) {
+          if (id === 0n) continue;
+          for (const key of [...rowCache.keys()]) {
+            if (key.startsWith(`${id}:`)) rowCache.delete(key);
+          }
+        }
+      }
+
+      try {
+        // Sequential loads + small gap to avoid burst rate limits
+        const r1 = await loadTicketRow(client, {
           slot: "ticket1",
           ticketId: match.ticket1,
           staker: match.player1,
           viewer: address,
           escrow,
-        }),
-        loadTicketRow(publicClient, {
+        });
+        await sleep(200);
+        const r2 = await loadTicketRow(client, {
           slot: "ticket2",
           ticketId: match.ticket2,
           staker: match.player2,
           viewer: address,
           escrow,
-        }),
-        publicClient
-          .readContract({
+        });
+
+        let cur: bigint | null = null;
+        try {
+          cur = (await client.readContract({
             address: ADDRESSES.jackpot,
             abi: jackpotAbi,
             functionName: "currentDrawingId",
-          })
-          .catch(() => null),
-      ]);
+          })) as bigint;
+        } catch {
+          cur = null;
+        }
 
-      const rows = [r1, r2].filter(Boolean) as MatchTicketRow[];
-      const claimableIds = rows.filter((r) => r.claimable).map((r) => r.ticketId);
-      const anyPrize = rows.some((r) => r.prize.hasPrize);
-      const lockedInEscrow = rows.some((r) => r.ownedByEscrow);
+        const rows = [r1, r2].filter(Boolean) as MatchTicketRow[];
+        const claimableIds = rows
+          .filter((r) => r.claimable)
+          .map((r) => r.ticketId);
+        const anyPrize = rows.some((r) => r.prize.hasPrize);
+        const lockedInEscrow = rows.some((r) => r.ownedByEscrow);
 
-      setState({
-        loading: false,
-        error: null,
-        rows,
-        currentDrawingId: cur as bigint | null,
-        claimableIds,
-        anyPrize,
-        lockedInEscrow,
-      });
-    } catch (e: unknown) {
-      setState((s) => ({
-        ...s,
-        loading: false,
-        error: e instanceof Error ? e.message : "Could not load ticket results",
-      }));
-    }
-  }, [publicClient, match, address]);
+        setState({
+          loading: false,
+          error: null,
+          rows,
+          currentDrawingId: cur,
+          claimableIds,
+          anyPrize,
+          lockedInEscrow,
+        });
+      } catch (e: unknown) {
+        setState((s) => ({
+          ...s,
+          loading: false,
+          // Keep previous rows if we had them
+          error: friendlyRpcError(e),
+        }));
+      } finally {
+        loadingRef.current = false;
+      }
+    },
+    [match, address]
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  // Refresh when match status changes (resolve / cancel moves NFTs)
   useEffect(() => {
-    if (match?.status === MatchStatus.Resolved || match?.status === MatchStatus.Cancelled) {
-      const t = window.setTimeout(() => void load(), 2000);
+    if (
+      match?.status === MatchStatus.Resolved ||
+      match?.status === MatchStatus.Cancelled
+    ) {
+      const t = window.setTimeout(() => void load({ force: true }), 2500);
       return () => window.clearTimeout(t);
     }
   }, [match?.status, load]);
 
-  return { ...state, refetch: load };
+  return {
+    ...state,
+    refetch: () => load({ force: true }),
+  };
 }
 
 export function useClaimWinnings() {

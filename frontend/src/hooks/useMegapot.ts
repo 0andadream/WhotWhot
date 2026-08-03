@@ -17,7 +17,7 @@ export function useJackpotInfo() {
     abi: jackpotAbi,
     functionName: "currentDrawingId",
     chainId: 8453,
-    query: { refetchInterval: 30_000 },
+    query: { refetchInterval: 60_000 },
   });
 
   const { data: state } = useReadContract({
@@ -28,7 +28,7 @@ export function useJackpotInfo() {
     chainId: 8453,
     query: {
       enabled: drawingId !== undefined,
-      refetchInterval: 30_000,
+      refetchInterval: 60_000,
     },
   });
 
@@ -74,7 +74,7 @@ export function useTicketCount() {
     chainId: 8453,
     query: {
       enabled: !!address,
-      refetchInterval: 15_000,
+      refetchInterval: 45_000,
     },
   });
 
