@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SiteNav } from "@/components/SiteNav";
 import { GameBoard } from "@/components/GameBoard";
+import { MatchTicketsPanel } from "@/components/MatchTicketsPanel";
 import { useAccount } from "wagmi";
 import { useEscrowActions, useMatch } from "@/hooks/useEscrow";
 import { MatchStatus } from "@/lib/contracts";
@@ -44,7 +45,7 @@ export default function MatchPage() {
   const matchKey = matchId != null ? matchId.toString() : "";
   const { address } = useAccount();
   const { match, refetch } = useMatch(matchId);
-  const { submitResult, isPending } = useEscrowActions();
+  const { submitResult, cancelActive, isPending } = useEscrowActions();
 
   const [game, setGame] = useState<GameState | null>(null);
   const [actions, setActions] = useState<GameAction[]>([]);
@@ -247,6 +248,18 @@ export default function MatchPage() {
     setMsg("Game over. Confirm the winner below when both agree.");
   }, []);
 
+  const onCancelActive = useCallback(async () => {
+    if (!matchId) return;
+    try {
+      setMsg("Confirm cancel in wallet. Both tickets return to original stakers.");
+      await cancelActive(matchId);
+      setMsg("Match cancelled. Tickets returned. Claim any Megapot prizes below.");
+      refetch();
+    } catch (e: unknown) {
+      setMsg(e instanceof Error ? e.message : "Cancel failed");
+    }
+  }, [matchId, cancelActive, refetch]);
+
   if (!matchId) {
     return (
       <div className="ds">
@@ -371,12 +384,35 @@ export default function MatchPage() {
 
           {match.status === MatchStatus.Resolved && (
             <div className="banner win" style={{ marginTop: 12 }}>
-              Match over. Both tickets went to the winner.
+              Match over. Both ticket NFTs went to the winner. Claim any Megapot
+              cash or free-ticket prizes in Tickets &amp; draw results.
             </div>
           )}
         </div>
 
         {msg && <div className="alert">{msg}</div>}
+
+        {/* Lottery results first: independent of Whot finish; easy to find */}
+        {(match.ticket1 > 0n || match.ticket2 > 0n) && (
+          <MatchTicketsPanel
+            match={{
+              ticket1: match.ticket1,
+              ticket2: match.ticket2,
+              player1: match.player1 as Address,
+              player2: match.player2 as Address,
+              status: match.status,
+              startedAt: match.startedAt,
+              player1Result: match.player1Result as Address | undefined,
+              player2Result: match.player2Result as Address | undefined,
+            }}
+            matchId={matchId}
+            address={address}
+            p1Name={p1Name}
+            p2Name={p2Name}
+            onCancelActive={onCancelActive}
+            cancelPending={isPending}
+          />
+        )}
 
         {match.status === MatchStatus.Active && game && humanPlayer && (
           <GameBoard

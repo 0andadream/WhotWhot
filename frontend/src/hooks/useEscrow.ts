@@ -126,10 +126,13 @@ export function useMyMatches() {
         const p1 = m.player1.toLowerCase();
         const p2 = m.player2.toLowerCase();
         if (p1 !== me && p2 !== me) continue;
-        // Show playable tables: waiting or active
+        // Waiting / Active to play; Resolved / Cancelled so you can open
+        // ticket draw results and claim prizes.
         if (
           m.status !== MatchStatus.Waiting &&
-          m.status !== MatchStatus.Active
+          m.status !== MatchStatus.Active &&
+          m.status !== MatchStatus.Resolved &&
+          m.status !== MatchStatus.Cancelled
         ) {
           continue;
         }
@@ -307,6 +310,20 @@ export function useEscrowActions() {
     [writeContractAsync]
   );
 
+  /** After RESULT_TIMEOUT (2h), either player can return both tickets to stakers. */
+  const cancelActive = useCallback(
+    async (matchId: bigint) => {
+      return writeContractAsync({
+        address: ADDRESSES.whotEscrow,
+        abi: whotEscrowAbi,
+        functionName: "cancelActive",
+        args: [matchId],
+        chainId: 8453,
+      });
+    },
+    [writeContractAsync]
+  );
+
   return {
     createMatch,
     createChallenge,
@@ -314,6 +331,7 @@ export function useEscrowActions() {
     submitResult,
     postMove,
     cancelWaiting,
+    cancelActive,
     hash,
     isPending,
     confirming,

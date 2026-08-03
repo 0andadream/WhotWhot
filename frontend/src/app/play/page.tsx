@@ -203,8 +203,9 @@ export default function PlayLobbyPage() {
               </button>
             </div>
             <p className="muted">
-              Tables you created or joined. Once someone stakes, the game moves
-              here (it leaves “Open tables”).
+              Tables you created or joined. Open any table for the board and for{" "}
+              <strong>Tickets &amp; draw results</strong> (lottery is separate;
+              you do not need to finish Whot to see results).
             </p>
             {!isConnected && (
               <p className="muted">Connect your wallet to see your tables.</p>
@@ -245,10 +246,14 @@ export default function PlayLobbyPage() {
                   <span className="muted" style={{ fontSize: "0.8rem" }}>
                     {statusLabel(m.status)}
                     {m.status === MatchStatus.Active
-                      ? ". Tap to open board"
+                      ? " · board + lottery results"
                       : m.status === MatchStatus.Waiting
-                        ? ". Waiting for opponent"
-                        : ""}
+                        ? " · waiting for opponent"
+                        : m.status === MatchStatus.Resolved
+                          ? " · claim prizes if you hold the NFTs"
+                          : m.status === MatchStatus.Cancelled
+                            ? " · tickets returned · check lottery claim"
+                            : ""}
                   </span>
                 </Link>
               );

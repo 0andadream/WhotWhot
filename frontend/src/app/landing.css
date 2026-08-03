@@ -309,6 +309,75 @@
   color: var(--green-text);
 }
 
+/* Match ticket / draw result panel */
+.ds .match-tickets-panel h2 {
+  font-size: 1.15rem;
+}
+.ds .ticket-result-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 720px) {
+  .ds .ticket-result-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.ds .ticket-result-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 14px 14px 12px;
+}
+.ds .ticket-result-card.has-prize {
+  border-color: rgba(61, 214, 140, 0.4);
+  box-shadow: 0 0 0 1px rgba(61, 214, 140, 0.12);
+}
+.ds .ticket-result-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.ds .ticket-balls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.ds .ball {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ds .ball-bonus {
+  background: rgba(196, 30, 58, 0.15);
+  border-color: rgba(196, 30, 58, 0.35);
+  color: #f0b4bc;
+}
+.ds .ball-hit {
+  background: var(--green-soft);
+  border-color: rgba(61, 214, 140, 0.55);
+  color: var(--green-text);
+}
+.ds .prize-yes {
+  color: var(--green-text);
+}
+.ds .prize-no {
+  color: var(--muted);
+}
+
 .ds .input {
   background: var(--bg-elevated);
   border: 1px solid var(--line-strong);

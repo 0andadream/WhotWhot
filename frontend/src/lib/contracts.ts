@@ -94,6 +94,47 @@ export const jackpotTicketNftAbi = [
       },
     ],
   },
+  {
+    type: "function",
+    name: "getExtendedTicketInfo",
+    stateMutability: "view",
+    inputs: [{ name: "_ticketId", type: "uint256" }],
+    outputs: [
+      {
+        type: "tuple",
+        components: [
+          { name: "ticketId", type: "uint256" },
+          {
+            name: "ticket",
+            type: "tuple",
+            components: [
+              { name: "drawingId", type: "uint256" },
+              { name: "packedTicket", type: "uint256" },
+              { name: "referralScheme", type: "bytes32" },
+            ],
+          },
+          { name: "normals", type: "uint8[]" },
+          { name: "bonusball", type: "uint8" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "getTicketInfo",
+    stateMutability: "view",
+    inputs: [{ name: "_ticketId", type: "uint256" }],
+    outputs: [
+      {
+        type: "tuple",
+        components: [
+          { name: "drawingId", type: "uint256" },
+          { name: "packedTicket", type: "uint256" },
+          { name: "referralScheme", type: "bytes32" },
+        ],
+      },
+    ],
+  },
 ] as const;
 
 export const erc20Abi = [
@@ -187,6 +228,40 @@ export const jackpotAbi = [
       { name: "_source", type: "bytes32" },
     ],
     outputs: [{ name: "ticketIds", type: "uint256[]" }],
+  },
+  {
+    type: "function",
+    name: "claimWinnings",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_userTicketIds", type: "uint256[]" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "getTicketTierIds",
+    stateMutability: "view",
+    inputs: [{ name: "_ticketIds", type: "uint256[]" }],
+    outputs: [{ name: "tierIds", type: "uint256[]" }],
+  },
+  {
+    type: "function",
+    name: "getDrawingTierPayouts",
+    stateMutability: "view",
+    inputs: [{ name: "_drawingId", type: "uint256" }],
+    outputs: [{ type: "uint256[12]" }],
+  },
+  {
+    type: "function",
+    name: "getUnpackedTicket",
+    stateMutability: "view",
+    inputs: [
+      { name: "_drawingId", type: "uint256" },
+      { name: "_packedTicket", type: "uint256" },
+    ],
+    outputs: [
+      { name: "normals", type: "uint8[]" },
+      { name: "bonusball", type: "uint8" },
+    ],
   },
 ] as const;
 
