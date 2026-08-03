@@ -203,9 +203,10 @@ export default function PlayLobbyPage() {
               </button>
             </div>
             <p className="muted">
-              Tables you created or joined. Open any table for the board and for{" "}
-              <strong>Tickets &amp; draw results</strong> (lottery is separate;
-              you do not need to finish Whot to see results).
+              Tables you created or joined. Open a table to play. Lottery numbers
+              and claims are on each table&apos;s{" "}
+              <strong>Tickets &amp; results</strong> page (separate from the
+              board).
             </p>
             {!isConnected && (
               <p className="muted">Connect your wallet to see your tables.</p>
@@ -219,43 +220,63 @@ export default function PlayLobbyPage() {
               </p>
             )}
             {myMatches.map((m) => {
-              const href =
+              const boardHref =
                 m.status === MatchStatus.Waiting && m.role === "guest"
                   ? `/play/join?matchId=${m.id}`
                   : `/play/match/${m.id.toString()}`;
+              const ticketsHref = `/play/match/${m.id.toString()}/tickets`;
               return (
-                <Link
+                <div
                   key={String(m.id)}
-                  href={href}
-                  className="btn btn-secondary"
-                  style={{
-                    justifyContent: "space-between",
-                    textAlign: "left",
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    gap: 4,
-                    height: "auto",
-                    minHeight: 52,
-                    padding: "14px 18px",
-                  }}
+                  className="card-panel"
+                  style={{ padding: "14px 16px" }}
                 >
-                  <span>
-                    Table #{m.id.toString()} ·{" "}
-                    {m.role === "host" ? "You host" : "You joined"}
-                  </span>
-                  <span className="muted" style={{ fontSize: "0.8rem" }}>
-                    {statusLabel(m.status)}
-                    {m.status === MatchStatus.Active
-                      ? " · board + lottery results"
-                      : m.status === MatchStatus.Waiting
-                        ? " · waiting for opponent"
-                        : m.status === MatchStatus.Resolved
-                          ? " · claim prizes if you hold the NFTs"
-                          : m.status === MatchStatus.Cancelled
-                            ? " · tickets returned · check lottery claim"
-                            : ""}
-                  </span>
-                </Link>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 8,
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600 }}>
+                        Table #{m.id.toString()} ·{" "}
+                        {m.role === "host" ? "You host" : "You joined"}
+                      </div>
+                      <p className="muted" style={{ fontSize: "0.8rem", marginTop: 4 }}>
+                        {statusLabel(m.status)}
+                        {m.status === MatchStatus.Active
+                          ? " · in progress"
+                          : m.status === MatchStatus.Waiting
+                            ? " · waiting for opponent"
+                            : m.status === MatchStatus.Resolved
+                              ? " · finished"
+                              : m.status === MatchStatus.Cancelled
+                                ? " · cancelled"
+                                : ""}
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      <Link href={boardHref} className="btn btn-primary btn-sm">
+                        {m.status === MatchStatus.Waiting && m.role === "guest"
+                          ? "Join"
+                          : m.status === MatchStatus.Active
+                            ? "Board"
+                            : "Open"}
+                      </Link>
+                      {(m.ticket1 > 0n || m.ticket2 > 0n) && (
+                        <Link
+                          href={ticketsHref}
+                          className="btn btn-ghost btn-sm"
+                        >
+                          Tickets &amp; results
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </div>
               );
             })}
           </div>

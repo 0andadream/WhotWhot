@@ -209,7 +209,7 @@ export function MatchTicketsPanel({
   const claimable = tickets.claimableIds;
 
   return (
-    <div className="card-panel match-tickets-panel" style={{ marginTop: 16 }}>
+    <div className="card-panel match-tickets-panel" style={{ marginTop: 12 }}>
       <div
         style={{
           display: "flex",
