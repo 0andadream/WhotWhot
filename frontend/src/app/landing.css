@@ -1037,7 +1037,8 @@
   justify-content: center;
   margin: 0;
   padding: 24px 16px 8px;
-  perspective: 800px;
+  perspective: 900px;
+  transform-style: preserve-3d;
   background: linear-gradient(180deg, var(--surface) 0%, var(--bg-elevated) 100%);
 }
 @media (min-width: 480px) {
@@ -1052,68 +1053,76 @@
   }
 }
 
+/* Framer Motion owns transforms for .card-fan-motion; keep fallback for static */
 .card-fan .fan-card {
   position: absolute;
   bottom: 28px;
   transform-origin: center bottom;
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 .card-fan .fan-card .whot-card {
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  transition: box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
-
-.card-fan .fan-card:nth-child(1) {
+.card-fan:not(.card-fan-motion) .fan-card {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.card-fan:not(.card-fan-motion) .fan-card:nth-child(1) {
   transform: translateX(-88px) rotate(-16deg);
   z-index: 1;
 }
-.card-fan .fan-card:nth-child(2) {
+.card-fan:not(.card-fan-motion) .fan-card:nth-child(2) {
   transform: translateX(-44px) rotate(-8deg);
   z-index: 2;
 }
-.card-fan .fan-card:nth-child(3) {
+.card-fan:not(.card-fan-motion) .fan-card:nth-child(3) {
   transform: translateX(0) rotate(0deg) translateY(-8px);
   z-index: 5;
 }
-.card-fan .fan-card:nth-child(4) {
+.card-fan:not(.card-fan-motion) .fan-card:nth-child(4) {
   transform: translateX(44px) rotate(8deg);
   z-index: 2;
 }
-.card-fan .fan-card:nth-child(5) {
+.card-fan:not(.card-fan-motion) .fan-card:nth-child(5) {
   transform: translateX(88px) rotate(16deg);
   z-index: 1;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .card-fan:hover .fan-card:nth-child(1) {
+  .card-fan:not(.card-fan-motion):hover .fan-card:nth-child(1) {
     transform: translateX(-118px) rotate(-20deg) translateY(-10px);
   }
-  .card-fan:hover .fan-card:nth-child(2) {
+  .card-fan:not(.card-fan-motion):hover .fan-card:nth-child(2) {
     transform: translateX(-58px) rotate(-10deg) translateY(-16px);
   }
-  .card-fan:hover .fan-card:nth-child(3) {
+  .card-fan:not(.card-fan-motion):hover .fan-card:nth-child(3) {
     transform: translateX(0) rotate(0deg) translateY(-24px) scale(1.03);
   }
-  .card-fan:hover .fan-card:nth-child(4) {
+  .card-fan:not(.card-fan-motion):hover .fan-card:nth-child(4) {
     transform: translateX(58px) rotate(10deg) translateY(-16px);
   }
-  .card-fan:hover .fan-card:nth-child(5) {
+  .card-fan:not(.card-fan-motion):hover .fan-card:nth-child(5) {
     transform: translateX(118px) rotate(20deg) translateY(-10px);
   }
 }
 
 @media (max-width: 400px) {
-  .card-fan .fan-card:nth-child(1) {
+  .card-fan:not(.card-fan-motion) .fan-card:nth-child(1) {
     transform: translateX(-60px) rotate(-12deg);
   }
-  .card-fan .fan-card:nth-child(2) {
+  .card-fan:not(.card-fan-motion) .fan-card:nth-child(2) {
     transform: translateX(-30px) rotate(-6deg);
   }
-  .card-fan .fan-card:nth-child(4) {
+  .card-fan:not(.card-fan-motion) .fan-card:nth-child(4) {
     transform: translateX(30px) rotate(6deg);
   }
-  .card-fan .fan-card:nth-child(5) {
+  .card-fan:not(.card-fan-motion) .fan-card:nth-child(5) {
     transform: translateX(60px) rotate(12deg);
   }
+}
+
+.landing-btn-primary.landing-btn-glow:hover {
+  box-shadow: 0 0 28px rgba(196, 30, 58, 0.5);
 }
 
 .live-table-caption {
