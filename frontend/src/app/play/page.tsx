@@ -35,8 +35,12 @@ export default function PlayLobbyPage() {
   const [tab, setTab] = useState<Tab>("modes");
   const escrowReady = useEscrowReady();
   const { matchIds } = useOpenMatches();
-  const { matches: myMatches, loading: myLoading, refetch: refetchMine } =
-    useMyMatches();
+  const {
+    matches: myMatches,
+    pastMatches,
+    loading: myLoading,
+    refetch: refetchMine,
+  } = useMyMatches();
   const { isSuccess, error } = useBuyRandomTicket();
   const { writeContractAsync } = useWriteContract();
   const [buyStep, setBuyStep] = useState<"idle" | "approve" | "buy">("idle");
@@ -202,7 +206,7 @@ export default function PlayLobbyPage() {
         <div className="stack">
           <div className="card-panel stack">
             <div className="row" style={{ justifyContent: "space-between" }}>
-              <h2 style={{ margin: 0 }}>Your games</h2>
+              <h2 style={{ margin: 0 }}>Your tables</h2>
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
@@ -212,10 +216,8 @@ export default function PlayLobbyPage() {
               </button>
             </div>
             <p className="muted">
-              Tables you created or joined. Open a table to play. Lottery numbers
-              and claims are on each table&apos;s{" "}
-              <strong>Tickets &amp; results</strong> page (separate from the
-              board).
+              Live games only (waiting or in progress). Finished matches move to{" "}
+              <strong>Past</strong> below.
             </p>
             {!isConnected && (
               <p className="muted">Connect your wallet to see your tables.</p>
@@ -225,7 +227,7 @@ export default function PlayLobbyPage() {
             )}
             {isConnected && !myLoading && myMatches.length === 0 && (
               <p className="muted">
-                No active tables yet. Create one or join an open table.
+                No live tables. Create one or join an open table.
               </p>
             )}
             {myMatches.map((m) => {
@@ -260,20 +262,14 @@ export default function PlayLobbyPage() {
                           ? " · in progress"
                           : m.status === MatchStatus.Waiting
                             ? " · waiting for opponent"
-                            : m.status === MatchStatus.Resolved
-                              ? " · finished"
-                              : m.status === MatchStatus.Cancelled
-                                ? " · cancelled"
-                                : ""}
+                            : ""}
                       </p>
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       <Link href={boardHref} className="btn btn-primary btn-sm">
                         {m.status === MatchStatus.Waiting && m.role === "guest"
                           ? "Join"
-                          : m.status === MatchStatus.Active
-                            ? "Board"
-                            : "Open"}
+                          : "Board"}
                       </Link>
                       {(m.ticket1 > 0n || m.ticket2 > 0n) && (
                         <Link
@@ -289,6 +285,64 @@ export default function PlayLobbyPage() {
               );
             })}
           </div>
+
+          {isConnected && pastMatches.length > 0 && (
+            <div className="card-panel stack">
+              <h2 style={{ margin: 0 }}>Past</h2>
+              <p className="muted">
+                Settled or cancelled. Open tickets if you still need lottery
+                results or claims.
+              </p>
+              {pastMatches.map((m) => {
+                const ticketsHref = `/play/match/${m.id.toString()}/tickets`;
+                return (
+                  <div
+                    key={`past-${String(m.id)}`}
+                    className="card-panel"
+                    style={{
+                      padding: "12px 14px",
+                      opacity: 0.88,
+                      borderStyle: "dashed",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 8,
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600 }}>
+                          Table #{m.id.toString()}
+                        </div>
+                        <p
+                          className="muted"
+                          style={{ fontSize: "0.8rem", marginTop: 2 }}
+                        >
+                          {m.status === MatchStatus.Resolved
+                            ? "Finished"
+                            : m.status === MatchStatus.Cancelled
+                              ? "Cancelled"
+                              : statusLabel(m.status)}
+                        </p>
+                      </div>
+                      {(m.ticket1 > 0n || m.ticket2 > 0n) && (
+                        <Link
+                          href={ticketsHref}
+                          className="btn btn-ghost btn-sm"
+                        >
+                          Tickets &amp; results
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="card-panel stack">
             <h2>Open tables</h2>

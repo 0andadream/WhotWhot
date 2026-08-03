@@ -57,14 +57,14 @@ export function useOpenMatches() {
 }
 
 /**
- * All matches where the connected wallet is player1 or player2
- * (Waiting + Active). Open lobby list drops a table once someone joins: 
- * this is how you get back into your game.
+ * Matches where the connected wallet is player1 or player2.
+ * Split into live (Waiting/Active) vs past (Resolved/Cancelled).
  */
 export function useMyMatches() {
   const { address } = useAccount();
   const publicClient = usePublicClient({ chainId: 8453 });
   const [mine, setMine] = useState<MatchSummary[]>([]);
+  const [past, setPast] = useState<MatchSummary[]>([]);
   const [loading, setLoading] = useState(false);
 
   const { data: nextId, refetch: refetchNext } = useReadContract({
@@ -81,6 +81,7 @@ export function useMyMatches() {
   const load = useCallback(async () => {
     if (!address || !publicClient || !escrowReady || nextId === undefined) {
       setMine([]);
+      setPast([]);
       return;
     }
     setLoading(true);
@@ -88,6 +89,7 @@ export function useMyMatches() {
       const max = Number(nextId as bigint);
       if (max <= 1) {
         setMine([]);
+        setPast([]);
         return;
       }
       // Scan recent matches (cap for safety; jam scale is small)
@@ -112,7 +114,8 @@ export function useMyMatches() {
       );
 
       const me = address.toLowerCase();
-      const list: MatchSummary[] = [];
+      const live: MatchSummary[] = [];
+      const done: MatchSummary[] = [];
       for (const row of rows) {
         if (!row) continue;
         const m = row.m as {
@@ -126,17 +129,8 @@ export function useMyMatches() {
         const p1 = m.player1.toLowerCase();
         const p2 = m.player2.toLowerCase();
         if (p1 !== me && p2 !== me) continue;
-        // Waiting / Active to play; Resolved / Cancelled so you can open
-        // ticket draw results and claim prizes.
-        if (
-          m.status !== MatchStatus.Waiting &&
-          m.status !== MatchStatus.Active &&
-          m.status !== MatchStatus.Resolved &&
-          m.status !== MatchStatus.Cancelled
-        ) {
-          continue;
-        }
-        list.push({
+
+        const summary: MatchSummary = {
           id: row.id,
           player1: m.player1,
           player2: m.player2,
@@ -145,11 +139,25 @@ export function useMyMatches() {
           status: m.status,
           gameSeed: m.gameSeed,
           role: p1 === me ? "host" : "guest",
-        });
+        };
+
+        if (
+          m.status === MatchStatus.Waiting ||
+          m.status === MatchStatus.Active
+        ) {
+          live.push(summary);
+        } else if (
+          m.status === MatchStatus.Resolved ||
+          m.status === MatchStatus.Cancelled
+        ) {
+          done.push(summary);
+        }
       }
       // Newest first
-      list.sort((a, b) => (a.id < b.id ? 1 : -1));
-      setMine(list);
+      live.sort((a, b) => (a.id < b.id ? 1 : -1));
+      done.sort((a, b) => (a.id < b.id ? 1 : -1));
+      setMine(live);
+      setPast(done);
     } finally {
       setLoading(false);
     }
@@ -160,7 +168,10 @@ export function useMyMatches() {
   }, [load]);
 
   return {
+    /** Waiting + Active only */
     matches: mine,
+    /** Resolved + Cancelled */
+    pastMatches: past,
     loading,
     refetch: async () => {
       await refetchNext();
