@@ -98,8 +98,6 @@ export default function PlayLobbyPage() {
     }
   };
 
-  const needsTicket = isConnected && stakeableCount === 0;
-
   const onConnectWallet = () => {
     const hasInjected =
       typeof window !== "undefined" &&
@@ -127,235 +125,170 @@ export default function PlayLobbyPage() {
   };
 
   return (
-    <div className="landing-premium ds">
+    <div className="landing-premium ds play-screen">
       <SiteNav />
-      <main className="prem-main">
-        <header className="prem-page-hero">
-          <p className="prem-how-eyebrow">Play</p>
-          <h1 className="prem-h1 prem-h1-page">Play Whot</h1>
-          <p className="prem-lede">
-            Practice free, or stake one Megapot ticket each. Winner takes both.
-          </p>
+      <main className="play-fit">
+        <header className="play-fit-hero">
+          <h1>Play Whot</h1>
+          <p>Practice free, or stake 1 ticket · winner takes both</p>
         </header>
 
-        <section className="prem-panel">
-          <div className="prem-stats-grid">
-            <div>
-              <div className="prem-stat-label">Jackpot</div>
-              <div className="prem-stat-value">
-                {jackpot.prizePoolUsd ?? "…"}
-              </div>
-            </div>
-            <div>
-              <div className="prem-stat-label">Next draw</div>
-              <div className="prem-stat-value prem-stat-sm">{countdown}</div>
-            </div>
-            <div>
-              <div className="prem-stat-label">Your tickets</div>
-              <div className="prem-stat-value">
-                {isConnected ? stakeableCount : "—"}
-                <span className="prem-stat-unit"> open-draw</span>
-              </div>
-            </div>
+        <section className="play-fit-bar">
+          <div className="play-fit-stat">
+            <span className="lbl">Jackpot</span>
+            <span className="val">{jackpot.prizePoolUsd ?? "…"}</span>
           </div>
-          <div className="prem-panel-footer">
-            <p className="prem-panel-hint">
-              {!isConnected
-                ? "Connect your wallet to buy a Megapot ticket and stake."
-                : needsTicket
-                  ? "Buy a ticket for this Megapot round, then create or join a table."
-                  : "Only tickets for the current round can be staked."}
-            </p>
-            <button
-              type="button"
-              className="prem-btn-white"
-              disabled={
-                connectPending ||
-                (isConnected && buyStep !== "idle")
-              }
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onBuyOrConnect();
-              }}
-            >
-              {!isConnected
-                ? connectPending
-                  ? "Connecting…"
-                  : "Connect to buy"
-                : buyStep === "approve"
-                  ? "Approve USDC…"
-                  : buyStep === "buy"
-                    ? "Buying…"
-                    : `Buy ticket · ${jackpot.ticketPriceUsd ?? "$1"}`}
-            </button>
+          <div className="play-fit-stat">
+            <span className="lbl">Draw</span>
+            <span className="val sm">{countdown}</span>
           </div>
-          {statusMsg && (
-            <div className="alert" style={{ marginTop: 14 }}>
-              {statusMsg}
-            </div>
-          )}
-          {error && (
-            <div className="alert" style={{ marginTop: 14 }}>
-              {error.message}
-            </div>
-          )}
+          <div className="play-fit-stat">
+            <span className="lbl">Tickets</span>
+            <span className="val">{isConnected ? stakeableCount : "—"}</span>
+          </div>
+          <button
+            type="button"
+            className="prem-btn-white sm"
+            disabled={connectPending || (isConnected && buyStep !== "idle")}
+            onClick={(e) => {
+              e.preventDefault();
+              onBuyOrConnect();
+            }}
+          >
+            {!isConnected
+              ? connectPending
+                ? "…"
+                : "Connect to buy"
+              : buyStep === "approve"
+                ? "Approve…"
+                : buyStep === "buy"
+                  ? "Buying…"
+                  : `Buy · ${jackpot.ticketPriceUsd ?? "$1"}`}
+          </button>
+        </section>
+        {(statusMsg || error) && (
+          <div className="alert play-fit-alert">
+            {statusMsg ||
+              (error instanceof Error ? error.message : String(error))}
+          </div>
+        )}
+
+        <section className="play-fit-modes">
+          <Link href="/play/ai" className="play-fit-mode">
+            <span className="prem-mode-tag free">Free</span>
+            <strong>Play free</strong>
+            <span className="sub">vs AI</span>
+          </Link>
+          <Link
+            href={escrowReady ? "/play/create" : "#"}
+            className="play-fit-mode"
+            style={
+              !escrowReady ? { opacity: 0.5, pointerEvents: "none" } : undefined
+            }
+          >
+            <span className="prem-mode-tag stake">Stake</span>
+            <strong>Create</strong>
+            <span className="sub">new table</span>
+          </Link>
+          <Link
+            href={escrowReady ? "/play/join" : "#"}
+            className="play-fit-mode"
+            style={
+              !escrowReady ? { opacity: 0.5, pointerEvents: "none" } : undefined
+            }
+          >
+            <span className="prem-mode-tag stake">Stake</span>
+            <strong>Join</strong>
+            <span className="sub">with ID</span>
+          </Link>
         </section>
 
-        <section className="prem-section">
-          <h2 className="prem-section-title">Start a game</h2>
-          <div className="prem-mode-grid">
-            <Link href="/play/ai" className="prem-mode-card">
-              <span className="prem-mode-tag free">Free</span>
-              <h3>Practice vs AI</h3>
-              <p>Learn the rules. No wallet, no tickets.</p>
-              <span className="prem-btn-white sm prem-mode-btn">Play free</span>
-            </Link>
-            <Link
-              href={escrowReady ? "/play/create" : "#"}
-              className="prem-mode-card"
-              style={
-                !escrowReady
-                  ? { opacity: 0.5, pointerEvents: "none" }
-                  : undefined
-              }
-            >
-              <span className="prem-mode-tag stake">Stake</span>
-              <h3>Create a table</h3>
-              <p>Lock 1 ticket. Share the table with a friend.</p>
-              <span className="prem-btn-white sm prem-mode-btn">Create</span>
-            </Link>
-            <Link
-              href={escrowReady ? "/play/join" : "#"}
-              className="prem-mode-card"
-              style={
-                !escrowReady
-                  ? { opacity: 0.5, pointerEvents: "none" }
-                  : undefined
-              }
-            >
-              <span className="prem-mode-tag stake">Stake</span>
-              <h3>Join a table</h3>
-              <p>Enter the table number your host shared.</p>
-              <span className="prem-btn-white sm prem-mode-btn">Join</span>
-            </Link>
-          </div>
-        </section>
-
-        <section className="prem-section">
-          <div className="prem-section-head">
-            <h2 className="prem-section-title" style={{ margin: 0 }}>
-              Your tables
-            </h2>
+        <section className="play-fit-tables">
+          <div className="play-fit-tables-head">
+            <h2>Your tables</h2>
             <button
               type="button"
               className="prem-btn-ghost"
+              style={{
+                minHeight: 32,
+                padding: "4px 10px",
+                fontSize: "0.78rem",
+              }}
               onClick={() => void refetchMine()}
             >
               Refresh
             </button>
           </div>
-          <p className="prem-section-hint">
-            Live games only. Finished ones move to Past.
-          </p>
 
-          {!isConnected && (
-            <div className="prem-panel prem-empty">
-              <p>Connect your wallet to see tables you host or joined.</p>
-            </div>
-          )}
-          {isConnected && myLoading && (
-            <p className="prem-section-hint">Loading your tables…</p>
-          )}
-          {isConnected && !myLoading && myMatches.length === 0 && (
-            <div className="prem-panel prem-empty">
-              <p>No live tables yet. Create one or join with a table ID.</p>
-            </div>
-          )}
+          <div className="play-fit-tables-scroll">
+            {!isConnected && (
+              <p className="play-fit-empty">
+                Connect wallet to see your tables.
+              </p>
+            )}
+            {isConnected && myLoading && (
+              <p className="play-fit-empty">Loading…</p>
+            )}
+            {isConnected &&
+              !myLoading &&
+              myMatches.length === 0 &&
+              pastMatches.length === 0 && (
+                <p className="play-fit-empty">
+                  No tables yet. Create or join one above.
+                </p>
+              )}
 
-          <div className="prem-table-list">
             {myMatches.map((m) => {
               const boardHref =
                 m.status === MatchStatus.Waiting && m.role === "guest"
                   ? `/play/join?matchId=${m.id}`
                   : `/play/match/${m.id.toString()}`;
-              const ticketsHref = `/play/match/${m.id.toString()}/tickets`;
               return (
-                <div key={String(m.id)} className="prem-table-card">
+                <div key={String(m.id)} className="play-fit-row">
                   <div>
-                    <div className="prem-table-title">
-                      Table #{m.id.toString()}
-                    </div>
-                    <p className="prem-table-meta">
-                      {m.role === "host" ? "You host" : "You joined"}
-                      {" · "}
+                    <strong>#{m.id.toString()}</strong>
+                    <span>
+                      {m.role === "host" ? "Host" : "Joined"} ·{" "}
                       {m.status === MatchStatus.Active
-                        ? "In progress"
+                        ? "Live"
                         : m.status === MatchStatus.Waiting
-                          ? "Waiting for opponent"
+                          ? "Waiting"
                           : statusLabel(m.status)}
-                    </p>
+                    </span>
                   </div>
-                  <div className="prem-table-actions">
-                    <Link href={boardHref} className="prem-btn-white sm">
-                      {m.status === MatchStatus.Waiting && m.role === "guest"
-                        ? "Join"
-                        : "Open board"}
-                    </Link>
-                    {(m.ticket1 > 0n || m.ticket2 > 0n) && (
-                      <Link href={ticketsHref} className="prem-btn-ghost">
-                        Tickets
-                      </Link>
-                    )}
-                  </div>
+                  <Link href={boardHref} className="prem-btn-white sm">
+                    Open
+                  </Link>
                 </div>
               );
             })}
+
+            {pastMatches.slice(0, 4).map((m) => (
+              <div key={`p-${String(m.id)}`} className="play-fit-row past">
+                <div>
+                  <strong>#{m.id.toString()}</strong>
+                  <span>
+                    {m.status === MatchStatus.Resolved
+                      ? "Finished"
+                      : "Cancelled"}
+                  </span>
+                </div>
+                <Link
+                  href={`/play/match/${m.id.toString()}/tickets`}
+                  className="prem-btn-ghost"
+                  style={{
+                    minHeight: 32,
+                    padding: "4px 10px",
+                    fontSize: "0.78rem",
+                  }}
+                >
+                  Tickets
+                </Link>
+              </div>
+            ))}
           </div>
         </section>
-
-        {isConnected && pastMatches.length > 0 && (
-          <section className="prem-section">
-            <h2 className="prem-section-title">Past</h2>
-            <p className="prem-section-hint">
-              Finished or cancelled. Check tickets if you need results or claims.
-            </p>
-            <div className="prem-table-list">
-              {pastMatches.map((m) => {
-                const ticketsHref = `/play/match/${m.id.toString()}/tickets`;
-                return (
-                  <div
-                    key={`past-${String(m.id)}`}
-                    className="prem-table-card past"
-                  >
-                    <div>
-                      <div className="prem-table-title">
-                        Table #{m.id.toString()}
-                      </div>
-                      <p className="prem-table-meta">
-                        {m.status === MatchStatus.Resolved
-                          ? "Finished"
-                          : m.status === MatchStatus.Cancelled
-                            ? "Cancelled"
-                            : statusLabel(m.status)}
-                      </p>
-                    </div>
-                    {(m.ticket1 > 0n || m.ticket2 > 0n) && (
-                      <Link href={ticketsHref} className="prem-btn-ghost">
-                        Tickets &amp; results
-                      </Link>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
       </main>
-
-      <footer className="prem-footer">
-        © whotwhot · the card game, online. made by matt
-      </footer>
     </div>
   );
 }
