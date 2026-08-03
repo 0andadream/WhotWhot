@@ -106,12 +106,12 @@ export default function HomePage() {
       <section className="section" id="how">
         <div className="section-inner">
           <div className="eyebrow">How it works</div>
-          <h2>From “Play” to your first hand — under a minute.</h2>
+          <h2>From “Play” to your first hand, under a minute.</h2>
           <div className="steps">
             <div className="step">
               <div className="n">01</div>
               <h4>Tap Play</h4>
-              <p>Practice vs AI instantly — no wallet required for the demo table.</p>
+              <p>Practice vs AI instantly, no wallet required for the demo table.</p>
             </div>
             <div className="step">
               <div className="n">02</div>
@@ -121,7 +121,7 @@ export default function HomePage() {
             <div className="step">
               <div className="n">03</div>
               <h4>Winner takes both</h4>
-              <p>Escrow locks tickets; dual-confirm the winner and both NFTs transfer.</p>
+              <p>Escrow locks tickets; dual confirms the winner and both NFTs transfer.</p>
             </div>
           </div>
         </div>
