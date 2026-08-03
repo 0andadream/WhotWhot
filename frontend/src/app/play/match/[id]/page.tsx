@@ -174,8 +174,8 @@ export default function MatchPage() {
     return (
       <div className="app-shell">
         <header className="header">
-          <Link href="/" className="btn btn-ghost btn-sm connect-btn">
-            ← Lobby
+          <Link href="/play" className="btn btn-ghost btn-sm connect-btn">
+            ← Play
           </Link>
           <ConnectButton />
         </header>
@@ -198,8 +198,8 @@ export default function MatchPage() {
   return (
     <div className="app-shell">
       <header className="header">
-        <Link href="/" className="btn btn-ghost btn-sm connect-btn">
-          ← Lobby
+        <Link href="/play" className="btn btn-ghost btn-sm connect-btn">
+          ← Play
         </Link>
         <ConnectButton />
       </header>

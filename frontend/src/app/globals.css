@@ -771,24 +771,27 @@ img {
   }
 }
 
-/* ── Whot cards ───────────────────────────────────────────────── */
+/* ── Classic Whot cards (cream + bold red) ────────────────────── */
 .whot-card {
-  --card-w: 76px;
-  --card-h: 110px;
+  --card-w: 78px;
+  --card-h: 114px;
+  --whot-red: #b71c1c;
   width: var(--card-w);
   height: var(--card-h);
-  border-radius: 10px;
-  background: linear-gradient(160deg, #fffdf8 0%, var(--cream) 40%, #f0e6d4 100%);
-  color: var(--suit-red);
-  border: 1.5px solid var(--cream-edge);
+  border-radius: 8px;
+  background: #faf6ec;
+  background-image:
+    linear-gradient(180deg, #fffef9 0%, #f5edd8 100%);
+  color: var(--whot-red);
+  border: 1.5px solid #d4c4a8;
   box-shadow:
-    0 0 0 1px rgba(255, 209, 102, 0.2),
-    0 6px 14px rgba(0, 0, 0, 0.35);
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 4px 12px rgba(0, 0, 0, 0.32);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
-  padding: 6px 5px 8px;
+  padding: 5px 6px;
   position: relative;
   user-select: none;
   -webkit-user-select: none;
@@ -798,11 +801,20 @@ img {
   appearance: none;
   -webkit-appearance: none;
   font: inherit;
+  overflow: hidden;
+}
+.whot-card.classic::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(183, 28, 28, 0.12);
+  border-radius: 5px;
+  pointer-events: none;
 }
 @media (min-width: 768px) {
   .whot-card {
-    --card-w: 88px;
-    --card-h: 128px;
+    --card-w: 92px;
+    --card-h: 134px;
   }
 }
 
@@ -811,9 +823,9 @@ img {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
   box-shadow:
-    0 0 0 1px rgba(255, 209, 102, 0.45),
-    0 0 16px rgba(255, 209, 102, 0.35),
-    0 8px 16px rgba(0, 0, 0, 0.4);
+    0 0 0 1px rgba(255, 209, 102, 0.5),
+    0 0 14px rgba(255, 209, 102, 0.35),
+    0 6px 14px rgba(0, 0, 0, 0.35);
 }
 .whot-card.playable:hover,
 .whot-card.playable:focus-visible {
@@ -826,102 +838,109 @@ img {
   z-index: 6;
 }
 
-.whot-card .corner {
-  width: 100%;
+.whot-card .idx {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  padding-left: 2px;
+  align-items: center;
   line-height: 1;
-  font-weight: 800;
+  color: var(--whot-red);
+  position: relative;
+  z-index: 1;
+  width: fit-content;
 }
-.whot-card .corner .n {
+.whot-card .idx.top {
+  align-self: flex-start;
+}
+.whot-card .idx.bottom {
+  align-self: flex-end;
+  transform: rotate(180deg);
+}
+.whot-card .idx .n {
   font-size: 0.95rem;
+  font-weight: 800;
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: -0.02em;
 }
-.whot-card .corner .s {
-  font-size: 0.75rem;
+.whot-card .idx .w-mini {
+  font-size: 0.7rem;
+  font-weight: 900;
+  font-family: Georgia, "Times New Roman", serif;
   margin-top: 1px;
 }
-.whot-card .center-shape {
+.whot-card .face-center {
   flex: 1;
   display: grid;
   place-items: center;
-  width: 100%;
-  font-size: 2rem;
-  line-height: 1;
-  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.12));
+  position: relative;
+  z-index: 1;
 }
-.whot-card .center-shape svg {
-  width: 42px;
-  height: 42px;
+.whot-card .whot-mark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--whot-red);
 }
-@media (min-width: 768px) {
-  .whot-card .center-shape svg {
-    width: 50px;
-    height: 50px;
-  }
+.whot-card .whot-word {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 900;
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
 }
-.whot-card .special-tag {
-  font-size: 0.55rem;
+.whot-card .whot-num {
+  font-family: Georgia, "Times New Roman", serif;
   font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: 0.85;
-  text-align: center;
-  max-width: 100%;
-  line-height: 1.1;
+  font-size: 1.1rem;
 }
 
 .whot-card.whot-wild {
-  background: linear-gradient(160deg, #fff8e7, #f5d76e 55%, #e8b84a);
-  color: #7a1a12;
-  border-color: var(--gold-deep);
-}
-.whot-card.whot-wild .center-shape {
-  font-family: var(--font-mark);
-  font-size: 1.35rem;
-  letter-spacing: 0.04em;
+  background: linear-gradient(165deg, #fffef5 0%, #f8e8c8 55%, #f0d9a0 100%);
+  border-color: #c9a227;
 }
 
 .whot-card.back {
   background:
-    linear-gradient(145deg, rgba(255, 209, 102, 0.15), transparent 40%),
-    linear-gradient(160deg, #8b1515 0%, #5c0d0d 45%, #3a0808 100%);
-  color: var(--gold);
-  border-color: rgba(255, 209, 102, 0.55);
+    repeating-linear-gradient(
+      45deg,
+      #6b1010 0 6px,
+      #7a1414 6px 12px
+    ),
+    linear-gradient(160deg, #8b1515 0%, #4a0a0a 100%);
+  background-blend-mode: multiply;
+  color: #f5e6c8;
+  border-color: #c9a227;
   justify-content: center;
   align-items: center;
-  font-family: var(--font-mark);
-  font-size: 0.95rem;
-  letter-spacing: 0.06em;
   padding: 0;
+}
+.whot-card.back::before {
+  inset: 6px;
+  border: 1.5px solid rgba(245, 230, 200, 0.45);
+  border-radius: 4px;
 }
 .whot-card.back::after {
   content: "WHOT";
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  position: relative;
+  z-index: 1;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 900;
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
+  color: #f5e6c8;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
 }
 .whot-card.back.sm {
   --card-w: 44px;
   --card-h: 64px;
-  font-size: 0.55rem;
-  border-radius: 6px;
+  border-radius: 5px;
+}
+.whot-card.back.sm::after {
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
 }
 
-/* suit colors */
-.whot-card.shape-circle {
-  color: var(--suit-red);
-}
-.whot-card.shape-triangle {
-  color: var(--suit-blue);
-}
-.whot-card.shape-cross {
-  color: var(--suit-green);
-}
-.whot-card.shape-square {
-  color: var(--suit-purple);
-}
-.whot-card.shape-star {
-  color: var(--suit-orange);
+.mode-card .icon {
+  display: none;
 }
 
 .shape-picker {

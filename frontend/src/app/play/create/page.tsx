@@ -69,8 +69,8 @@ export default function CreateMatchPage() {
   return (
     <div className="app-shell">
       <header className="header">
-        <Link href="/" className="btn btn-ghost btn-sm connect-btn">
-          ← Back
+        <Link href="/play" className="btn btn-ghost btn-sm connect-btn">
+          ← Play
         </Link>
         <ConnectButton />
       </header>

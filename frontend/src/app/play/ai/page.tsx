@@ -13,8 +13,8 @@ export default function PlayAiPage() {
   return (
     <div className="app-shell shell-wide">
       <header className="header">
-        <Link href="/" className="btn btn-ghost btn-sm connect-btn">
-          ← Lobby
+        <Link href="/play" className="btn btn-ghost btn-sm connect-btn">
+          ← Play
         </Link>
         <div className="pill">Practice · vs AI</div>
       </header>
