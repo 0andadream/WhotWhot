@@ -16,7 +16,13 @@ import {
   getSavedDisplayName,
   setMatchPlayerName,
 } from "@/lib/displayName";
-import { fetchRelayMoves, postRelayMove } from "@/lib/matchRelayClient";
+import {
+  fetchRelayMoves,
+  loadLocalRelay,
+  postRelayMove,
+  pushRelayReplace,
+  saveLocalRelay,
+} from "@/lib/matchRelayClient";
 import type { Address } from "viem";
 
 function rebuildGame(
@@ -56,12 +62,17 @@ export default function MatchPage() {
   const [p2Name, setP2Name] = useState("Opponent");
   const [syncing, setSyncing] = useState(false);
   const [relayOk, setRelayOk] = useState(true);
+  const [relayStorage, setRelayStorage] = useState<"redis" | "memory" | null>(
+    null
+  );
 
   const postingLock = useRef(false);
   const actionsRef = useRef<GameAction[]>([]);
   actionsRef.current = actions;
   const namesRef = useRef({ p1: p1Name, p2: p2Name });
   namesRef.current = { p1: p1Name, p2: p2Name };
+  const failStreak = useRef(0);
+  const pollMs = useRef(3000);
 
   const humanPlayer: PlayerId | null = useMemo(() => {
     if (!match || !address) return null;
@@ -97,8 +108,9 @@ export default function MatchPage() {
     (list: GameAction[], seed: string, n1: string, n2: string) => {
       setActions(list);
       setGame(rebuildGame(seed, n1, n2, list));
+      if (matchKey) saveLocalRelay(matchKey, list);
     },
-    []
+    [matchKey]
   );
 
   /** Pull shared move log from relay (both players) */
@@ -109,33 +121,103 @@ export default function MatchPage() {
     setSyncing(true);
     try {
       const data = await fetchRelayMoves(matchKey);
+      if (data.storage) setRelayStorage(data.storage);
+
+      let serverActions = data.actions || [];
+      const local = loadLocalRelay(matchKey);
+
+      // If this client has a longer log (POST failed earlier / other instance), push it
+      if (
+        address &&
+        local.length > serverActions.length &&
+        humanPlayer
+      ) {
+        try {
+          const pushed = await pushRelayReplace(
+            matchKey,
+            address as Address,
+            local
+          );
+          serverActions = pushed.actions || local;
+          if (pushed.storage) setRelayStorage(pushed.storage);
+        } catch {
+          // keep longer of local/server for display
+          if (local.length > serverActions.length) serverActions = local;
+        }
+      } else if (local.length > serverActions.length) {
+        serverActions = local;
+      }
+
+      failStreak.current = 0;
+      pollMs.current = 3000;
       setRelayOk(true);
+      if (data.warning && data.storage === "memory") {
+        setMsg(
+          "Move relay is using temporary memory (no Redis). Moves may not reach the other player until UPSTASH_REDIS_REST_URL is set on Vercel."
+        );
+      } else if (!data.warning) {
+        setMsg((m) =>
+          m && (m.includes("Relay") || m.includes("rate limit") || m.includes("RPC"))
+            ? null
+            : m
+        );
+      }
+
       applyActionList(
-        data.actions || [],
+        serverActions,
         match.gameSeed,
         namesRef.current.p1,
         namesRef.current.p2
       );
     } catch (e) {
+      failStreak.current += 1;
+      pollMs.current = Math.min(12_000, 3000 * Math.min(failStreak.current, 4));
       setRelayOk(false);
       console.warn("relay pull", e);
-      // Keep current board; show soft warning once
-      setMsg((m) =>
-        m?.includes("Relay")
-          ? m
-          : "Relay sync issue. Check connection, then Refresh board."
-      );
+      // Keep local board; only warn after repeated failures
+      const local = loadLocalRelay(matchKey);
+      if (local.length > actionsRef.current.length && match.gameSeed) {
+        applyActionList(
+          local,
+          match.gameSeed,
+          namesRef.current.p1,
+          namesRef.current.p2
+        );
+      }
+      if (failStreak.current >= 2) {
+        const detail =
+          e instanceof Error ? e.message : "Check connection, then Refresh board.";
+        setMsg(`Relay sync issue: ${detail}`);
+      }
     } finally {
       setSyncing(false);
     }
-  }, [matchKey, match?.gameSeed, match?.status, applyActionList]);
+  }, [
+    matchKey,
+    match?.gameSeed,
+    match?.status,
+    applyActionList,
+    address,
+    humanPlayer,
+  ]);
 
-  // Poll relay every 1.5s so both ends stay live
+  // Poll relay with adaptive interval (slower after RPC blips)
   useEffect(() => {
     if (!match || match.status !== MatchStatus.Active) return;
-    void pullRelay();
-    const id = window.setInterval(() => void pullRelay(), 1500);
-    return () => window.clearInterval(id);
+    let cancelled = false;
+    let timer: number | undefined;
+
+    const tick = async () => {
+      if (cancelled) return;
+      await pullRelay();
+      if (cancelled) return;
+      timer = window.setTimeout(tick, pollMs.current);
+    };
+    void tick();
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match?.status, match?.gameSeed, matchKey]);
 
@@ -170,7 +252,7 @@ export default function MatchPage() {
 
       postingLock.current = true;
       setPosting(true);
-      // Optimistic UI
+      // Optimistic UI + local backup (survives refresh)
       applyActionList(
         optimistic,
         match.gameSeed,
@@ -185,6 +267,8 @@ export default function MatchPage() {
           action
         );
         setRelayOk(true);
+        failStreak.current = 0;
+        if (data.storage) setRelayStorage(data.storage);
         applyActionList(
           data.actions,
           match.gameSeed,
@@ -193,16 +277,14 @@ export default function MatchPage() {
         );
         setMsg(null);
       } catch (e: unknown) {
-        applyActionList(
-          prior,
-          match.gameSeed,
-          namesRef.current.p1,
-          namesRef.current.p2
-        );
-        setMsg(
+        // Keep optimistic move locally so refresh / retry can push it
+        saveLocalRelay(matchKey, optimistic);
+        const detail =
           e instanceof Error
             ? e.message
-            : "Could not send move. Check internet and try again."
+            : "Could not send move. Check internet and try again.";
+        setMsg(
+          `${detail} Move saved on this device. Tap Refresh board to retry sync.`
         );
       } finally {
         postingLock.current = false;
@@ -347,6 +429,11 @@ export default function MatchPage() {
           <p className="muted" style={{ marginTop: 6, fontSize: "0.8rem" }}>
             Moves synced: {actions.length}
             {relayOk ? "" : " · relay offline"}
+            {relayStorage === "memory"
+              ? " · storage: temp (set Upstash Redis on Vercel for multiplayer)"
+              : relayStorage === "redis"
+                ? " · storage: redis"
+                : ""}
           </p>
 
           <div className="stat-row" style={{ marginTop: 12 }}>

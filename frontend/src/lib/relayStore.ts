@@ -1,9 +1,9 @@
 /**
  * Match move relay storage.
- * - Production: Upstash Redis REST (UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN)
- * - Local / no Redis: in-memory Map (works for `next dev`)
+ * - Production: Upstash / Vercel KV REST
+ * - Local / no Redis: in-memory Map (works for `next dev` only)
  *
- * For Vercel multiplayer, set free Upstash Redis so both players share one store.
+ * Vercel multiplayer requires Redis env so both players share one log.
  */
 
 import type { GameAction } from "@/lib/whot/types";
@@ -22,19 +22,41 @@ function mem(): Map<string, RelayPayload> {
   return g.__whotRelay;
 }
 
-function upstashConfigured() {
-  return !!(
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN
+/** Accept Upstash classic names or Vercel KV marketplace names */
+export function upstashConfigured(): boolean {
+  return !!(redisUrl() && redisToken());
+}
+
+function redisUrl(): string | undefined {
+  return (
+    process.env.UPSTASH_REDIS_REST_URL ||
+    process.env.KV_REST_API_URL ||
+    process.env.KV_URL ||
+    undefined
   );
 }
 
-async function upstashCommand(command: (string | number)[]) {
-  const base = process.env.UPSTASH_REDIS_REST_URL!.replace(/\/$/, "");
+function redisToken(): string | undefined {
+  return (
+    process.env.UPSTASH_REDIS_REST_TOKEN ||
+    process.env.KV_REST_API_TOKEN ||
+    process.env.KV_REST_API_READ_ONLY_TOKEN ||
+    undefined
+  );
+}
+
+export function relayStorageMode(): "redis" | "memory" {
+  return upstashConfigured() ? "redis" : "memory";
+}
+
+export async function upstashCommand(
+  command: (string | number)[]
+): Promise<{ result: unknown }> {
+  const base = redisUrl()!.replace(/\/$/, "");
   const res = await fetch(base, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
+      Authorization: `Bearer ${redisToken()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(command),
@@ -66,7 +88,8 @@ export async function getRelay(matchId: string): Promise<RelayPayload> {
       };
     } catch (e) {
       console.error("relay get upstash", e);
-      return { actions: [], updatedAt: 0 };
+      // Fall through to memory so a Redis blip does not wipe a warm instance
+      return mem().get(matchId) || { actions: [], updatedAt: 0 };
     }
   }
   return mem().get(matchId) || { actions: [], updatedAt: 0 };
@@ -76,13 +99,14 @@ export async function setRelay(
   matchId: string,
   payload: RelayPayload
 ): Promise<void> {
+  // Always keep memory warm for this instance
+  mem().set(matchId, payload);
+
   if (upstashConfigured()) {
     const body = JSON.stringify(payload);
     // 7 day TTL
     await upstashCommand(["SET", redisKey(matchId), body, "EX", 604800]);
-    return;
   }
-  mem().set(matchId, payload);
 }
 
 export async function appendRelayAction(

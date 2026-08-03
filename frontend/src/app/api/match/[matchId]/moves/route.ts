@@ -1,33 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createPublicClient, http, isAddress, type Chain } from "viem";
-import { ADDRESSES, whotEscrowAbi } from "@/lib/contracts";
+import { isAddress } from "viem";
 import {
   appendRelayAction,
   getRelay,
   isGameAction,
+  relayStorageMode,
   setRelay,
 } from "@/lib/relayStore";
+import { loadMatchMeta, rememberMatchMeta } from "@/lib/matchMetaCache";
 import type { GameAction } from "@/lib/whot/types";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-/** Minimal Base chain (avoid importing full viem/chains bundle) */
-const baseChain = {
-  id: 8453,
-  name: "Base",
-  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-  rpcUrls: { default: { http: ["https://mainnet.base.org"] } },
-} as const satisfies Chain;
-
-const client = createPublicClient({
-  chain: baseChain,
-  transport: http(
-    process.env.BASE_RPC_URL ||
-      process.env.NEXT_PUBLIC_BASE_RPC ||
-      "https://mainnet.base.org"
-  ),
-});
 
 function parseMatchId(raw: string): bigint | null {
   try {
@@ -38,18 +22,12 @@ function parseMatchId(raw: string): bigint | null {
   }
 }
 
-async function loadMatch(matchId: bigint) {
-  return client.readContract({
-    address: ADDRESSES.whotEscrow,
-    abi: whotEscrowAbi,
-    functionName: "getMatch",
-    args: [matchId],
-  }) as Promise<{
-    player1: `0x${string}`;
-    player2: `0x${string}`;
-    status: number;
-    gameSeed: `0x${string}`;
-  }>;
+function shortRpcError(msg: string): string {
+  if (/rate limit|over rate/i.test(msg)) {
+    return "Base RPC rate limited. Retry in a moment.";
+  }
+  if (msg.length > 160) return msg.slice(0, 160) + "…";
+  return msg;
 }
 
 /** GET /api/match/:id/moves — full action log for both clients */
@@ -64,28 +42,75 @@ export async function GET(
   }
 
   try {
-    // Ensure match exists on-chain (status Active = 2 or Waiting = 1)
-    const m = await loadMatch(id);
-    if (!m || m.status === 0) {
+    const payload = await getRelay(params.matchId);
+    const { meta, from, error: rpcError } = await loadMatchMeta(
+      params.matchId,
+      id
+    );
+
+    // Soft-fail: still return moves if RPC is down (cached meta or none)
+    if (!meta) {
+      // Unknown match vs RPC blip: if we never saw it and log empty, 404-ish
+      if (payload.actions.length === 0 && payload.updatedAt === 0) {
+        return NextResponse.json(
+          {
+            error: shortRpcError(
+              rpcError || "Could not load match (RPC). Try again."
+            ),
+            storage: relayStorageMode(),
+          },
+          { status: 503 }
+        );
+      }
+      return NextResponse.json({
+        matchId: params.matchId,
+        actions: payload.actions,
+        updatedAt: payload.updatedAt,
+        storage: relayStorageMode(),
+        metaSource: "none",
+        warning: rpcError ? shortRpcError(rpcError) : undefined,
+      });
+    }
+
+    if (meta.status === 0) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
 
-    const payload = await getRelay(params.matchId);
     return NextResponse.json({
       matchId: params.matchId,
       actions: payload.actions,
       updatedAt: payload.updatedAt,
-      status: m.status,
-      gameSeed: m.gameSeed,
-      player1: m.player1,
-      player2: m.player2,
+      status: meta.status,
+      gameSeed: meta.gameSeed,
+      player1: meta.player1,
+      player2: meta.player2,
+      storage: relayStorageMode(),
+      metaSource: from,
+      warning: rpcError ? shortRpcError(rpcError) : undefined,
     });
   } catch (e) {
     console.error("GET moves", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Failed to load moves" },
-      { status: 500 }
-    );
+    // Last resort: return empty-ok only if we can still read relay
+    try {
+      const payload = await getRelay(params.matchId);
+      return NextResponse.json({
+        matchId: params.matchId,
+        actions: payload.actions,
+        updatedAt: payload.updatedAt,
+        storage: relayStorageMode(),
+        warning: shortRpcError(
+          e instanceof Error ? e.message : "Failed to load moves"
+        ),
+      });
+    } catch {
+      return NextResponse.json(
+        {
+          error: e instanceof Error ? e.message : "Failed to load moves",
+          storage: relayStorageMode(),
+        },
+        { status: 500 }
+      );
+    }
   }
 }
 
@@ -113,21 +138,45 @@ export async function POST(
 
   const address = (body.address || "").toLowerCase();
   if (!isAddress(address)) {
-    return NextResponse.json({ error: "Valid address required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Valid address required" },
+      { status: 400 }
+    );
   }
 
   try {
-    const m = await loadMatch(id);
-    if (!m || m.status !== 2) {
-      // 2 = Active
+    // Prefer cache; force refresh only if missing
+    let { meta, error: rpcError } = await loadMatchMeta(params.matchId, id);
+    if (!meta) {
+      // One forced retry for posts (auth needs real players)
+      const retry = await loadMatchMeta(params.matchId, id, {
+        forceRefresh: true,
+      });
+      meta = retry.meta;
+      rpcError = retry.error;
+    }
+
+    if (!meta) {
+      return NextResponse.json(
+        {
+          error: shortRpcError(
+            rpcError || "Could not verify match (RPC rate limit). Retry."
+          ),
+          storage: relayStorageMode(),
+        },
+        { status: 503 }
+      );
+    }
+
+    if (meta.status !== 2) {
       return NextResponse.json(
         { error: "Match is not active" },
         { status: 400 }
       );
     }
 
-    const p1 = m.player1.toLowerCase();
-    const p2 = m.player2.toLowerCase();
+    const p1 = meta.player1.toLowerCase();
+    const p2 = meta.player2.toLowerCase();
     if (address !== p1 && address !== p2) {
       return NextResponse.json(
         { error: "Only match players can post moves" },
@@ -135,7 +184,9 @@ export async function POST(
       );
     }
 
-    // Full replace (recovery / rare) — must still be a player
+    rememberMatchMeta(params.matchId, meta);
+
+    // Full replace (recovery) — must still be a player
     if (Array.isArray(body.replace)) {
       const actions = body.replace.filter(isGameAction);
       const payload = { actions, updatedAt: Date.now() };
@@ -144,6 +195,7 @@ export async function POST(
         matchId: params.matchId,
         actions: payload.actions,
         updatedAt: payload.updatedAt,
+        storage: relayStorageMode(),
       });
     }
 
@@ -152,7 +204,6 @@ export async function POST(
     }
 
     const action = body.action as GameAction;
-    // Player can only act as themselves
     const slot = address === p1 ? "p1" : "p2";
     if (action.player !== slot) {
       return NextResponse.json(
@@ -161,11 +212,21 @@ export async function POST(
       );
     }
 
-    // Optional: reject if not their turn based on current log length (light check)
     const cur = await getRelay(params.matchId);
-    // Don't allow huge spam
     if (cur.actions.length > 500) {
       return NextResponse.json({ error: "Match log too long" }, { status: 400 });
+    }
+
+    // Dedup: ignore exact last action (double-tap / double poll race)
+    const last = cur.actions[cur.actions.length - 1];
+    if (last && JSON.stringify(last) === JSON.stringify(action)) {
+      return NextResponse.json({
+        matchId: params.matchId,
+        actions: cur.actions,
+        updatedAt: cur.updatedAt,
+        storage: relayStorageMode(),
+        deduped: true,
+      });
     }
 
     const next = await appendRelayAction(params.matchId, action);
@@ -173,11 +234,17 @@ export async function POST(
       matchId: params.matchId,
       actions: next.actions,
       updatedAt: next.updatedAt,
+      storage: relayStorageMode(),
     });
   } catch (e) {
     console.error("POST moves", e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Failed to post move" },
+      {
+        error: shortRpcError(
+          e instanceof Error ? e.message : "Failed to post move"
+        ),
+        storage: relayStorageMode(),
+      },
       { status: 500 }
     );
   }
