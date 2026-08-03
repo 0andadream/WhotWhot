@@ -25,6 +25,10 @@ export type MatchSummary = {
   status: number;
   gameSeed: `0x${string}`;
   role: "host" | "guest";
+  /** Dual-confirm winner if both results agree */
+  winner?: Address | null;
+  startedAt?: number;
+  createdAt?: number;
 };
 
 const STATUS_LABEL: Record<number, string> = {
@@ -50,10 +54,84 @@ export function useOpenMatches() {
     chainId: 8453,
     query: {
       enabled: escrowReady,
-      refetchInterval: 20_000,
+      refetchInterval: 12_000,
     },
   });
   return { matchIds: (data as bigint[] | undefined) ?? [], refetch, isLoading };
+}
+
+/** Open waiting tables with host + ticket info (lobby list). */
+export function useOpenTables() {
+  const publicClient = usePublicClient({ chainId: 8453 });
+  const { matchIds, refetch: refetchIds, isLoading: idsLoading } =
+    useOpenMatches();
+  const [tables, setTables] = useState<MatchSummary[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!publicClient || !escrowReady) {
+      setTables([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const rows = await Promise.all(
+        matchIds.map(async (id) => {
+          try {
+            const m = (await publicClient.readContract({
+              address: ADDRESSES.whotEscrow,
+              abi: whotEscrowAbi,
+              functionName: "getMatch",
+              args: [id],
+            })) as {
+              player1: Address;
+              player2: Address;
+              ticket1: bigint;
+              ticket2: bigint;
+              status: number;
+              gameSeed: `0x${string}`;
+              createdAt?: number | bigint;
+            };
+            if (m.status !== MatchStatus.Waiting) return null;
+            return {
+              id,
+              player1: m.player1,
+              player2: m.player2,
+              ticket1: m.ticket1,
+              ticket2: m.ticket2,
+              status: m.status,
+              gameSeed: m.gameSeed,
+              role: "guest" as const,
+              createdAt:
+                m.createdAt != null ? Number(m.createdAt) : undefined,
+            } satisfies MatchSummary;
+          } catch {
+            return null;
+          }
+        })
+      );
+      setTables(
+        rows.filter(Boolean).sort((a, b) =>
+          a!.id < b!.id ? 1 : -1
+        ) as MatchSummary[]
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [publicClient, matchIds]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return {
+    tables,
+    loading: idsLoading || loading,
+    refetch: async () => {
+      await refetchIds();
+      await load();
+    },
+  };
 }
 
 /**
@@ -125,10 +203,22 @@ export function useMyMatches() {
           ticket2: bigint;
           status: number;
           gameSeed: `0x${string}`;
+          player1Result?: Address;
+          player2Result?: Address;
+          startedAt?: number | bigint;
+          createdAt?: number | bigint;
         };
         const p1 = m.player1.toLowerCase();
         const p2 = m.player2.toLowerCase();
         if (p1 !== me && p2 !== me) continue;
+
+        const r1 = (m.player1Result || "").toLowerCase();
+        const r2 = (m.player2Result || "").toLowerCase();
+        const zero = "0x0000000000000000000000000000000000000000";
+        let winner: Address | null = null;
+        if (r1 && r1 !== zero && r1 === r2) {
+          winner = m.player1Result as Address;
+        }
 
         const summary: MatchSummary = {
           id: row.id,
@@ -139,6 +229,9 @@ export function useMyMatches() {
           status: m.status,
           gameSeed: m.gameSeed,
           role: p1 === me ? "host" : "guest",
+          winner,
+          startedAt: m.startedAt != null ? Number(m.startedAt) : undefined,
+          createdAt: m.createdAt != null ? Number(m.createdAt) : undefined,
         };
 
         if (
