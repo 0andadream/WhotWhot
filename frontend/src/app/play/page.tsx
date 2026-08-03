@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ConnectButton } from "@/components/ConnectButton";
+import { SiteNav } from "@/components/SiteNav";
 import { useAccount, useWriteContract } from "wagmi";
 import {
   useCountdown,
@@ -19,7 +19,6 @@ import {
 } from "@/hooks/useEscrow";
 import { ADDRESSES, erc20Abi, randomBuyerAbi } from "@/lib/contracts";
 import { PlayGuide } from "@/components/PlayGuide";
-import { BrandLogo } from "@/components/BrandLogo";
 import { stringToHex, parseUnits } from "viem";
 
 type Tab = "modes" | "tables" | "guide";
@@ -96,16 +95,16 @@ export default function PlayLobbyPage() {
   };
 
   return (
-    <div className="app-shell shell-wide">
+    <div className="ds">
+      <SiteNav />
+      <div className="app-shell shell-wide">
       <header className="header">
         <div className="logo-row">
-          <BrandLogo href="/" size={40} withWordmark={false} />
           <div>
             <h1>Play</h1>
             <p>WhotWhot · Base</p>
           </div>
         </div>
-        <ConnectButton />
       </header>
 
       <section className="stat-row">
@@ -296,6 +295,7 @@ export default function PlayLobbyPage() {
         <Link href="/" className="btn btn-ghost btn-sm">
           Home
         </Link>
+      </div>
       </div>
     </div>
   );

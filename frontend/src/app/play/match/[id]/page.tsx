@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ConnectButton } from "@/components/ConnectButton";
+import { SiteNav } from "@/components/SiteNav";
 import { GameBoard } from "@/components/GameBoard";
 import { useAccount } from "wagmi";
 import { useEscrowActions, useMatch } from "@/hooks/useEscrow";
@@ -180,22 +180,27 @@ export default function MatchPage() {
 
   if (!matchId) {
     return (
-      <div className="app-shell shell-wide">
-        <div className="alert">Invalid match id</div>
+      <div className="ds">
+        <SiteNav />
+        <div className="app-shell shell-wide">
+          <div className="alert">Invalid match id</div>
+        </div>
       </div>
     );
   }
 
   if (!match) {
     return (
-      <div className="app-shell shell-wide">
-        <header className="header">
-          <Link href="/play" className="btn btn-ghost btn-sm connect-btn">
-            ← Play
-          </Link>
-          <ConnectButton />
-        </header>
-        <p className="muted">Loading match…</p>
+      <div className="ds">
+        <SiteNav />
+        <div className="app-shell shell-wide">
+          <header className="header">
+            <Link href="/play" className="btn btn-ghost btn-sm">
+              ← Play
+            </Link>
+          </header>
+          <p className="muted">Loading match…</p>
+        </div>
       </div>
     );
   }
@@ -215,12 +220,13 @@ export default function MatchPage() {
     match.player2 !== "0x0000000000000000000000000000000000000000";
 
   return (
-    <div className="app-shell shell-wide">
+    <div className="ds">
+      <SiteNav />
+      <div className="app-shell shell-wide">
       <header className="header">
-        <Link href="/play" className="btn btn-ghost btn-sm connect-btn">
+        <Link href="/play" className="btn btn-ghost btn-sm">
           ← Play
         </Link>
-        <ConnectButton />
       </header>
 
       <div className="card-panel">
@@ -300,6 +306,7 @@ export default function MatchPage() {
       {match.status === MatchStatus.Active && !humanPlayer && (
         <p className="muted">Spectating — connect as a match player to act.</p>
       )}
+      </div>
     </div>
   );
 }

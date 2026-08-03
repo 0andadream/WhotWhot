@@ -1,31 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { ConnectButton } from "@/components/ConnectButton";
-import { BrandLogo } from "@/components/BrandLogo";
+import { SiteNav } from "@/components/SiteNav";
 import { PlayGuide } from "@/components/PlayGuide";
 
 export default function GuidePage() {
   return (
-    <div className="page">
-      <nav className="nav">
-        <BrandLogo size={36} />
-        <div className="links">
-          <Link href="/play">Play</Link>
-          <Link href="/guide">Guide</Link>
-        </div>
-        <div className="spacer" />
-        <ConnectButton />
-      </nav>
+    <div className="ds">
+      <SiteNav />
 
       <main className="guide-page">
         <header className="guide-hero">
-          <div className="eyebrow">Play guide</div>
+          <div className="eyebrow" style={{ color: "var(--muted)" }}>
+            Play guide
+          </div>
           <h1 className="guide-title">The cards &amp; what they do</h1>
           <p className="guide-subtitle">
             Nigerian Whot in plain language — shapes, numbers, and every special card.
           </p>
-          <div className="ctas" style={{ maxWidth: 360 }}>
+          <div className="ctas" style={{ maxWidth: 360, display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Link href="/play/ai" className="btn btn-primary">
               Practice vs AI
             </Link>
@@ -37,14 +30,14 @@ export default function GuidePage() {
 
         <PlayGuide />
 
-        <div className="guide-footer-cta">
+        <div className="guide-footer-cta" style={{ marginTop: 36, display: "flex", justifyContent: "center" }}>
           <Link href="/play" className="btn btn-primary btn-inline">
             Ready? Play
           </Link>
         </div>
       </main>
 
-      <footer className="footer">
+      <footer className="landing-footer">
         © whotwhot · the card game, online. made by matt
       </footer>
     </div>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { ConnectButton } from "@/components/ConnectButton";
+import { SiteNav } from "@/components/SiteNav";
 import { TicketPicker } from "@/components/TicketPicker";
 import { NameField } from "@/components/NameField";
 import { useAccount } from "wagmi";
@@ -71,12 +71,13 @@ function JoinInner() {
   };
 
   return (
-    <div className="app-shell shell-wide">
+    <div className="ds">
+      <SiteNav />
+      <div className="app-shell shell-wide">
       <header className="header">
-        <Link href="/play" className="btn btn-ghost btn-sm connect-btn">
+        <Link href="/play" className="btn btn-ghost btn-sm">
           ← Play
         </Link>
-        <ConnectButton />
       </header>
 
       <div className="card-panel stack panel-narrow">
@@ -138,13 +139,20 @@ function JoinInner() {
         </button>
         {error && <div className="alert">{error}</div>}
       </div>
+      </div>
     </div>
   );
 }
 
 export default function JoinPage() {
   return (
-    <Suspense fallback={<div className="app-shell">Loading…</div>}>
+    <Suspense
+      fallback={
+        <div className="ds">
+          <div className="app-shell">Loading…</div>
+        </div>
+      }
+    >
       <JoinInner />
     </Suspense>
   );

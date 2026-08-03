@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ConnectButton } from "@/components/ConnectButton";
+import { SiteNav } from "@/components/SiteNav";
 import { TicketPicker } from "@/components/TicketPicker";
 import { NameField } from "@/components/NameField";
 import { useAccount, usePublicClient } from "wagmi";
@@ -92,12 +92,13 @@ export default function CreateMatchPage() {
   };
 
   return (
-    <div className="app-shell shell-wide">
+    <div className="ds">
+      <SiteNav />
+      <div className="app-shell shell-wide">
       <header className="header">
-        <Link href="/play" className="btn btn-ghost btn-sm connect-btn">
+        <Link href="/play" className="btn btn-ghost btn-sm">
           ← Play
         </Link>
-        <ConnectButton />
       </header>
 
       <div className="card-panel stack panel-narrow">
@@ -154,6 +155,7 @@ export default function CreateMatchPage() {
           {busy ? "Confirm in wallet…" : "Stake & create match"}
         </button>
         {error && <div className="alert">{error}</div>}
+      </div>
       </div>
     </div>
   );

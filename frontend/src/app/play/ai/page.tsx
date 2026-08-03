@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { GameBoard } from "@/components/GameBoard";
+import { SiteNav } from "@/components/SiteNav";
 import { useMemo } from "react";
 
 export default function PlayAiPage() {
@@ -11,14 +12,17 @@ export default function PlayAiPage() {
   );
 
   return (
-    <div className="app-shell shell-wide">
-      <header className="header">
-        <Link href="/play" className="btn btn-ghost btn-sm connect-btn">
-          ← Play
-        </Link>
-        <div className="pill">Practice · vs AI</div>
-      </header>
-      <GameBoard seed={seed} vsAi p1Name="You" p2Name="AI" />
+    <div className="ds">
+      <SiteNav />
+      <div className="app-shell shell-wide">
+        <header className="header">
+          <Link href="/play" className="btn btn-ghost btn-sm">
+            ← Play
+          </Link>
+          <div className="pill">Practice · vs AI</div>
+        </header>
+        <GameBoard seed={seed} vsAi p1Name="You" p2Name="AI" />
+      </div>
     </div>
   );
 }

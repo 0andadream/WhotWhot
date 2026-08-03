@@ -551,13 +551,13 @@ img {
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, #f06a14 0%, var(--orange) 100%);
-  color: var(--cta-text);
-  box-shadow: 0 4px 16px rgba(232, 93, 4, 0.35), 0 1px 0 rgba(255, 255, 255, 0.12) inset;
+  background: #c41e3a;
+  color: #fff;
+  box-shadow: none;
 }
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, var(--orange-hover) 0%, var(--orange) 100%);
-  box-shadow: 0 8px 24px rgba(232, 93, 4, 0.4);
+  background: #e02d4a;
+  box-shadow: none;
   color: #fff;
 }
 

@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ConnectButton } from "@/components/ConnectButton";
-import { BrandLogo } from "@/components/BrandLogo";
+import { SiteNav } from "@/components/SiteNav";
 import { WhotCard } from "@/components/WhotCard";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import type { Card } from "@/lib/whot/types";
-import "./landing.css";
 
 const FAN_CARDS: Card[] = [
   { id: "f1", shape: "star", number: 8, special: "suspension" },
@@ -22,19 +20,7 @@ const FAN_CARDS: Card[] = [
 export default function HomePage() {
   return (
     <div className="landing">
-      {/* ── Nav ── */}
-      <nav className="landing-nav">
-        <BrandLogo size={36} />
-        <div className="nav-links">
-          <Link href="/play">Play</Link>
-          <Link href="/guide">Guide</Link>
-        </div>
-        <div className="nav-spacer" />
-        <span className="base-pill" title="Network">
-          Base
-        </span>
-        <ConnectButton />
-      </nav>
+      <SiteNav />
 
       {/* ── Hero ── */}
       <section className="landing-hero">
