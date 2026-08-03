@@ -615,6 +615,12 @@
   font-weight: 700;
   color: #fff;
 }
+/* Same white pill as Connect to buy / Buy ticket */
+.prem-mode-card .prem-mode-btn {
+  margin-top: auto;
+  align-self: flex-start;
+  pointer-events: none; /* whole card is the link */
+}
 
 .prem-table-list {
   display: flex;

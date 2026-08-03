@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SiteNav } from "@/components/SiteNav";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount, useConnect, useWriteContract } from "wagmi";
 import {
   useCountdown,
   useJackpotInfo,
@@ -19,8 +19,14 @@ import {
 import { ADDRESSES, erc20Abi, randomBuyerAbi } from "@/lib/contracts";
 import { stringToHex, parseUnits } from "viem";
 
+function isMobile() {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
 export default function PlayLobbyPage() {
   const { isConnected, address } = useAccount();
+  const { connect, connectors, isPending: connectPending } = useConnect();
   const jackpot = useJackpotInfo();
   const { stakeableCount, refetch: refetchTickets } = useUserTickets();
   const countdown = useCountdown(jackpot.drawingTime);
@@ -94,6 +100,32 @@ export default function PlayLobbyPage() {
 
   const needsTicket = isConnected && stakeableCount === 0;
 
+  const onConnectWallet = () => {
+    const hasInjected =
+      typeof window !== "undefined" &&
+      typeof (window as Window & { ethereum?: unknown }).ethereum !==
+        "undefined";
+    if (isMobile() && !hasInjected) {
+      window.location.href = `https://metamask.app.link/dapp/${window.location.host}${window.location.pathname}`;
+      return;
+    }
+    const primary =
+      connectors.find((c) => c.type === "injected") || connectors[0];
+    if (primary) {
+      connect({ connector: primary });
+    } else {
+      setStatusMsg("Install MetaMask or open this site in a wallet browser.");
+    }
+  };
+
+  const onBuyOrConnect = () => {
+    if (!isConnected) {
+      onConnectWallet();
+      return;
+    }
+    void onBuyTicket();
+  };
+
   return (
     <div className="landing-premium ds">
       <SiteNav />
@@ -128,18 +160,25 @@ export default function PlayLobbyPage() {
           </div>
           <div className="prem-panel-footer">
             <p className="prem-panel-hint">
-              {needsTicket
-                ? "Buy a ticket for this Megapot round, then create or join a table."
-                : "Only tickets for the current round can be staked."}
+              {!isConnected
+                ? "Connect your wallet to buy a Megapot ticket and stake."
+                : needsTicket
+                  ? "Buy a ticket for this Megapot round, then create or join a table."
+                  : "Only tickets for the current round can be staked."}
             </p>
             <button
               type="button"
               className="prem-btn-white"
-              disabled={!isConnected || buyStep !== "idle"}
-              onClick={() => void onBuyTicket()}
+              disabled={
+                connectPending ||
+                (isConnected && buyStep !== "idle")
+              }
+              onClick={onBuyOrConnect}
             >
               {!isConnected
-                ? "Connect to buy"
+                ? connectPending
+                  ? "Connecting…"
+                  : "Connect to buy"
                 : buyStep === "approve"
                   ? "Approve USDC…"
                   : buyStep === "buy"
@@ -166,7 +205,7 @@ export default function PlayLobbyPage() {
               <span className="prem-mode-tag free">Free</span>
               <h3>Practice vs AI</h3>
               <p>Learn the rules. No wallet, no tickets.</p>
-              <span className="prem-mode-cta">Play free →</span>
+              <span className="prem-btn-white sm prem-mode-btn">Play free</span>
             </Link>
             <Link
               href={escrowReady ? "/play/create" : "#"}
@@ -180,7 +219,7 @@ export default function PlayLobbyPage() {
               <span className="prem-mode-tag stake">Stake</span>
               <h3>Create a table</h3>
               <p>Lock 1 ticket. Share the table with a friend.</p>
-              <span className="prem-mode-cta">Create →</span>
+              <span className="prem-btn-white sm prem-mode-btn">Create</span>
             </Link>
             <Link
               href={escrowReady ? "/play/join" : "#"}
@@ -194,7 +233,7 @@ export default function PlayLobbyPage() {
               <span className="prem-mode-tag stake">Stake</span>
               <h3>Join a table</h3>
               <p>Enter the table number your host shared.</p>
-              <span className="prem-mode-cta">Join →</span>
+              <span className="prem-btn-white sm prem-mode-btn">Join</span>
             </Link>
           </div>
         </section>
