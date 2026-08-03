@@ -151,6 +151,24 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
+.float-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.float-layer-page {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.prem-main-over-float {
+  position: relative;
+  z-index: 1;
+}
+
 .hero-float {
   position: absolute;
   pointer-events: none;
@@ -179,9 +197,46 @@
   right: 4%;
   bottom: 28%;
 }
+/* Extra floaters for full-page guide backdrop */
+.float-layer-page .hero-float.f1 {
+  left: 3%;
+  top: 12%;
+}
+.float-layer-page .hero-float.f2 {
+  right: 4%;
+  top: 18%;
+}
+.float-layer-page .hero-float.f3 {
+  left: 6%;
+  top: 48%;
+}
+.float-layer-page .hero-float.f4 {
+  right: 5%;
+  top: 52%;
+}
+.float-layer-page .hero-float.f5 {
+  left: 12%;
+  bottom: 12%;
+}
+.float-layer-page .hero-float.f6 {
+  right: 10%;
+  bottom: 16%;
+}
+.float-layer-page .hero-float .whot-card {
+  width: 80px;
+  height: 116px;
+}
 @media (max-width: 640px) {
-  .hero-float {
+  .hero-stage .hero-float {
     display: none;
+  }
+  .float-layer-page .hero-float.f3,
+  .float-layer-page .hero-float.f4 {
+    display: none;
+  }
+  .float-layer-page .hero-float .whot-card {
+    width: 64px;
+    height: 92px;
   }
 }
 

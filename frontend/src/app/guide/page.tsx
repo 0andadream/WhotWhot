@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { SiteNav } from "@/components/SiteNav";
 import { PlayGuide } from "@/components/PlayGuide";
+import { FloatingWhotCards } from "@/components/landing/FloatingWhotCards";
 
 export default function GuidePage() {
   return (
     <div className="landing-premium ds">
       <SiteNav />
 
-      <main className="prem-main">
+      <FloatingWhotCards variant="page" />
+
+      <main className="prem-main prem-main-over-float">
         <header className="prem-page-hero">
           <p className="prem-how-eyebrow">Play guide</p>
           <h1 className="prem-h1 prem-h1-page">The cards &amp; what they do</h1>
@@ -39,7 +42,7 @@ export default function GuidePage() {
         </div>
       </main>
 
-      <footer className="prem-footer">
+      <footer className="prem-footer prem-main-over-float">
         © whotwhot · the card game, online. made by matt
       </footer>
     </div>
