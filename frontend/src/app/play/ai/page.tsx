@@ -11,9 +11,9 @@ export default function PlayAiPage() {
   );
 
   return (
-    <div className="app-shell">
+    <div className="app-shell shell-wide">
       <header className="header">
-        <Link href="/" className="btn btn-ghost connect-btn">
+        <Link href="/" className="btn btn-ghost btn-sm connect-btn">
           ← Lobby
         </Link>
         <div className="pill">Practice · vs AI</div>

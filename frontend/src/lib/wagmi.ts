@@ -1,9 +1,14 @@
 import { http, createConfig, createStorage, cookieStorage } from "wagmi";
 import { base } from "wagmi/chains";
-// Import from @wagmi/core — NOT wagmi/connectors — so webpack never pulls
-// baseAccount → @base-org/account → @coinbase/cdp-sdk → missing @x402/* modules.
 import { injected } from "@wagmi/core";
 
+/**
+ * Injected wallets work on desktop extensions and mobile in-app browsers
+ * (MetaMask, Coinbase Wallet, Rainbow, etc.).
+ * Mobile Safari without a wallet: Connect deep-links to MetaMask.
+ *
+ * Avoid wagmi/connectors barrel (Coinbase CDP / @x402 build breaks).
+ */
 export const config = createConfig({
   chains: [base],
   connectors: [

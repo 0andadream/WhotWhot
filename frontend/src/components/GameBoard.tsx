@@ -2,24 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { WhotCard } from "./WhotCard";
+import { SuitIcon } from "./SuitIcon";
 import {
   aiChooseAction,
   createGame,
   legalMoves,
   reduce,
 } from "@/lib/whot/engine";
-import { PLAYABLE_SHAPES, SHAPE_LABEL, SHAPE_SYMBOL } from "@/lib/whot/deck";
+import { PLAYABLE_SHAPES, SHAPE_LABEL } from "@/lib/whot/deck";
 import type { Card, GameState, PlayerId, Shape } from "@/lib/whot/types";
 
 interface Props {
   seed: string;
-  /** Human is always p1 in local/AI; in multiplayer set from wallet */
   humanPlayer?: PlayerId;
   vsAi?: boolean;
   p1Name?: string;
   p2Name?: string;
   onWin?: (winner: PlayerId) => void;
-  /** When provided, parent owns state (for multiplayer sync) */
   externalState?: GameState;
   onAction?: (action: Parameters<typeof reduce>[1]) => void;
   readOnly?: boolean;
@@ -55,7 +54,6 @@ export function GameBoard({
     if (state.winner && onWin) onWin(state.winner);
   }, [state.winner, onWin]);
 
-  // AI turn
   useEffect(() => {
     if (!vsAi || externalState || state.winner) return;
     const ai: PlayerId = humanPlayer === "p1" ? "p2" : "p1";
@@ -63,7 +61,7 @@ export function GameBoard({
     const t = setTimeout(() => {
       const action = aiChooseAction(state, ai);
       setLocal((s) => reduce(s, action));
-    }, 650);
+    }, 700);
     return () => clearTimeout(t);
   }, [state, vsAi, humanPlayer, externalState]);
 
@@ -75,7 +73,6 @@ export function GameBoard({
     [state, humanPlayer, myTurn]
   );
   const moveIds = new Set(moves.map((m) => m.id));
-
   const top = state.discard[state.discard.length - 1];
 
   const tryPlay = (card: Card) => {
@@ -102,102 +99,127 @@ export function GameBoard({
   };
 
   return (
-    <div className="stack">
-      <div className="banner">
-        {state.winner
-          ? state.winner === humanPlayer
-            ? "You win! 🎉"
-            : `${opp.name} wins`
-          : state.pendingPenalty
-            ? `Penalty: pick ${state.pendingPenalty.amount} — stack or accept`
-            : myTurn
-              ? "Your turn"
-              : `${opp.name}'s turn`}
-      </div>
+    <div className="stack game-layout">
+      <div className="stack">
+        <div
+          className={`banner ${state.winner ? "win" : myTurn ? "turn" : ""}`}
+        >
+          {state.winner
+            ? state.winner === humanPlayer
+              ? "You win! 🎉 Empty hand."
+              : `${opp.name} wins`
+            : state.pendingPenalty
+              ? `⚡ Pick ${state.pendingPenalty.amount} — stack same card or accept`
+              : myTurn
+                ? "Your turn — match shape or number"
+                : `${opp.name}'s turn…`}
+        </div>
 
-      <div className="card-panel">
-        <div className="muted" style={{ textAlign: "center", marginBottom: 8 }}>
-          {opp.name} · {opp.hand.length} cards
-        </div>
-        <div className="opp-hand">
-          {opp.hand.map((c) => (
-            <WhotCard key={c.id} faceDown small />
-          ))}
-        </div>
-      </div>
-
-      <div className="table">
-        <div className="table-stack">
-          <WhotCard faceDown />
-          <span className="muted">Market ({state.deck.length})</span>
-        </div>
-        <div className="table-stack">
-          <WhotCard card={top} />
-          <span className="pill">
-            Call: {SHAPE_SYMBOL[state.currentShape]} {SHAPE_LABEL[state.currentShape]}
-            {state.currentNumber !== 20 ? ` · #${state.currentNumber}` : ""}
-          </span>
-        </div>
-      </div>
-
-      {pickingShape && (
-        <div className="card-panel">
-          <h2>Call a shape</h2>
-          <div className="shape-picker">
-            {PLAYABLE_SHAPES.map((sh) => (
-              <button key={sh} type="button" onClick={() => confirmWhot(sh)}>
-                {SHAPE_SYMBOL[sh]}
-              </button>
-            ))}
+        <div className="felt-table">
+          <div className="muted" style={{ textAlign: "center", marginBottom: 6, position: "relative", zIndex: 1 }}>
+            {opp.name} · {opp.hand.length} cards
           </div>
-        </div>
-      )}
-
-      <div className="card-panel">
-        <div className="muted" style={{ marginBottom: 4 }}>
-          Your hand · {me.hand.length} cards
-        </div>
-        <div className="hand">
-          {me.hand.map((c) => (
-            <WhotCard
-              key={c.id}
-              card={c}
-              playable={myTurn && moveIds.has(c.id)}
-              selected={selected?.id === c.id}
-              onClick={myTurn ? () => tryPlay(c) : undefined}
-            />
-          ))}
-        </div>
-
-        {myTurn && (
-          <div className="row" style={{ marginTop: 10 }}>
-            {state.pendingPenalty ? (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() =>
-                  apply({ type: "ACCEPT_PENALTY", player: humanPlayer })
-                }
-              >
-                Accept pick {state.pendingPenalty.amount}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => apply({ type: "DRAW", player: humanPlayer })}
-              >
-                Go to market
-              </button>
+          <div className="opp-hand">
+            {opp.hand.slice(0, 12).map((c) => (
+              <WhotCard key={c.id} faceDown small />
+            ))}
+            {opp.hand.length > 12 && (
+              <span className="pill">+{opp.hand.length - 12}</span>
             )}
           </div>
+
+          <div className="table">
+            <button
+              type="button"
+              className="table-stack"
+              style={{ background: "none", border: "none", padding: 0 }}
+              onClick={() => {
+                if (myTurn && !state.pendingPenalty) {
+                  apply({ type: "DRAW", player: humanPlayer });
+                }
+              }}
+              disabled={!myTurn || !!state.pendingPenalty}
+              aria-label="Draw from market"
+            >
+              <WhotCard faceDown />
+              <span className="pill">Market · {state.deck.length}</span>
+            </button>
+            <div className="table-stack">
+              <WhotCard card={top} />
+              <span className="pill" style={{ gap: 6 }}>
+                <SuitIcon shape={state.currentShape === "whot" ? "circle" : state.currentShape} size={14} />
+                {SHAPE_LABEL[state.currentShape]}
+                {state.currentNumber !== 20 ? ` · #${state.currentNumber}` : ""}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {pickingShape && (
+          <div className="card-panel">
+            <h2>Call a shape</h2>
+            <p className="muted" style={{ marginBottom: 10 }}>
+              WHOT 20 — pick what opponents must play
+            </p>
+            <div className="shape-picker">
+              {PLAYABLE_SHAPES.map((sh) => (
+                <button key={sh} type="button" onClick={() => confirmWhot(sh)} aria-label={sh}>
+                  <SuitIcon shape={sh} size={28} />
+                </button>
+              ))}
+            </div>
+          </div>
         )}
+
+        <div className="hand-dock">
+          <div className="muted" style={{ marginBottom: 2, paddingLeft: 4 }}>
+            Your hand · {me.hand.length}
+          </div>
+          <div className="hand">
+            {me.hand.map((c) => (
+              <WhotCard
+                key={c.id}
+                card={c}
+                playable={myTurn && moveIds.has(c.id)}
+                selected={selected?.id === c.id}
+                onClick={myTurn ? () => tryPlay(c) : undefined}
+              />
+            ))}
+          </div>
+
+          {myTurn && (
+            <div className="action-bar" style={{ marginTop: 8 }}>
+              {state.pendingPenalty ? (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() =>
+                    apply({ type: "ACCEPT_PENALTY", player: humanPlayer })
+                  }
+                >
+                  Accept pick {state.pendingPenalty.amount}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => apply({ type: "DRAW", player: humanPlayer })}
+                >
+                  Go to market
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="log">
-        {[...state.log].reverse().map((line, i) => (
-          <div key={i}>{line}</div>
-        ))}
+      <div className="card-panel">
+        <h2>Match log</h2>
+        <div className="log">
+          {[...state.log].reverse().map((line, i) => (
+            <div key={i}>{line}</div>
+          ))}
+        </div>
       </div>
     </div>
   );

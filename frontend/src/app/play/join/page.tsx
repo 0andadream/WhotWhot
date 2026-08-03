@@ -43,7 +43,7 @@ function JoinInner() {
   return (
     <div className="app-shell">
       <header className="header">
-        <Link href="/" className="btn btn-ghost connect-btn">
+        <Link href="/" className="btn btn-ghost btn-sm connect-btn">
           ← Back
         </Link>
         <ConnectButton />
