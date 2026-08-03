@@ -12,19 +12,15 @@ export default function PlayAiPage() {
   );
 
   return (
-    <div className="landing-premium ds">
+    <div className="landing-premium ds play-fit-page">
       <SiteNav />
-      <div className="app-shell shell-wide">
-        <header className="header">
+      <div className="app-shell shell-wide play-fit-shell">
+        <header className="header play-fit-header">
           <Link href="/play" className="btn btn-ghost btn-sm">
             ← Play
           </Link>
-          <div className="pill">Practice · vs AI</div>
+          <div className="pill">vs AI</div>
         </header>
-        <p className="muted" style={{ marginBottom: 12, fontSize: "0.85rem" }}>
-          A chime plays when the AI finishes its turn. Tap the board once if
-          sound is blocked, or use Sound on/off above the table.
-        </p>
         <GameBoard seed={seed} vsAi p1Name="You" p2Name="AI" showSoundToggle />
       </div>
     </div>
