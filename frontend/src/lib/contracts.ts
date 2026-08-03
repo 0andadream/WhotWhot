@@ -61,15 +61,38 @@ export const erc721Abi = [
     ],
     outputs: [],
   },
+] as const;
+
+/** Megapot JackpotTicketNFT — list tickets by drawing */
+export const jackpotTicketNftAbi = [
+  ...erc721Abi,
   {
     type: "function",
-    name: "tokenOfOwnerByIndex",
+    name: "getUserTickets",
     stateMutability: "view",
     inputs: [
-      { name: "owner", type: "address" },
-      { name: "index", type: "uint256" },
+      { name: "_userAddress", type: "address" },
+      { name: "_drawingId", type: "uint256" },
     ],
-    outputs: [{ type: "uint256" }],
+    outputs: [
+      {
+        type: "tuple[]",
+        components: [
+          { name: "ticketId", type: "uint256" },
+          {
+            name: "ticket",
+            type: "tuple",
+            components: [
+              { name: "drawingId", type: "uint256" },
+              { name: "packedTicket", type: "uint256" },
+              { name: "referralScheme", type: "bytes32" },
+            ],
+          },
+          { name: "normals", type: "uint8[]" },
+          { name: "bonusball", type: "uint8" },
+        ],
+      },
+    ],
   },
 ] as const;
 

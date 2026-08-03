@@ -4,15 +4,16 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConnectButton } from "@/components/ConnectButton";
+import { TicketPicker } from "@/components/TicketPicker";
 import { useAccount, usePublicClient } from "wagmi";
 import { useEscrowActions, useEscrowReady } from "@/hooks/useEscrow";
-import { useTicketCount } from "@/hooks/useMegapot";
+import { useUserTickets } from "@/hooks/useUserTickets";
 import { ADDRESSES, whotEscrowAbi } from "@/lib/contracts";
 import { decodeEventLog, type Address, isAddress } from "viem";
 
 export default function CreateMatchPage() {
-  const { address, isConnected } = useAccount();
-  const { count } = useTicketCount();
+  const { isConnected } = useAccount();
+  const { tickets, loading, error: loadError, count } = useUserTickets();
   const escrowReady = useEscrowReady();
   const { createMatch, createChallenge, isPending } = useEscrowActions();
   const publicClient = usePublicClient({ chainId: 8453 });
@@ -25,11 +26,11 @@ export default function CreateMatchPage() {
 
   const onCreate = async () => {
     setError(null);
-    if (!ticketId.trim()) {
-      setError("Enter your Megapot ticket token ID to stake.");
+    if (!ticketId) {
+      setError("Tap a ticket below to stake it.");
       return;
     }
-    const id = BigInt(ticketId.trim());
+    const id = BigInt(ticketId);
     setBusy(true);
     try {
       let hash: `0x${string}`;
@@ -85,30 +86,28 @@ export default function CreateMatchPage() {
         <div className="ticket-badge">
           <div>
             <div className="muted">You have</div>
-            <strong>{isConnected ? (count ?? "…") : "—"}</strong>
+            <strong>{isConnected ? count : "—"}</strong>
             <span className="muted"> tickets</span>
           </div>
         </div>
 
         {!escrowReady && (
           <div className="alert">
-            Set <code>NEXT_PUBLIC_WHOT_ESCROW_ADDRESS</code> (
-            {ADDRESSES.whotEscrow})
+            Escrow not configured ({ADDRESSES.whotEscrow})
           </div>
         )}
 
-        <label className="muted">Ticket token ID to stake</label>
-        <input
-          className="input"
-          placeholder="e.g. 123456789…"
-          value={ticketId}
-          onChange={(e) => setTicketId(e.target.value)}
-        />
-        <p className="muted">
-          Find IDs on Basescan / OpenSea (Megapot Tickets collection) or after a
-          purchase event. We only show a count in the lobby — paste the id here
-          to stake.
-        </p>
+        {!isConnected ? (
+          <p className="muted">Connect your wallet to see your tickets.</p>
+        ) : (
+          <TicketPicker
+            tickets={tickets}
+            loading={loading}
+            error={loadError}
+            selectedId={ticketId}
+            onSelect={setTicketId}
+          />
+        )}
 
         <label className="muted">Challenge address (optional)</label>
         <input
@@ -121,7 +120,9 @@ export default function CreateMatchPage() {
         <button
           type="button"
           className="btn btn-primary"
-          disabled={!isConnected || !escrowReady || busy || isPending}
+          disabled={
+            !isConnected || !escrowReady || !ticketId || busy || isPending
+          }
           onClick={onCreate}
         >
           {busy ? "Confirm in wallet…" : "Stake & create match"}

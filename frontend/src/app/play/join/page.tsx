@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
 import { ConnectButton } from "@/components/ConnectButton";
+import { TicketPicker } from "@/components/TicketPicker";
 import { useAccount } from "wagmi";
 import { useEscrowActions, useEscrowReady, useMatch } from "@/hooks/useEscrow";
-import { useTicketCount } from "@/hooks/useMegapot";
+import { useUserTickets } from "@/hooks/useUserTickets";
 
 function JoinInner() {
   const params = useSearchParams();
@@ -16,7 +17,7 @@ function JoinInner() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const { isConnected } = useAccount();
-  const { count } = useTicketCount();
+  const { tickets, loading, error: loadError, count } = useUserTickets();
   const escrowReady = useEscrowReady();
   const { joinMatch, isPending } = useEscrowActions();
   const router = useRouter();
@@ -25,13 +26,17 @@ function JoinInner() {
 
   const onJoin = async () => {
     setError(null);
-    if (!matchId.trim() || !ticketId.trim()) {
-      setError("Match ID and ticket ID required.");
+    if (!matchId.trim()) {
+      setError("Enter a match ID.");
+      return;
+    }
+    if (!ticketId) {
+      setError("Tap a ticket below to stake it.");
       return;
     }
     setBusy(true);
     try {
-      await joinMatch(BigInt(matchId.trim()), BigInt(ticketId.trim()));
+      await joinMatch(BigInt(matchId.trim()), BigInt(ticketId));
       router.push(`/play/match/${matchId.trim()}`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Join failed");
@@ -58,7 +63,7 @@ function JoinInner() {
         <div className="ticket-badge">
           <div>
             <div className="muted">You have</div>
-            <strong>{isConnected ? (count ?? "…") : "—"}</strong>
+            <strong>{isConnected ? count : "—"}</strong>
             <span className="muted"> tickets</span>
           </div>
         </div>
@@ -74,22 +79,36 @@ function JoinInner() {
         {match && (
           <div className="pill">
             Host: {match.player1.slice(0, 6)}…{match.player1.slice(-4)} · ticket #
-            {match.ticket1.toString()} · status {match.status}
+            {match.ticket1.toString().length > 10
+              ? `${match.ticket1.toString().slice(0, 4)}…${match.ticket1.toString().slice(-4)}`
+              : match.ticket1.toString()}{" "}
+            · status {match.status}
           </div>
         )}
 
-        <label className="muted">Your ticket token ID</label>
-        <input
-          className="input"
-          value={ticketId}
-          onChange={(e) => setTicketId(e.target.value)}
-          placeholder="Token id to stake"
-        />
+        {!isConnected ? (
+          <p className="muted">Connect your wallet to see your tickets.</p>
+        ) : (
+          <TicketPicker
+            tickets={tickets}
+            loading={loading}
+            error={loadError}
+            selectedId={ticketId}
+            onSelect={setTicketId}
+          />
+        )}
 
         <button
           type="button"
           className="btn btn-primary"
-          disabled={!isConnected || !escrowReady || busy || isPending}
+          disabled={
+            !isConnected ||
+            !escrowReady ||
+            !ticketId ||
+            !matchId.trim() ||
+            busy ||
+            isPending
+          }
           onClick={onJoin}
         >
           {busy ? "Confirm…" : "Stake & join"}
