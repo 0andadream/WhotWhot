@@ -6,7 +6,11 @@ import { useRouter } from "next/navigation";
 import { ConnectButton } from "@/components/ConnectButton";
 import { TicketPicker } from "@/components/TicketPicker";
 import { useAccount, usePublicClient } from "wagmi";
-import { useEscrowActions, useEscrowReady } from "@/hooks/useEscrow";
+import {
+  useEscrowActions,
+  useEscrowReady,
+  rememberMatchId,
+} from "@/hooks/useEscrow";
 import { useUserTickets } from "@/hooks/useUserTickets";
 import { ADDRESSES, whotEscrowAbi } from "@/lib/contracts";
 import { decodeEventLog, type Address, isAddress } from "viem";
@@ -51,6 +55,7 @@ export default function CreateMatchPage() {
             });
             if (decoded.eventName === "MatchCreated") {
               const matchId = (decoded.args as { matchId: bigint }).matchId;
+              rememberMatchId(matchId);
               router.push(`/play/match/${matchId.toString()}`);
               return;
             }

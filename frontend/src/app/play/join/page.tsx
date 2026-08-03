@@ -6,7 +6,12 @@ import { Suspense, useState } from "react";
 import { ConnectButton } from "@/components/ConnectButton";
 import { TicketPicker } from "@/components/TicketPicker";
 import { useAccount } from "wagmi";
-import { useEscrowActions, useEscrowReady, useMatch } from "@/hooks/useEscrow";
+import {
+  useEscrowActions,
+  useEscrowReady,
+  useMatch,
+  rememberMatchId,
+} from "@/hooks/useEscrow";
 import { useUserTickets } from "@/hooks/useUserTickets";
 
 function JoinInner() {
@@ -37,6 +42,7 @@ function JoinInner() {
     setBusy(true);
     try {
       await joinMatch(BigInt(matchId.trim()), BigInt(ticketId));
+      rememberMatchId(matchId.trim());
       router.push(`/play/match/${matchId.trim()}`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Join failed");

@@ -323,6 +323,24 @@ export const whotEscrowAbi = [
     outputs: [{ type: "uint256" }],
   },
   {
+    type: "function",
+    name: "matches",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "uint256" }],
+    outputs: [
+      { name: "player1", type: "address" },
+      { name: "player2", type: "address" },
+      { name: "ticket1", type: "uint256" },
+      { name: "ticket2", type: "uint256" },
+      { name: "status", type: "uint8" },
+      { name: "player1Result", type: "address" },
+      { name: "player2Result", type: "address" },
+      { name: "createdAt", type: "uint64" },
+      { name: "startedAt", type: "uint64" },
+      { name: "gameSeed", type: "bytes32" },
+    ],
+  },
+  {
     type: "event",
     name: "MatchCreated",
     inputs: [

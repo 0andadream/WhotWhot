@@ -10,7 +10,13 @@ import {
   useTicketCount,
   useBuyRandomTicket,
 } from "@/hooks/useMegapot";
-import { useEscrowReady, useOpenMatches } from "@/hooks/useEscrow";
+import {
+  useEscrowReady,
+  useOpenMatches,
+  useMyMatches,
+  statusLabel,
+  MatchStatus,
+} from "@/hooks/useEscrow";
 import { ADDRESSES, erc20Abi, randomBuyerAbi } from "@/lib/contracts";
 import { PlayGuide } from "@/components/PlayGuide";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -27,6 +33,8 @@ export default function PlayLobbyPage() {
   const [tab, setTab] = useState<Tab>("modes");
   const escrowReady = useEscrowReady();
   const { matchIds } = useOpenMatches();
+  const { matches: myMatches, loading: myLoading, refetch: refetchMine } =
+    useMyMatches();
   const { isSuccess, error } = useBuyRandomTicket();
   const { writeContractAsync } = useWriteContract();
   const [buyStep, setBuyStep] = useState<"idle" | "approve" | "buy">("idle");
@@ -183,23 +191,92 @@ export default function PlayLobbyPage() {
       )}
 
       {tab === "tables" && (
-        <div className="card-panel stack">
-          <h2>Open tables</h2>
-          {!escrowReady && (
-            <p className="muted">Escrow address missing — stake modes offline.</p>
-          )}
-          {escrowReady && matchIds.length === 0 && (
-            <p className="muted">No open matches. Create one and share the ID.</p>
-          )}
-          {matchIds.map((id) => (
-            <Link
-              key={String(id)}
-              href={`/play/join?matchId=${id}`}
-              className="btn btn-ghost"
-            >
-              Table #{id.toString()}
-            </Link>
-          ))}
+        <div className="stack">
+          <div className="card-panel stack">
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <h2 style={{ margin: 0 }}>Your games</h2>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => void refetchMine()}
+              >
+                Refresh
+              </button>
+            </div>
+            <p className="muted">
+              Tables you created or joined. Once someone stakes, the game moves
+              here (it leaves “Open tables”).
+            </p>
+            {!isConnected && (
+              <p className="muted">Connect your wallet to see your tables.</p>
+            )}
+            {isConnected && myLoading && (
+              <p className="muted">Loading your matches…</p>
+            )}
+            {isConnected && !myLoading && myMatches.length === 0 && (
+              <p className="muted">
+                No active tables yet. Create one or join an open table.
+              </p>
+            )}
+            {myMatches.map((m) => {
+              const href =
+                m.status === MatchStatus.Waiting && m.role === "guest"
+                  ? `/play/join?matchId=${m.id}`
+                  : `/play/match/${m.id.toString()}`;
+              return (
+                <Link
+                  key={String(m.id)}
+                  href={href}
+                  className="btn btn-secondary"
+                  style={{
+                    justifyContent: "space-between",
+                    textAlign: "left",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    gap: 4,
+                    height: "auto",
+                    minHeight: 52,
+                    padding: "14px 18px",
+                  }}
+                >
+                  <span>
+                    Table #{m.id.toString()} ·{" "}
+                    {m.role === "host" ? "You host" : "You joined"}
+                  </span>
+                  <span className="muted" style={{ fontSize: "0.8rem" }}>
+                    {statusLabel(m.status)}
+                    {m.status === MatchStatus.Active
+                      ? " — tap to open board"
+                      : m.status === MatchStatus.Waiting
+                        ? " — waiting for opponent"
+                        : ""}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="card-panel stack">
+            <h2>Open tables</h2>
+            <p className="muted">
+              Waiting for a second player. Join with your ticket.
+            </p>
+            {!escrowReady && (
+              <p className="muted">Escrow address missing — stake modes offline.</p>
+            )}
+            {escrowReady && matchIds.length === 0 && (
+              <p className="muted">No open matches right now.</p>
+            )}
+            {matchIds.map((id) => (
+              <Link
+                key={String(id)}
+                href={`/play/join?matchId=${id}`}
+                className="btn btn-ghost"
+              >
+                Table #{id.toString()} — join
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 
