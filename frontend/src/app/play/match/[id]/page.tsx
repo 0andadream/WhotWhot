@@ -47,6 +47,59 @@ function rebuildGame(
   return s;
 }
 
+function ShareWaitingMatch({ matchId }: { matchId: string }) {
+  const [code, setCode] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      setCode((q.get("code") || "").toUpperCase());
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const joinPath = code
+    ? `/play/join?code=${encodeURIComponent(code)}`
+    : `/play/join?matchId=${matchId}`;
+
+  const onCopy = async () => {
+    try {
+      const url = `${window.location.origin}${joinPath}`;
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return (
+    <p className="muted" style={{ marginTop: 12 }}>
+      Share table <strong>#{matchId}</strong>
+      {code ? (
+        <>
+          {" "}
+          · code <strong style={{ color: "#fecaca" }}>{code}</strong>
+        </>
+      ) : null}{" "}
+      with your opponent:
+      <br />
+      <code style={{ fontSize: "0.75rem" }}>{joinPath}</code>
+      <br />
+      <button
+        type="button"
+        className="prem-btn-ghost sm"
+        style={{ marginTop: 8 }}
+        onClick={() => void onCopy()}
+      >
+        {copied ? "Copied!" : "Copy join link"}
+      </button>
+    </p>
+  );
+}
+
 export default function MatchPage() {
   const params = useParams();
   const matchId = useMemo(() => {
@@ -597,13 +650,7 @@ export default function MatchPage() {
           </div>
 
           {match.status === MatchStatus.Waiting && (
-            <p className="muted" style={{ marginTop: 12 }}>
-              Share table <strong>#{matchId.toString()}</strong> with your opponent:
-              <br />
-              <code style={{ fontSize: "0.75rem" }}>
-                /play/join?matchId={matchId.toString()}
-              </code>
-            </p>
+            <ShareWaitingMatch matchId={matchId.toString()} />
           )}
 
           {match.status === MatchStatus.Active && (

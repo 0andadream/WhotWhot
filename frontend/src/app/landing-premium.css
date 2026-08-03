@@ -1476,6 +1476,24 @@
 .create-desk .ticket-grid {
   max-width: none;
 }
+.create-code-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.create-code-row .input {
+  flex: 1;
+  min-width: 140px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+.join-status-ok {
+  background: rgba(248, 113, 113, 0.12) !important;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #fecaca !important;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .hero-float {

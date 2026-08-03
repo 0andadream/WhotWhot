@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { SiteNav } from "@/components/SiteNav";
 import { TicketPicker } from "@/components/TicketPicker";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { useAccount } from "wagmi";
+import { zeroAddress, type Address } from "viem";
 import {
   useEscrowActions,
   useEscrowReady,
@@ -25,11 +26,48 @@ import {
   ensureProfile,
   getProfile,
 } from "@/lib/profile";
+import { MatchStatus } from "@/lib/contracts";
+import {
+  isNumericMatchId,
+  isValidTableCode,
+  normalizeTableCode,
+  resolveTableCode,
+} from "@/lib/tableCode";
+
+type MatchRow = {
+  player1: Address;
+  player2: Address;
+  status: number;
+  createdAt?: number | bigint;
+};
+
+function parseNumericId(raw: string): bigint | null {
+  const t = raw.trim();
+  if (!/^\d+$/.test(t)) return null;
+  try {
+    return BigInt(t);
+  } catch {
+    return null;
+  }
+}
+
+function matchExists(m: MatchRow | undefined | null): boolean {
+  if (!m) return false;
+  if (m.status === MatchStatus.None) return false;
+  if (!m.player1 || m.player1.toLowerCase() === zeroAddress) return false;
+  return true;
+}
 
 function JoinInner() {
   const params = useSearchParams();
-  const initial = params.get("matchId") || "";
-  const [matchId, setMatchId] = useState(initial);
+  const initial = params.get("matchId") || params.get("code") || "";
+  const [rawInput, setRawInput] = useState(initial);
+  const [resolvedMatchId, setResolvedMatchId] = useState<string | null>(
+    isNumericMatchId(initial) ? initial.trim() : null
+  );
+  const [resolveState, setResolveState] = useState<
+    "idle" | "loading" | "ok" | "missing" | "invalid"
+  >(isNumericMatchId(initial) ? "ok" : initial ? "loading" : "idle");
   const [ticketId, setTicketId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -43,8 +81,123 @@ function JoinInner() {
   const escrowReady = useEscrowReady();
   const { joinMatch, isPending } = useEscrowActions();
   const router = useRouter();
-  const mid = matchId.trim() ? BigInt(matchId.trim()) : null;
-  const { match } = useMatch(mid);
+
+  // Debounce resolve of table code / numeric id
+  useEffect(() => {
+    const raw = rawInput.trim();
+    if (!raw) {
+      setResolvedMatchId(null);
+      setResolveState("idle");
+      return;
+    }
+
+    if (isNumericMatchId(raw)) {
+      setResolvedMatchId(raw.trim());
+      setResolveState("ok");
+      return;
+    }
+
+    const code = normalizeTableCode(raw);
+    if (!isValidTableCode(code)) {
+      setResolvedMatchId(null);
+      setResolveState("invalid");
+      return;
+    }
+
+    let cancelled = false;
+    setResolveState("loading");
+    const t = setTimeout(() => {
+      void (async () => {
+        try {
+          const hit = await resolveTableCode(code);
+          if (cancelled) return;
+          if (!hit) {
+            setResolvedMatchId(null);
+            setResolveState("missing");
+            return;
+          }
+          setResolvedMatchId(hit.matchId);
+          setResolveState("ok");
+        } catch {
+          if (!cancelled) {
+            setResolvedMatchId(null);
+            setResolveState("missing");
+          }
+        }
+      })();
+    }, 320);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [rawInput]);
+
+  const mid = useMemo(() => {
+    if (!resolvedMatchId) return null;
+    return parseNumericId(resolvedMatchId);
+  }, [resolvedMatchId]);
+
+  const { match, isLoading: matchLoading } = useMatch(mid);
+  const m = match as MatchRow | undefined;
+
+  const exists = matchExists(m);
+  const canJoin = exists && m!.status === MatchStatus.Waiting;
+
+  const statusMessage = useMemo(() => {
+    if (!rawInput.trim()) return null;
+    if (resolveState === "loading") return { kind: "muted" as const, text: "Looking up table code…" };
+    if (resolveState === "invalid") {
+      return {
+        kind: "warn" as const,
+        text: "Enter a match number (e.g. 12) or a table code (e.g. K7M2XP).",
+      };
+    }
+    if (resolveState === "missing") {
+      return {
+        kind: "warn" as const,
+        text: "No table found for that code.",
+      };
+    }
+    if (resolveState !== "ok" || mid == null) return null;
+    if (matchLoading && !m) {
+      return { kind: "muted" as const, text: "Checking table on Base…" };
+    }
+    if (!exists) {
+      return {
+        kind: "warn" as const,
+        text: `No open table with ID #${mid.toString()}. Double-check the number or code.`,
+      };
+    }
+    if (m!.status === MatchStatus.Waiting) {
+      return {
+        kind: "ok" as const,
+        text: `Host is ready · table #${mid.toString()}`,
+      };
+    }
+    if (m!.status === MatchStatus.Active) {
+      return {
+        kind: "warn" as const,
+        text: `Table #${mid.toString()} is already full / in progress.`,
+      };
+    }
+    if (m!.status === MatchStatus.Resolved) {
+      return {
+        kind: "warn" as const,
+        text: `Table #${mid.toString()} already finished.`,
+      };
+    }
+    if (m!.status === MatchStatus.Cancelled) {
+      return {
+        kind: "warn" as const,
+        text: `Table #${mid.toString()} was cancelled.`,
+      };
+    }
+    return {
+      kind: "warn" as const,
+      text: `Table #${mid.toString()} cannot be joined.`,
+    };
+  }, [rawInput, resolveState, mid, matchLoading, m, exists]);
 
   const profile = address
     ? getProfile(address) || {
@@ -60,16 +213,16 @@ function JoinInner() {
       setError("Connect your wallet first.");
       return;
     }
+    if (!mid || !canJoin) {
+      setError("Enter a valid waiting table ID or code first.");
+      return;
+    }
     const ensured = ensureProfile(address);
     const name = sanitizeName(
       ensured.username || getSavedDisplayName() || defaultUsername(address)
     );
     if (!name) {
       setError("Could not resolve your username. Open profile in the nav.");
-      return;
-    }
-    if (!matchId.trim()) {
-      setError("Enter a match ID.");
       return;
     }
     if (!ticketId) {
@@ -88,10 +241,11 @@ function JoinInner() {
     saveDisplayName(name);
     setBusy(true);
     try {
-      await joinMatch(BigInt(matchId.trim()), BigInt(ticketId));
-      rememberMatchId(matchId.trim());
-      setMatchPlayerName(matchId.trim(), "p2", name);
-      router.push(`/play/match/${matchId.trim()}`);
+      const idStr = mid.toString();
+      await joinMatch(mid, BigInt(ticketId));
+      rememberMatchId(idStr);
+      setMatchPlayerName(idStr, "p2", name);
+      router.push(`/play/match/${idStr}`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Join failed");
     } finally {
@@ -136,17 +290,32 @@ function JoinInner() {
               after you view draw results.
             </p>
 
-            <label className="muted">Match ID</label>
+            <label className="muted">Match ID or table code</label>
             <input
               className="input"
-              value={matchId}
-              onChange={(e) => setMatchId(e.target.value)}
-              placeholder="1"
+              value={rawInput}
+              onChange={(e) => setRawInput(e.target.value)}
+              placeholder="e.g. 12 or K7M2XP"
+              autoCapitalize="characters"
+              spellCheck={false}
             />
 
-            {match && (
-              <div className="pill">
-                Host is ready · table #{matchId || "-"}
+            {statusMessage && (
+              <div
+                className={
+                  statusMessage.kind === "ok"
+                    ? "pill join-status-ok"
+                    : statusMessage.kind === "warn"
+                      ? "alert"
+                      : "muted"
+                }
+                style={
+                  statusMessage.kind === "muted"
+                    ? { fontSize: "0.85rem" }
+                    : undefined
+                }
+              >
+                {statusMessage.text}
               </div>
             )}
 
@@ -168,8 +337,12 @@ function JoinInner() {
               Confirm join
             </h3>
             <p className="muted" style={{ fontSize: "0.85rem", margin: 0 }}>
-              Your profile username is used at the table — no need to re-enter a
-              name.
+              Your profile username is used at the table. Creating a table
+              instead?{" "}
+              <Link href="/play/create" style={{ textDecoration: "underline" }}>
+                Generate your own ID
+              </Link>
+              .
             </p>
             <button
               type="button"
@@ -178,7 +351,7 @@ function JoinInner() {
                 !isConnected ||
                 !escrowReady ||
                 !ticketId ||
-                !matchId.trim() ||
+                !canJoin ||
                 busy ||
                 isPending
               }

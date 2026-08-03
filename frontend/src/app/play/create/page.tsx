@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SiteNav } from "@/components/SiteNav";
 import { TicketPicker } from "@/components/TicketPicker";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
-import { useAccount, usePublicClient } from "wagmi";
+import { useAccount, usePublicClient, useReadContract } from "wagmi";
 import {
   useEscrowActions,
   useEscrowReady,
@@ -26,6 +26,12 @@ import {
 } from "@/lib/profile";
 import { ADDRESSES, whotEscrowAbi } from "@/lib/contracts";
 import { decodeEventLog, type Address, isAddress } from "viem";
+import {
+  generateTableCode,
+  isValidTableCode,
+  normalizeTableCode,
+  registerTableCode,
+} from "@/lib/tableCode";
 
 export default function CreateMatchPage() {
   const { isConnected, address } = useAccount();
@@ -42,8 +48,22 @@ export default function CreateMatchPage() {
 
   const [ticketId, setTicketId] = useState("");
   const [challenge, setChallenge] = useState("");
+  const [tableCode, setTableCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const { data: nextMatchId } = useReadContract({
+    address: ADDRESSES.whotEscrow,
+    abi: whotEscrowAbi,
+    functionName: "nextMatchId",
+    chainId: 8453,
+    query: { enabled: escrowReady },
+  });
+
+  // Prefill a generated code so host can share before staking
+  useEffect(() => {
+    setTableCode((c) => c || generateTableCode());
+  }, []);
 
   const profile = address
     ? getProfile(address) || {
@@ -53,10 +73,22 @@ export default function CreateMatchPage() {
       }
     : null;
 
+  const onGenerateCode = () => {
+    setTableCode(generateTableCode());
+    setError(null);
+  };
+
   const onCreate = async () => {
     setError(null);
     if (!address) {
       setError("Connect your wallet first.");
+      return;
+    }
+    const code = normalizeTableCode(tableCode);
+    if (code && !isValidTableCode(code)) {
+      setError(
+        "Table code must be 4–10 letters/numbers (not only digits). Leave blank or hit Generate."
+      );
       return;
     }
     const ensured = ensureProfile(address);
@@ -102,9 +134,21 @@ export default function CreateMatchPage() {
             });
             if (decoded.eventName === "MatchCreated") {
               const matchId = (decoded.args as { matchId: bigint }).matchId;
+              const matchIdStr = matchId.toString();
               rememberMatchId(matchId);
-              setMatchPlayerName(matchId.toString(), "p1", name);
-              router.push(`/play/match/${matchId.toString()}`);
+              setMatchPlayerName(matchIdStr, "p1", name);
+              if (code && isValidTableCode(code)) {
+                try {
+                  await registerTableCode(code, matchIdStr);
+                } catch {
+                  /* still open match; code is nice-to-have */
+                }
+              }
+              const q =
+                code && isValidTableCode(code)
+                  ? `?code=${encodeURIComponent(code)}`
+                  : "";
+              router.push(`/play/match/${matchIdStr}${q}`);
               return;
             }
           } catch {
@@ -183,9 +227,38 @@ export default function CreateMatchPage() {
               Table options
             </h3>
             <p className="muted" style={{ fontSize: "0.85rem", margin: 0 }}>
-              Leave blank for a public open table. Optionally challenge a wallet
-              directly.
+              Generate a short code friends can type on Join, or share the
+              numeric table ID after you stake.
             </p>
+
+            <label className="muted">Your table code</label>
+            <div className="create-code-row">
+              <input
+                className="input"
+                value={tableCode}
+                maxLength={10}
+                spellCheck={false}
+                autoCapitalize="characters"
+                placeholder="K7M2XP"
+                onChange={(e) =>
+                  setTableCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+                }
+              />
+              <button
+                type="button"
+                className="prem-btn-ghost sm"
+                onClick={onGenerateCode}
+              >
+                Generate
+              </button>
+            </div>
+            {nextMatchId != null && (
+              <p className="muted" style={{ fontSize: "0.8rem", margin: 0 }}>
+                Next on-chain table ID ≈{" "}
+                <strong style={{ color: "#fff" }}>#{nextMatchId.toString()}</strong>{" "}
+                (assigned when you stake)
+              </p>
+            )}
 
             <label className="muted">Challenge address (optional)</label>
             <input
