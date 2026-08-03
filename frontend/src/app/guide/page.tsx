@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { ConnectButton } from "@/components/ConnectButton";
+import { BrandLogo } from "@/components/BrandLogo";
 import { PlayGuide } from "@/components/PlayGuide";
 
 export default function GuidePage() {
   return (
     <div className="page">
       <nav className="nav">
-        <Link href="/" className="logo">
-          <span>WhotWhot</span>
-        </Link>
+        <BrandLogo size={36} />
         <div className="links">
           <Link href="/play">Play</Link>
           <Link href="/guide">Guide</Link>

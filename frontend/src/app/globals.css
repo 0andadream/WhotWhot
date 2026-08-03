@@ -285,6 +285,63 @@ img {
 .nav .logo span {
   color: var(--cream);
 }
+
+/* Brand logo (WW monogram) */
+.brand-logo-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+.brand-logo-link:hover {
+  color: inherit;
+  opacity: 0.92;
+}
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-logo-img {
+  display: block;
+  border-radius: 50%;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}
+.brand-logo-text {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: -0.025em;
+  color: var(--cream);
+}
+.hero-logo {
+  margin: 8px 0 12px;
+}
+.hero-logo .brand-logo-img {
+  width: 72px;
+  height: 72px;
+  box-shadow: 0 8px 28px rgba(139, 0, 0, 0.45);
+}
+@media (min-width: 768px) {
+  .hero-logo .brand-logo-img {
+    width: 88px;
+    height: 88px;
+  }
+}
+.logo-mark {
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible;
+}
+.logo-mark .brand-logo-img {
+  width: 40px;
+  height: 40px;
+}
 .nav .spacer {
   flex: 1;
 }

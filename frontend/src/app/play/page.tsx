@@ -13,6 +13,7 @@ import {
 import { useEscrowReady, useOpenMatches } from "@/hooks/useEscrow";
 import { ADDRESSES, erc20Abi, randomBuyerAbi } from "@/lib/contracts";
 import { PlayGuide } from "@/components/PlayGuide";
+import { BrandLogo } from "@/components/BrandLogo";
 import { stringToHex, parseUnits } from "viem";
 
 type Tab = "modes" | "tables" | "guide";
@@ -89,13 +90,13 @@ export default function PlayLobbyPage() {
   return (
     <div className="app-shell shell-wide">
       <header className="header">
-        <Link href="/" className="logo-row" style={{ textDecoration: "none" }}>
-          <div className="logo-mark">W</div>
+        <div className="logo-row">
+          <BrandLogo href="/" size={40} withWordmark={false} />
           <div>
             <h1>Play</h1>
             <p>WhotWhot · Base</p>
           </div>
-        </Link>
+        </div>
         <ConnectButton />
       </header>
 

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ConnectButton } from "@/components/ConnectButton";
+import { BrandLogo } from "@/components/BrandLogo";
 import { WhotCard } from "@/components/WhotCard";
 import type { Card } from "@/lib/whot/types";
 
@@ -20,9 +21,7 @@ export default function HomePage() {
   return (
     <div className="page">
       <nav className="nav">
-        <Link href="/" className="logo">
-          <span>WhotWhot</span>
-        </Link>
+        <BrandLogo size={36} />
         <div className="links">
           <Link href="/play">Play</Link>
           <Link href="/guide">Guide</Link>
@@ -35,6 +34,9 @@ export default function HomePage() {
         <div className="hero-inner">
           <div>
             <div className="eyebrow live">Live on Base</div>
+            <div className="hero-logo">
+              <BrandLogo href="" size={72} withWordmark={false} />
+            </div>
             <div className="wordmark">WhotWhot</div>
             <div className="suit-band" aria-hidden>
               <span style={{ ["--c" as string]: "#8B0000" }} />

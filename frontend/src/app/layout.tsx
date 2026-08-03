@@ -6,6 +6,13 @@ export const metadata: Metadata = {
   title: "WhotWhot — the card game, online",
   description:
     "Classic Nigerian Whot, modernized for web3. Practice free or stake Megapot tickets on Base.",
+  icons: {
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/logo-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
   appleWebApp: {
     capable: true,
     title: "WhotWhot",
