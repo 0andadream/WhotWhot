@@ -12,7 +12,6 @@ import {
 import { useUserTickets } from "@/hooks/useUserTickets";
 import {
   useEscrowReady,
-  useOpenMatches,
   useMyMatches,
   statusLabel,
   MatchStatus,
@@ -34,7 +33,6 @@ export default function PlayLobbyPage() {
   const [tick, setTick] = useState(0);
   const [tab, setTab] = useState<Tab>("modes");
   const escrowReady = useEscrowReady();
-  const { matchIds } = useOpenMatches();
   const {
     matches: myMatches,
     pastMatches,
@@ -227,7 +225,7 @@ export default function PlayLobbyPage() {
             )}
             {isConnected && !myLoading && myMatches.length === 0 && (
               <p className="muted">
-                No live tables. Create one or join an open table.
+                No live tables. Create a match or join with a table ID.
               </p>
             )}
             {myMatches.map((m) => {
@@ -343,28 +341,6 @@ export default function PlayLobbyPage() {
               })}
             </div>
           )}
-
-          <div className="card-panel stack">
-            <h2>Open tables</h2>
-            <p className="muted">
-              Waiting for a second player. Join with your ticket.
-            </p>
-            {!escrowReady && (
-              <p className="muted">Escrow address missing. Stake modes offline.</p>
-            )}
-            {escrowReady && matchIds.length === 0 && (
-              <p className="muted">No open matches right now.</p>
-            )}
-            {matchIds.map((id) => (
-              <Link
-                key={String(id)}
-                href={`/play/join?matchId=${id}`}
-                className="btn btn-ghost"
-              >
-                Table #{id.toString()}, join
-              </Link>
-            ))}
-          </div>
         </div>
       )}
 
