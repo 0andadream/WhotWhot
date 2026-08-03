@@ -19,11 +19,12 @@ import {
   saveDisplayName,
   setMatchPlayerName,
 } from "@/lib/displayName";
+import { getProfile } from "@/lib/profile";
 import { ADDRESSES, whotEscrowAbi } from "@/lib/contracts";
 import { decodeEventLog, type Address, isAddress } from "viem";
 
 export default function CreateMatchPage() {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const {
     stakeableTickets,
     loading,
@@ -42,14 +43,16 @@ export default function CreateMatchPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    setDisplayName(getSavedDisplayName());
-  }, []);
+    setDisplayName(getProfile(address)?.username || getSavedDisplayName());
+  }, [address]);
 
   const onCreate = async () => {
     setError(null);
-    const name = sanitizeName(displayName || getSavedDisplayName());
+    const name = sanitizeName(
+      getProfile(address)?.username || displayName || getSavedDisplayName()
+    );
     if (!name) {
-      setError("Enter a name so your opponent knows who you are.");
+      setError("Set your profile username first (after connecting).");
       return;
     }
     if (!ticketId) {

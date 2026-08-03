@@ -168,7 +168,7 @@ export default function PlayLobbyPage() {
             </p>
             <button
               type="button"
-              className="prem-action-circle"
+              className="prem-btn-white"
               disabled={
                 connectPending ||
                 (isConnected && buyStep !== "idle")
@@ -181,20 +181,13 @@ export default function PlayLobbyPage() {
             >
               {!isConnected
                 ? connectPending
-                  ? "…"
-                  : "Connect"
+                  ? "Connecting…"
+                  : "Connect to buy"
                 : buyStep === "approve"
-                  ? "Approve"
+                  ? "Approve USDC…"
                   : buyStep === "buy"
-                    ? "Buying"
-                    : "Buy"}
-              <span className="prem-action-circle-sub">
-                {!isConnected
-                  ? "to buy"
-                  : buyStep === "idle"
-                    ? jackpot.ticketPriceUsd ?? "$1"
-                    : "ticket"}
-              </span>
+                    ? "Buying…"
+                    : `Buy ticket · ${jackpot.ticketPriceUsd ?? "$1"}`}
             </button>
           </div>
           {statusMsg && (
@@ -216,10 +209,7 @@ export default function PlayLobbyPage() {
               <span className="prem-mode-tag free">Free</span>
               <h3>Practice vs AI</h3>
               <p>Learn the rules. No wallet, no tickets.</p>
-              <span className="prem-action-circle prem-mode-btn">
-                Play
-                <span className="prem-action-circle-sub">free</span>
-              </span>
+              <span className="prem-btn-white sm prem-mode-btn">Play free</span>
             </Link>
             <Link
               href={escrowReady ? "/play/create" : "#"}
@@ -233,10 +223,7 @@ export default function PlayLobbyPage() {
               <span className="prem-mode-tag stake">Stake</span>
               <h3>Create a table</h3>
               <p>Lock 1 ticket. Share the table with a friend.</p>
-              <span className="prem-action-circle prem-mode-btn">
-                Create
-                <span className="prem-action-circle-sub">table</span>
-              </span>
+              <span className="prem-btn-white sm prem-mode-btn">Create</span>
             </Link>
             <Link
               href={escrowReady ? "/play/join" : "#"}
@@ -250,10 +237,7 @@ export default function PlayLobbyPage() {
               <span className="prem-mode-tag stake">Stake</span>
               <h3>Join a table</h3>
               <p>Enter the table number your host shared.</p>
-              <span className="prem-action-circle prem-mode-btn">
-                Join
-                <span className="prem-action-circle-sub">table</span>
-              </span>
+              <span className="prem-btn-white sm prem-mode-btn">Join</span>
             </Link>
           </div>
         </section>

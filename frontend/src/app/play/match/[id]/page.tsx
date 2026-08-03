@@ -15,6 +15,9 @@ import {
   getSavedDisplayName,
   setMatchPlayerName,
 } from "@/lib/displayName";
+import { getProfile } from "@/lib/profile";
+import { useMatchProfiles } from "@/hooks/useMatchProfiles";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import {
   fetchRelayMoves,
   loadLocalRelay,
@@ -95,28 +98,43 @@ export default function MatchPage() {
     return null;
   }, [match, address]);
 
+  const { forAddress } = useMatchProfiles(
+    matchKey || null,
+    !!match &&
+      (match.status === MatchStatus.Active ||
+        match.status === MatchStatus.Waiting ||
+        match.status === MatchStatus.Resolved)
+  );
+
   useEffect(() => {
     if (!match || !matchKey) return;
     const stored = getMatchNames(matchKey);
-    const mine = getSavedDisplayName();
+    const mine =
+      getProfile(address)?.username || getSavedDisplayName();
 
-    let n1 = stored.p1 || "Host";
-    let n2 = stored.p2 || "Opponent";
+    const p1Prof = forAddress(match.player1 as string);
+    const p2Prof = forAddress(match.player2 as string);
+
+    let n1 = p1Prof?.username || stored.p1 || "Host";
+    let n2 =
+      p2Prof?.username ||
+      stored.p2 ||
+      (match.player2 !== "0x0000000000000000000000000000000000000000"
+        ? "Opponent"
+        : "…");
 
     if (humanPlayer === "p1") {
-      n1 = mine || "You";
+      n1 = mine || n1 || "You";
       if (mine) setMatchPlayerName(matchKey, "p1", mine);
-      if (!stored.p2) n2 = "Opponent";
     }
     if (humanPlayer === "p2") {
-      n2 = mine || "You";
+      n2 = mine || n2 || "You";
       if (mine) setMatchPlayerName(matchKey, "p2", mine);
-      if (!stored.p1) n1 = "Host";
     }
 
     setP1Name(n1);
     setP2Name(n2);
-  }, [match, matchKey, humanPlayer]);
+  }, [match, matchKey, humanPlayer, address, forAddress]);
 
   const applyActionList = useCallback(
     (list: GameAction[], seed: string, n1: string, n2: string) => {
@@ -504,8 +522,26 @@ export default function MatchPage() {
         </header>
 
         <div className="card-panel">
-          <h2>
-            {p1Name} vs {p2Joined ? p2Name : "…"}
+          <h2 className="match-title-row">
+            <span className="match-player-id">
+              <ProfileAvatar
+                profile={forAddress(match.player1 as string)}
+                size={32}
+              />
+              {p1Name}
+            </span>
+            <span className="muted" style={{ fontWeight: 600 }}>
+              vs
+            </span>
+            <span className="match-player-id">
+              {p2Joined ? (
+                <ProfileAvatar
+                  profile={forAddress(match.player2 as string)}
+                  size={32}
+                />
+              ) : null}
+              {p2Joined ? p2Name : "…"}
+            </span>
           </h2>
           <p className="muted">{statusLabel}</p>
           {whoseTurn && (
@@ -532,13 +568,29 @@ export default function MatchPage() {
           <div className="stat-row" style={{ marginTop: 12 }}>
             <div className="stat">
               <div className="label">Player 1</div>
-              <div className="value" style={{ fontSize: "1.15rem" }}>
+              <div
+                className="value match-player-id"
+                style={{ fontSize: "1.05rem" }}
+              >
+                <ProfileAvatar
+                  profile={forAddress(match.player1 as string)}
+                  size={28}
+                />
                 {p1Name}
               </div>
             </div>
             <div className="stat">
               <div className="label">Player 2</div>
-              <div className="value" style={{ fontSize: "1.15rem" }}>
+              <div
+                className="value match-player-id"
+                style={{ fontSize: "1.05rem" }}
+              >
+                {p2Joined && (
+                  <ProfileAvatar
+                    profile={forAddress(match.player2 as string)}
+                    size={28}
+                  />
+                )}
                 {p2Joined ? p2Name : "Waiting…"}
               </div>
             </div>
@@ -646,11 +698,12 @@ export default function MatchPage() {
               matchId={matchKey}
               address={address}
               displayName={
-                humanPlayer === "p1"
+                getProfile(address)?.username ||
+                (humanPlayer === "p1"
                   ? p1Name
                   : humanPlayer === "p2"
                     ? p2Name
-                    : getSavedDisplayName() || "Player"
+                    : getSavedDisplayName() || "Player")
               }
               canChat={
                 match.status === MatchStatus.Waiting ||

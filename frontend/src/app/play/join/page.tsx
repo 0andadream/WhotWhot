@@ -20,6 +20,7 @@ import {
   saveDisplayName,
   setMatchPlayerName,
 } from "@/lib/displayName";
+import { getProfile } from "@/lib/profile";
 
 function JoinInner() {
   const params = useSearchParams();
@@ -29,7 +30,7 @@ function JoinInner() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const {
     stakeableTickets,
     loading,
@@ -43,14 +44,16 @@ function JoinInner() {
   const { match } = useMatch(mid);
 
   useEffect(() => {
-    setDisplayName(getSavedDisplayName());
-  }, []);
+    setDisplayName(getProfile(address)?.username || getSavedDisplayName());
+  }, [address]);
 
   const onJoin = async () => {
     setError(null);
-    const name = sanitizeName(displayName || getSavedDisplayName());
+    const name = sanitizeName(
+      getProfile(address)?.username || displayName || getSavedDisplayName()
+    );
     if (!name) {
-      setError("Enter a name so your opponent knows who you are.");
+      setError("Set your profile username first (after connecting).");
       return;
     }
     if (!matchId.trim()) {
