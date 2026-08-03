@@ -143,7 +143,7 @@ function applySpecial(
 
   switch (card.special) {
     case "hold_on":
-      s = log(s, `${s.players[playerIndex(player)].name} played Hold On — plays again.`);
+      s = log(s, `${s.players[playerIndex(player)].name} played Hold On, plays again.`);
       s = { ...s, playAgain: true };
       break;
     case "pick_two": {

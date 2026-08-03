@@ -106,7 +106,7 @@ export function useBuyRandomTicket() {
       args: [ADDRESSES.jackpotRandomTicketBuyer, ticketPrice],
       chainId: 8453,
     });
-    // Note: user must click buy again after approve in simple flow —
+    // Note: user must click buy again after approve in simple flow: 
     // for jam we expose a two-step UI
   };
 
@@ -141,8 +141,8 @@ export function useBuyRandomTicket() {
 }
 
 export function useCountdown(drawingTime: number | null) {
-  // Simple derived string — component re-renders via parent interval if needed
-  if (!drawingTime) return "—";
+  // Simple derived string: component re-renders via parent interval if needed
+  if (!drawingTime) return "-";
   const now = Math.floor(Date.now() / 1000);
   let left = drawingTime - now;
   if (left < 0) return "Drawing soon…";

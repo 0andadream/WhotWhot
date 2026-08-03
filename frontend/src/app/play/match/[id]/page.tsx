@@ -50,7 +50,7 @@ export default function MatchPage() {
     return null;
   }, [match, address]);
 
-  // Names — local only (never on-chain; no gas)
+  // Names: local only (never on-chain; no gas)
   useEffect(() => {
     if (!match || !matchKey) return;
     const stored = getMatchNames(matchKey);
@@ -74,7 +74,7 @@ export default function MatchPage() {
     setP2Name(n2);
   }, [match, matchKey, humanPlayer]);
 
-  // Init game once when match becomes Active — rebuild from local action log
+  // Init game once when match becomes Active: rebuild from local action log
   useEffect(() => {
     if (!match || match.status !== MatchStatus.Active) return;
     if (!match.gameSeed || !matchKey) return;
@@ -132,7 +132,7 @@ export default function MatchPage() {
     };
   }, [matchKey, match?.status, match?.gameSeed, p1Name, p2Name]);
 
-  // Play cards offline — NO wallet fee per move
+  // Play cards offline: NO wallet fee per move
   const onAction = useCallback(
     (action: GameAction) => {
       if (!matchKey || !humanPlayer) return;
@@ -155,7 +155,7 @@ export default function MatchPage() {
         ? (match.player1 as Address)
         : (match.player2 as Address);
     try {
-      setMsg("Confirm in wallet once — this settles the tickets.");
+      setMsg("Confirm in wallet once. This settles the tickets.");
       await submitResult(matchId, winnerAddr);
       setSubmitted(true);
       setMsg("Result submitted. Waiting for opponent to confirm too…");
@@ -175,7 +175,7 @@ export default function MatchPage() {
 
   // Do NOT auto-submit on win (that spammed wallet fees)
   const onWin = useCallback((_winner: PlayerId) => {
-    setMsg("Game over — confirm the winner below when both agree.");
+    setMsg("Game over. Confirm the winner below when both agree.");
   }, []);
 
   if (!matchId) {
@@ -211,7 +211,7 @@ export default function MatchPage() {
       : match.status === MatchStatus.Active
         ? "In progress"
         : match.status === MatchStatus.Resolved
-          ? "Resolved — tickets sent to the winner"
+          ? "Resolved. Tickets sent to the winner"
           : match.status === MatchStatus.Cancelled
             ? "Cancelled"
             : "Unknown";
@@ -298,13 +298,13 @@ export default function MatchPage() {
             onClick={() => void onConfirmWinner()}
           >
             {submitted
-              ? "Submitted — await opponent"
+              ? "Submitted. Await opponent"
               : `Confirm ${game.winner === humanPlayer ? "you won" : "opponent won"}`}
           </button>
         )}
 
       {match.status === MatchStatus.Active && !humanPlayer && (
-        <p className="muted">Spectating — connect as a match player to act.</p>
+        <p className="muted">Spectating. Connect as a match player to act.</p>
       )}
       </div>
     </div>

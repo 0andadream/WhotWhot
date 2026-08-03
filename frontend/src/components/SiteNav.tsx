@@ -6,7 +6,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { ConnectButton } from "@/components/ConnectButton";
 
 /**
- * Shared nav — same as homepage (logo, Play/Guide, Base pill, Connect).
+ * Shared nav: same as homepage (logo, Play/Guide, Base pill, Connect).
  */
 export function SiteNav() {
   const path = usePathname() || "/";

@@ -4,7 +4,7 @@ import "./landing.css";
 import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "WhotWhot — the card game, online",
+  title: "WhotWhot: the card game, online",
   description:
     "Classic Nigerian Whot, modernized for web3. Practice free or stake Megapot tickets on Base.",
   icons: {

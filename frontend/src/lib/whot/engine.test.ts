@@ -19,7 +19,7 @@ assert(g.discard.length === 1, "starter");
 assert(g.started, "started");
 
 const moves = legalMoves(g, "p1");
-// May be empty depending on seed — drawing should work
+// May be empty depending on seed: drawing should work
 if (moves.length === 0) {
   const g2 = reduce(g, { type: "DRAW", player: "p1" });
   assert(g2.turn === "p2", "turn after draw");

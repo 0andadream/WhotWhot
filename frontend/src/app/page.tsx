@@ -15,7 +15,7 @@ const FAN_CARDS: Card[] = [
 ];
 
 /**
- * Marketing landing — visual redesign; copy + logo preserved.
+ * Marketing landing: visual redesign; copy + logo preserved.
  */
 export default function HomePage() {
   return (
@@ -72,7 +72,7 @@ export default function HomePage() {
               ))}
             </div>
             <p className="live-table-caption">
-              Classic Whot faces — star, circle, cross, triangle, square &amp; WHOT
+              Classic Whot faces, star, circle, cross, triangle, square &amp; WHOT
               20. Hover to spread the fan.
             </p>
           </ScrollReveal>
@@ -145,7 +145,7 @@ export default function HomePage() {
                   <CardsIcon />
                 </div>
                 <h4>Match plays out</h4>
-                <p>Classic Whot rules — first empty hand wins.</p>
+                <p>Classic Whot rules, first empty hand wins.</p>
               </div>
               <div className="escrow-arrow" aria-hidden>
                 <span>→ →</span>

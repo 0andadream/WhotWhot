@@ -29,7 +29,7 @@ export type MatchSummary = {
 
 const STATUS_LABEL: Record<number, string> = {
   [MatchStatus.Waiting]: "Waiting for opponent",
-  [MatchStatus.Active]: "In progress — play now",
+  [MatchStatus.Active]: "In progress, play now",
   [MatchStatus.Resolved]: "Finished",
   [MatchStatus.Cancelled]: "Cancelled",
 };
@@ -58,7 +58,7 @@ export function useOpenMatches() {
 
 /**
  * All matches where the connected wallet is player1 or player2
- * (Waiting + Active). Open lobby list drops a table once someone joins —
+ * (Waiting + Active). Open lobby list drops a table once someone joins: 
  * this is how you get back into your game.
  */
 export function useMyMatches() {
@@ -222,7 +222,7 @@ export function useEscrowActions() {
 
   /**
    * Resolve a ticketId the user owns.
-   * Megapot NFT may not be enumerable — UI asks user to paste token id,
+   * Megapot NFT may not be enumerable: UI asks user to paste token id,
    * or we scan Transfer events (heavy). For jam: user provides ticket id.
    */
   const createMatch = useCallback(
@@ -280,7 +280,7 @@ export function useEscrowActions() {
     [writeContractAsync]
   );
 
-  /** Optional — not used for gameplay (gas spam). Kept for advanced sync. */
+  /** Optional: not used for gameplay (gas spam). Kept for advanced sync. */
   const postMove = useCallback(
     async (matchId: bigint, payload: `0x${string}`) => {
       return writeContractAsync({

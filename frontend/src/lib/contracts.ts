@@ -1,6 +1,6 @@
 import { type Address } from "viem";
 
-/** Base mainnet addresses — Megapot protocol */
+/** Base mainnet addresses: Megapot protocol */
 export const BASE_CHAIN_ID = 8453;
 
 export const ADDRESSES = {
@@ -63,7 +63,7 @@ export const erc721Abi = [
   },
 ] as const;
 
-/** Megapot JackpotTicketNFT — list tickets by drawing */
+/** Megapot JackpotTicketNFT: list tickets by drawing */
 export const jackpotTicketNftAbi = [
   ...erc721Abi,
   {

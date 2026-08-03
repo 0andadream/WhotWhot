@@ -125,7 +125,7 @@ export default function PlayLobbyPage() {
           <div className="muted" style={{ fontSize: "0.75rem" }}>
             Your Megapot tickets
           </div>
-          <strong>{isConnected ? (count ?? "…") : "—"}</strong>
+          <strong>{isConnected ? (count ?? "…") : "-"}</strong>
           <span className="muted"> tickets</span>
         </div>
         <button
@@ -245,9 +245,9 @@ export default function PlayLobbyPage() {
                   <span className="muted" style={{ fontSize: "0.8rem" }}>
                     {statusLabel(m.status)}
                     {m.status === MatchStatus.Active
-                      ? " — tap to open board"
+                      ? ". Tap to open board"
                       : m.status === MatchStatus.Waiting
-                        ? " — waiting for opponent"
+                        ? ". Waiting for opponent"
                         : ""}
                   </span>
                 </Link>
@@ -261,7 +261,7 @@ export default function PlayLobbyPage() {
               Waiting for a second player. Join with your ticket.
             </p>
             {!escrowReady && (
-              <p className="muted">Escrow address missing — stake modes offline.</p>
+              <p className="muted">Escrow address missing. Stake modes offline.</p>
             )}
             {escrowReady && matchIds.length === 0 && (
               <p className="muted">No open matches right now.</p>
@@ -272,7 +272,7 @@ export default function PlayLobbyPage() {
                 href={`/play/join?matchId=${id}`}
                 className="btn btn-ghost"
               >
-                Table #{id.toString()} — join
+                Table #{id.toString()}, join
               </Link>
             ))}
           </div>

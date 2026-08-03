@@ -2,12 +2,12 @@
 export type Shape = "circle" | "triangle" | "cross" | "square" | "star" | "whot";
 
 export type SpecialKind =
-  | "hold_on" // 1 — play again
+  | "hold_on" // 1: play again
   | "pick_two" // 2
   | "pick_three" // 5
-  | "suspension" // 8 — skip
+  | "suspension" // 8: skip
   | "general_market" // 14
-  | "whot" // 20 — wild, call shape
+  | "whot" // 20: wild, call shape
   | null;
 
 export interface Card {

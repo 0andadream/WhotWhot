@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
-   WhotWhot — classic Nigerian Whot, modernized for web3
+   WhotWhot: classic Nigerian Whot, modernized for web3
    Palette: deep red · cream · warm orange CTAs · charcoal dark
    Mobile-first (≈ iPhone 15 Pro 393pt), app-store polish
    ═══════════════════════════════════════════════════════════════════ */
@@ -105,7 +105,7 @@ body {
   font-feature-settings: "ss01", "cv11", "kern";
 }
 
-/* Heading hierarchy — Satoshi, premium product feel */
+/* Heading hierarchy: Satoshi, premium product feel */
 h1,
 h2,
 h3,
@@ -227,7 +227,7 @@ img {
   }
 }
 
-/* Desktop — use the screen, not a phone column */
+/* Desktop: use the screen, not a phone column */
 @media (min-width: 960px) {
   .app-shell {
     max-width: min(1100px, 92vw);

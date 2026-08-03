@@ -83,7 +83,7 @@ export default function CreateMatchPage() {
           }
         }
       }
-      setError("Match created — check open lobby if redirect failed.");
+      setError("Match created. Check open lobby if redirect failed.");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Create failed");
     } finally {
@@ -113,7 +113,7 @@ export default function CreateMatchPage() {
         <div className="ticket-badge">
           <div>
             <div className="muted">You have</div>
-            <strong>{isConnected ? count : "—"}</strong>
+            <strong>{isConnected ? count : "-"}</strong>
             <span className="muted"> tickets</span>
           </div>
         </div>

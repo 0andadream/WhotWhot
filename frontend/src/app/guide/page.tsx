@@ -16,7 +16,7 @@ export default function GuidePage() {
           </div>
           <h1 className="guide-title">The cards &amp; what they do</h1>
           <p className="guide-subtitle">
-            Nigerian Whot in plain language — shapes, numbers, and every special card.
+            Nigerian Whot in plain language, shapes, numbers, and every special card.
           </p>
           <div className="ctas" style={{ maxWidth: 360, display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Link href="/play/ai" className="btn btn-primary">

@@ -117,9 +117,9 @@ export function GameBoard({
               ? "You win! 🎉 Empty hand."
               : `${opp.name} wins`
             : state.pendingPenalty
-              ? `⚡ Pick ${state.pendingPenalty.amount} — stack same card or accept`
+              ? `⚡ Pick ${state.pendingPenalty.amount}, stack same card or accept`
               : myTurn
-                ? "Your turn — match shape or number"
+                ? "Your turn, match shape or number"
                 : `${opp.name}'s turn…`}
         </div>
 
@@ -167,7 +167,7 @@ export function GameBoard({
           <div className="card-panel">
             <h2>Call a shape</h2>
             <p className="muted" style={{ marginBottom: 10 }}>
-              WHOT 20 — pick what opponents must play
+              WHOT 20, pick what opponents must play
             </p>
             <div className="shape-picker">
               {PLAYABLE_SHAPES.map((sh) => (

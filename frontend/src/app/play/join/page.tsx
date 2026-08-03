@@ -91,7 +91,7 @@ function JoinInner() {
         <div className="ticket-badge">
           <div>
             <div className="muted">You have</div>
-            <strong>{isConnected ? count : "—"}</strong>
+            <strong>{isConnected ? count : "-"}</strong>
             <span className="muted"> tickets</span>
           </div>
         </div>
@@ -106,7 +106,7 @@ function JoinInner() {
 
         {match && (
           <div className="pill">
-            Host is ready · table #{matchId || "—"}
+            Host is ready · table #{matchId || "-"}
           </div>
         )}
 

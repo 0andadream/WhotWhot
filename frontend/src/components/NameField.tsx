@@ -10,7 +10,7 @@ interface Props {
 }
 
 /**
- * Simple display-name field — no wallet address noise for non-crypto users.
+ * Simple display-name field: no wallet address noise for non-crypto users.
  */
 export function NameField({
   value: controlled,
