@@ -28,21 +28,28 @@ export function SiteNav() {
       <div className="site-nav-right">
         <Link
           href="/play"
-          className={`site-nav-link${onPlay ? " active" : ""}`}
+          className={`site-nav-pill${onPlay ? " active" : ""}`}
         >
           Play
         </Link>
         <Link
           href="/guide"
-          className={`site-nav-link${onGuide ? " active" : ""}`}
+          className={`site-nav-pill${onGuide ? " active" : ""}`}
         >
           Guide
         </Link>
         {profile && (
-          <span className="site-nav-profile" title={profile.username}>
+          <button
+            type="button"
+            className="site-nav-profile"
+            title="Edit profile"
+            onClick={() =>
+              window.dispatchEvent(new Event("whotwhot:editProfile"))
+            }
+          >
             <ProfileAvatar profile={profile} size={32} />
             <span className="site-nav-username">{profile.username}</span>
-          </span>
+          </button>
         )}
         <ConnectButton />
       </div>

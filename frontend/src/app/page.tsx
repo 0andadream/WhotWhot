@@ -185,9 +185,8 @@ function HowSection() {
             }
             whileTap={reduce ? undefined : { scale: 0.97 }}
           >
-            <Link href="/play" className="prem-cta-circle" aria-label="Play Whot">
-              <span className="prem-cta-circle-label">Play</span>
-              <span className="prem-cta-circle-sub">Start a game</span>
+            <Link href="/play" className="prem-btn-white prem-btn-lg" aria-label="Play Whot">
+              Play
             </Link>
           </motion.div>
         </motion.div>

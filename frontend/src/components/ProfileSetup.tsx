@@ -14,32 +14,57 @@ import {
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 
 /**
- * First-connect profile gate: username + avatar.
- * Blocks interaction until saved for this wallet.
+ * Profile setup / edit: username + avatar.
+ * Opens on first connect, or when user clicks profile in nav.
  */
 export function ProfileSetup() {
   const { address, isConnected } = useAccount();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [username, setUsername] = useState("");
   const [avatar, setAvatar] = useState(AVATAR_PRESETS[0]);
   const [color, setColor] = useState(COLOR_PRESETS[0]);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isConnected || !address) {
-      setOpen(false);
-      return;
-    }
-    const existing = getProfile(address);
+  const loadIntoForm = (addr: string) => {
+    const existing = getProfile(addr);
     if (existing) {
       setUsername(existing.username);
       setAvatar(existing.avatar);
       setColor(existing.color);
+    } else {
+      setUsername("");
+      setAvatar(AVATAR_PRESETS[0]);
+      setColor(COLOR_PRESETS[0]);
     }
+  };
+
+  useEffect(() => {
+    if (!isConnected || !address) {
+      setOpen(false);
+      setEditing(false);
+      return;
+    }
+    loadIntoForm(address);
     setOpen(!hasCompleteProfile(address));
+    setEditing(false);
   }, [isConnected, address]);
 
+  useEffect(() => {
+    const onEdit = () => {
+      if (!address || !isConnected) return;
+      loadIntoForm(address);
+      setEditing(true);
+      setOpen(true);
+      setError(null);
+    };
+    window.addEventListener("whotwhot:editProfile", onEdit);
+    return () => window.removeEventListener("whotwhot:editProfile", onEdit);
+  }, [address, isConnected]);
+
   if (!open || !address) return null;
+
+  const canClose = editing || hasCompleteProfile(address);
 
   const onSave = () => {
     setError(null);
@@ -50,10 +75,18 @@ export function ProfileSetup() {
         color,
       });
       setOpen(false);
+      setEditing(false);
       window.dispatchEvent(new Event("whotwhot:profileSaved"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save profile");
     }
+  };
+
+  const onCancel = () => {
+    if (!canClose) return;
+    setOpen(false);
+    setEditing(false);
+    setError(null);
   };
 
   const preview = {
@@ -66,14 +99,14 @@ export function ProfileSetup() {
     <div className="profile-modal-backdrop" role="dialog" aria-modal="true">
       <div className="profile-modal card-panel">
         <p className="prem-how-eyebrow" style={{ marginBottom: 8 }}>
-          Create your profile
+          {editing ? "Edit profile" : "Create your profile"}
         </p>
         <h2 style={{ margin: "0 0 8px", fontSize: "1.35rem", fontWeight: 800 }}>
           How friends see you
         </h2>
         <p className="muted" style={{ margin: "0 0 18px", fontSize: "0.9rem" }}>
-          This username and avatar are your ID at the table, chat, and stakes —
-          not your wallet address.
+          Username and avatar are your ID at the table and in chat — not your
+          wallet address.
         </p>
 
         <div className="profile-preview">
@@ -141,14 +174,33 @@ export function ProfileSetup() {
           </div>
         )}
 
-        <button
-          type="button"
-          className="prem-btn-white"
-          style={{ width: "100%", marginTop: 18 }}
-          onClick={onSave}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginTop: 18,
+            flexWrap: "wrap",
+          }}
         >
-          Save profile
-        </button>
+          {canClose && (
+            <button
+              type="button"
+              className="prem-btn-ghost"
+              style={{ flex: 1, minWidth: 100 }}
+              onClick={onCancel}
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            type="button"
+            className="prem-btn-white"
+            style={{ flex: 1, minWidth: 120 }}
+            onClick={onSave}
+          >
+            Save profile
+          </button>
+        </div>
       </div>
     </div>
   );

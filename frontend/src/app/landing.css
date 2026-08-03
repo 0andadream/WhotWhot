@@ -158,35 +158,29 @@
   flex-shrink: 0;
 }
 
-/* White circular Play control */
-.site-nav-play-circle {
+/* Transparent rounded pills (Play, Guide, etc.) */
+.site-nav-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: #fff;
-  color: #0a0a0c !important;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 6px 16px rgba(0, 0, 0, 0.35);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.12s ease;
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text) !important;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
-.site-nav-play-circle:hover {
-  background: #f3f3f3;
-  transform: scale(1.05);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 8px 22px rgba(196, 30, 58, 0.22);
+.site-nav-pill:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.35);
 }
-.site-nav-play-circle.active {
-  box-shadow:
-    0 0 0 2px rgba(196, 30, 58, 0.55),
-    0 6px 16px rgba(0, 0, 0, 0.35);
+.site-nav-pill.active {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff !important;
 }
 
 .site-nav-link {
@@ -205,6 +199,30 @@
 }
 @media (min-width: 560px) {
   .site-nav-link {
+    display: inline-flex;
+  }
+}
+
+.site-nav-profile {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  max-width: 160px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.site-nav-profile:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+@media (min-width: 640px) {
+  .site-nav-profile {
     display: inline-flex;
   }
 }
@@ -247,12 +265,16 @@
 /* Connect → red primary CTA */
 .site-nav .btn-primary,
 .site-nav .connect-btn.btn-primary,
+.site-nav .btn-ghost,
+.site-nav .connect-btn.btn-ghost,
 .landing-nav .btn-primary,
-.landing-nav .connect-btn.btn-primary {
-  background: var(--cta-red) !important;
+.landing-nav .connect-btn.btn-primary,
+.landing-nav .btn-ghost,
+.landing-nav .connect-btn.btn-ghost {
+  background: transparent !important;
   color: #fff !important;
-  border: none !important;
-  border-radius: var(--r-sm) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  border-radius: 999px !important;
   box-shadow: none !important;
   font-weight: 600 !important;
   font-size: 0.875rem !important;
@@ -261,18 +283,12 @@
 }
 .site-nav .btn-primary:hover,
 .site-nav .connect-btn.btn-primary:hover,
+.site-nav .btn-ghost:hover,
 .landing-nav .btn-primary:hover,
 .landing-nav .connect-btn.btn-primary:hover {
-  background: var(--cta-red-hover) !important;
-}
-.site-nav .btn-ghost,
-.site-nav .connect-btn.btn-ghost,
-.landing-nav .btn-ghost,
-.landing-nav .connect-btn.btn-ghost {
-  border-color: var(--line-strong) !important;
-  color: var(--text) !important;
-  border-radius: var(--r-sm) !important;
-  background: var(--surface) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+  color: #fff !important;
 }
 
 .landing .brand-logo-text,
