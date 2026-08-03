@@ -11,6 +11,12 @@ import {
 } from "@/lib/whot/engine";
 import { PLAYABLE_SHAPES, SHAPE_LABEL } from "@/lib/whot/deck";
 import type { Card, GameState, PlayerId, Shape } from "@/lib/whot/types";
+import {
+  isMoveSoundMuted,
+  playOpponentMoveSound,
+  setMoveSoundMuted,
+  unlockMoveSound,
+} from "@/lib/moveSound";
 
 interface Props {
   seed: string;
@@ -22,6 +28,8 @@ interface Props {
   externalState?: GameState;
   onAction?: (action: Parameters<typeof reduce>[1]) => void;
   readOnly?: boolean;
+  /** Show mute control (vs AI practice) */
+  showSoundToggle?: boolean;
 }
 
 export function GameBoard({
@@ -34,6 +42,7 @@ export function GameBoard({
   externalState,
   onAction,
   readOnly,
+  showSoundToggle = false,
 }: Props) {
   const [local, setLocal] = useState<GameState>(() =>
     createGame(seed, p1Name, p2Name)
@@ -41,12 +50,18 @@ export function GameBoard({
   const state = externalState ?? local;
   const [selected, setSelected] = useState<Card | null>(null);
   const [pickingShape, setPickingShape] = useState(false);
+  const [soundMuted, setSoundMuted] = useState(false);
   /** Prevents onWin from re-firing wallet prompts on every re-render */
   const winFiredRef = useRef(false);
   const onWinRef = useRef(onWin);
   onWinRef.current = onWin;
 
+  useEffect(() => {
+    setSoundMuted(isMoveSoundMuted());
+  }, []);
+
   const apply = (action: Parameters<typeof reduce>[1]) => {
+    unlockMoveSound();
     if (onAction) {
       onAction(action);
       return;
@@ -67,7 +82,10 @@ export function GameBoard({
     const t = setTimeout(() => {
       setLocal((s) => {
         if (s.winner || s.turn !== ai) return s;
-        return reduce(s, aiChooseAction(s, ai));
+        const next = reduce(s, aiChooseAction(s, ai));
+        // Chime after AI acts so you know it's your turn again
+        queueMicrotask(() => playOpponentMoveSound());
+        return next;
       });
     }, 700);
     return () => clearTimeout(t);
@@ -85,6 +103,7 @@ export function GameBoard({
 
   const tryPlay = (card: Card) => {
     if (!myTurn || !moveIds.has(card.id)) return;
+    unlockMoveSound();
     if (card.special === "whot") {
       setSelected(card);
       setPickingShape(true);
@@ -96,6 +115,7 @@ export function GameBoard({
 
   const confirmWhot = (shape: Shape) => {
     if (!selected) return;
+    unlockMoveSound();
     apply({
       type: "PLAY_CARD",
       player: humanPlayer,
@@ -107,8 +127,34 @@ export function GameBoard({
   };
 
   return (
-    <div className="game-layout">
+    <div
+      className="game-layout"
+      onPointerDown={() => unlockMoveSound()}
+    >
       <div className="game-main">
+        {(showSoundToggle || vsAi) && !externalState && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginBottom: 8,
+            }}
+          >
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                unlockMoveSound();
+                const next = !soundMuted;
+                setSoundMuted(next);
+                setMoveSoundMuted(next);
+                if (!next) playOpponentMoveSound();
+              }}
+            >
+              {soundMuted ? "Sound off" : "Sound on"}
+            </button>
+          </div>
+        )}
         <div
           className={`banner ${state.winner ? "win" : myTurn ? "turn" : ""}`}
         >

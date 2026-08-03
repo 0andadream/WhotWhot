@@ -21,7 +21,11 @@ export default function PlayAiPage() {
           </Link>
           <div className="pill">Practice · vs AI</div>
         </header>
-        <GameBoard seed={seed} vsAi p1Name="You" p2Name="AI" />
+        <p className="muted" style={{ marginBottom: 12, fontSize: "0.85rem" }}>
+          A chime plays when the AI finishes its turn. Tap the board once if
+          sound is blocked, or use Sound on/off above the table.
+        </p>
+        <GameBoard seed={seed} vsAi p1Name="You" p2Name="AI" showSoundToggle />
       </div>
     </div>
   );
