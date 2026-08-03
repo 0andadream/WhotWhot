@@ -303,11 +303,13 @@ img {
   gap: 10px;
 }
 .brand-logo-img {
-  display: block;
-  border-radius: 10px; /* square with soft corners — fits nav cleanly */
+  display: block !important;
+  border-radius: 8px !important; /* soft square, never circle */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
-  object-fit: cover;
+  object-fit: contain !important;
+  object-position: center;
+  background: #8b0000;
 }
 .brand-logo-text {
   font-family: var(--font-display);
@@ -328,7 +330,7 @@ img {
 .logo-mark .brand-logo-img {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: 0 !important;
 }
 .nav .spacer {
   flex: 1;
