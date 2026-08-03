@@ -17,9 +17,11 @@
   --text-2: #e7e7e7;
   --muted: #a0a0a0;
   --muted-2: #7a7a7a;
-  --blue: #0078f2;
-  --blue-hover: #1a88ff;
-  --blue-soft: rgba(0, 120, 242, 0.15);
+  --blue: #c41e3a; /* primary CTA red */
+  --blue-hover: #a01830;
+  --blue-soft: rgba(196, 30, 58, 0.15);
+  --cta-red: #c41e3a;
+  --cta-red-hover: #e02d4a;
   --green: #0e7c41;
   --green-soft: rgba(14, 124, 65, 0.2);
   --green-text: #3dd68c;
@@ -134,10 +136,10 @@
   }
 }
 
-/* Connect → Epic blue primary */
+/* Connect → red primary CTA */
 .landing-nav .btn-primary,
 .landing-nav .connect-btn.btn-primary {
-  background: var(--blue) !important;
+  background: var(--cta-red) !important;
   color: #fff !important;
   border: none !important;
   border-radius: var(--r-sm) !important;
@@ -149,7 +151,7 @@
 }
 .landing-nav .btn-primary:hover,
 .landing-nav .connect-btn.btn-primary:hover {
-  background: var(--blue-hover) !important;
+  background: var(--cta-red-hover) !important;
 }
 .landing-nav .btn-ghost,
 .landing-nav .connect-btn.btn-ghost {
@@ -295,11 +297,11 @@
   }
 }
 .landing-btn-primary {
-  background: var(--blue);
+  background: var(--cta-red);
   color: #fff;
 }
 .landing-btn-primary:hover {
-  background: var(--blue-hover);
+  background: var(--cta-red-hover);
   color: #fff;
 }
 .landing-btn-ghost {
@@ -604,7 +606,7 @@
   border: none;
 }
 .how-step-pip.c1 {
-  background: var(--blue);
+  background: var(--cta-red);
 }
 .how-step-pip.c2 {
   background: var(--dusk);
@@ -682,7 +684,7 @@
   place-items: center;
   border: 1px solid var(--line);
   background: var(--surface-2);
-  color: var(--blue);
+  color: var(--cta-red);
 }
 .escrow-icon.moss {
   color: var(--green-text);
