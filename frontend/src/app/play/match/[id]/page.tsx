@@ -22,6 +22,12 @@ import {
   pushRelayReplace,
   saveLocalRelay,
 } from "@/lib/matchRelayClient";
+import {
+  isMoveSoundMuted,
+  playOpponentMoveSound,
+  setMoveSoundMuted,
+  unlockMoveSound,
+} from "@/lib/moveSound";
 import type { Address } from "viem";
 
 function rebuildGame(
@@ -64,6 +70,7 @@ export default function MatchPage() {
   const [relayStorage, setRelayStorage] = useState<"redis" | "memory" | null>(
     null
   );
+  const [soundMuted, setSoundMuted] = useState(false);
 
   const postingLock = useRef(false);
   const actionsRef = useRef<GameAction[]>([]);
@@ -72,6 +79,13 @@ export default function MatchPage() {
   namesRef.current = { p1: p1Name, p2: p2Name };
   const failStreak = useRef(0);
   const pollMs = useRef(3000);
+  /** Last action count we already notified for (avoid chime on self / first load) */
+  const notifiedLenRef = useRef(0);
+  const soundReadyRef = useRef(false);
+
+  useEffect(() => {
+    setSoundMuted(isMoveSoundMuted());
+  }, []);
 
   const humanPlayer: PlayerId | null = useMemo(() => {
     if (!match || !address) return null;
@@ -110,6 +124,34 @@ export default function MatchPage() {
       if (matchKey) saveLocalRelay(matchKey, list);
     },
     [matchKey]
+  );
+
+  /** Chime when opponent appends moves we have not heard yet */
+  const maybeNotifyOpponentMoves = useCallback(
+    (next: GameAction[]) => {
+      const prevLen = notifiedLenRef.current;
+      if (next.length <= prevLen) {
+        notifiedLenRef.current = next.length;
+        return;
+      }
+      // First sync of an existing game: adopt length without spamming chimes
+      if (!soundReadyRef.current) {
+        notifiedLenRef.current = next.length;
+        soundReadyRef.current = true;
+        return;
+      }
+      if (!humanPlayer) {
+        notifiedLenRef.current = next.length;
+        return;
+      }
+      const fresh = next.slice(prevLen);
+      const opponentPlayed = fresh.some((a) => a.player !== humanPlayer);
+      notifiedLenRef.current = next.length;
+      if (opponentPlayed) {
+        playOpponentMoveSound();
+      }
+    },
+    [humanPlayer]
   );
 
   /** Pull shared move log from relay (both players) */
@@ -162,6 +204,7 @@ export default function MatchPage() {
         );
       }
 
+      maybeNotifyOpponentMoves(serverActions);
       applyActionList(
         serverActions,
         match.gameSeed,
@@ -198,7 +241,25 @@ export default function MatchPage() {
     applyActionList,
     address,
     humanPlayer,
+    maybeNotifyOpponentMoves,
   ]);
+
+  // Unlock audio after first tap (browser autoplay policy)
+  useEffect(() => {
+    const unlock = () => unlockMoveSound();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  // Reset notify baseline when switching tables
+  useEffect(() => {
+    notifiedLenRef.current = 0;
+    soundReadyRef.current = false;
+  }, [matchKey]);
 
   // Poll relay with adaptive interval (slower after RPC blips)
   useEffect(() => {
@@ -251,6 +312,7 @@ export default function MatchPage() {
 
       postingLock.current = true;
       setPosting(true);
+      unlockMoveSound();
       // Optimistic UI + local backup (survives refresh)
       applyActionList(
         optimistic,
@@ -258,6 +320,12 @@ export default function MatchPage() {
         namesRef.current.p1,
         namesRef.current.p2
       );
+      // Own moves: advance notify baseline so we don't chime on echo
+      notifiedLenRef.current = Math.max(
+        notifiedLenRef.current,
+        optimistic.length
+      );
+      soundReadyRef.current = true;
 
       try {
         const data = await postRelayMove(
@@ -268,6 +336,10 @@ export default function MatchPage() {
         setRelayOk(true);
         failStreak.current = 0;
         if (data.storage) setRelayStorage(data.storage);
+        notifiedLenRef.current = Math.max(
+          notifiedLenRef.current,
+          (data.actions || []).length
+        );
         applyActionList(
           data.actions,
           match.gameSeed,
@@ -399,9 +471,32 @@ export default function MatchPage() {
                 type="button"
                 className="btn btn-ghost btn-sm"
                 disabled={syncing || posting}
-                onClick={() => void pullRelay()}
+                onClick={() => {
+                  unlockMoveSound();
+                  void pullRelay();
+                }}
               >
                 {syncing ? "Syncing…" : "Refresh board"}
+              </button>
+            )}
+            {match.status === MatchStatus.Active && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                title={
+                  soundMuted
+                    ? "Unmute opponent move sound"
+                    : "Mute opponent move sound"
+                }
+                onClick={() => {
+                  unlockMoveSound();
+                  const next = !soundMuted;
+                  setSoundMuted(next);
+                  setMoveSoundMuted(next);
+                  if (!next) playOpponentMoveSound();
+                }}
+              >
+                {soundMuted ? "Sound off" : "Sound on"}
               </button>
             )}
           </div>
@@ -461,8 +556,9 @@ export default function MatchPage() {
           {match.status === MatchStatus.Active && (
             <p className="muted" style={{ marginTop: 12 }}>
               Card plays are free (no wallet). Both phones stay in sync over the
-              relay. You only open the wallet to stake tickets and to confirm the
-              winner at the end.
+              relay. A short chime plays when your opponent moves (tap the board
+              once if sound is blocked). You only open the wallet to stake and
+              to confirm the winner at the end.
             </p>
           )}
 
