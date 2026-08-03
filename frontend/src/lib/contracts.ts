@@ -8,9 +8,12 @@ export const ADDRESSES = {
   jackpot: "0x3bAe643002069dBCbcd62B1A4eb4C4A397d042a2" as Address,
   jackpotTicketNft: "0x48FfE35AbB9f4780a4f1775C2Ce1c46185b366e4" as Address,
   jackpotRandomTicketBuyer: "0xb9560b43b91dE2c1DaF5dfbb76b2CFcDaFc13aBd" as Address,
-  /** Set after deploy: NEXT_PUBLIC_WHOT_ESCROW_ADDRESS */
+  /**
+   * WhotMatchEscrow on Base (Megapot JackpotTicketNFT stakes).
+   * Override with NEXT_PUBLIC_WHOT_ESCROW_ADDRESS if you redeploy.
+   */
   whotEscrow: (process.env.NEXT_PUBLIC_WHOT_ESCROW_ADDRESS ||
-    "0x0000000000000000000000000000000000000000") as Address,
+    "0xEC8cA16E0C751f45c3Bea800c9cB4be7710A81D8") as Address,
 } as const;
 
 export const erc721Abi = [
