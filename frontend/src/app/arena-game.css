@@ -257,12 +257,12 @@
   }
 }
 
-/* Draw pile / market — high z-index, large hit target */
+/* Draw pile / market — LEFT side */
 .table-draw {
   position: absolute;
-  left: 50%;
-  top: 2%;
-  transform: translateX(-50%);
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 30;
   display: flex;
   flex-direction: column;
@@ -280,6 +280,10 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
 }
+.table-draw.table-draw-left {
+  left: max(10px, 1.5vw);
+  top: 48%;
+}
 .table-draw.is-ready {
   border-color: rgba(252, 165, 165, 0.45);
   background: rgba(196, 30, 58, 0.12);
@@ -287,14 +291,14 @@
 .table-draw.is-ready:hover {
   background: rgba(196, 30, 58, 0.22);
   border-color: rgba(252, 165, 165, 0.65);
-  transform: translateX(-50%) translateY(-2px);
+  transform: translateY(calc(-50% - 2px));
 }
 .table-draw:disabled {
   cursor: not-allowed;
   opacity: 0.75;
 }
 .table-draw:disabled:hover {
-  transform: translateX(-50%);
+  transform: translateY(-50%);
 }
 .table-draw-stack {
   position: relative;
@@ -362,8 +366,8 @@
 /* Play pad center */
 .table-play-pad {
   position: absolute;
-  left: 50%;
-  top: 40%;
+  left: 52%;
+  top: 46%;
   transform: translate(-50%, -50%);
   z-index: 5;
   width: min(220px, 42vw);
@@ -403,18 +407,27 @@
   }
 }
 
-/* Seats */
+/* Seats — opponent TOP, you BOTTOM; name beside cards */
 .table-seat {
   position: absolute;
   z-index: 7;
   display: flex;
   flex-direction: column;
+  gap: 0;
+}
+.table-seat-row {
+  display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
 }
 .table-seat-opp {
-  left: 4%;
-  top: 32%;
+  left: 50%;
+  top: 4px;
+  transform: translateX(-50%);
+  width: min(920px, calc(100% - 24px));
   transition: filter 0.35s ease, opacity 0.35s ease;
 }
 .table-seat-opp.is-frozen {
@@ -422,15 +435,12 @@
   opacity: 0.8;
 }
 .table-seat-me {
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  max-width: 100%;
-  transform: none;
-  padding: 0 12px 8px;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  width: min(960px, calc(100% - 24px));
+  padding: 0;
   box-sizing: border-box;
-  align-items: stretch;
 }
 .table-seat-id {
   display: flex;
@@ -438,10 +448,11 @@
   gap: 10px;
   padding: 6px 12px 6px 6px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(8px);
   width: fit-content;
+  flex-shrink: 0;
 }
 .table-seat-id strong {
   display: block;
@@ -454,9 +465,7 @@
   font-weight: 600;
 }
 .table-seat-id.me {
-  align-self: flex-start;
-  margin-left: 4px;
-  margin-bottom: 6px;
+  margin: 0;
 }
 .table-leave {
   margin-left: 8px;
@@ -470,60 +479,41 @@
 }
 .table-freeze {
   position: absolute;
-  top: -8px;
-  right: -8px;
+  top: 0;
+  right: 8px;
   font-size: 1.2rem;
 }
 
-/* Opponent fan (face-down, still fanned) */
-.table-fan {
-  position: relative;
-  width: min(280px, 38vw);
-  height: 100px;
-  perspective: 900px;
-}
-.table-fan-card {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  transform-origin: center bottom;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: default;
-}
-.table-fan-card .whot-card {
-  pointer-events: none;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
-}
-.table-fan-opp .whot-card {
-  --card-w: 46px;
-  --card-h: 68px;
-}
-
-/* Your hand — flat row on the table, every card visible */
+/* Flat hands — name sits directly beside the card row */
 .table-hand-flat {
   display: flex;
   flex-wrap: nowrap;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: flex-end;
   gap: 10px;
-  width: 100%;
-  max-width: 100%;
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 14px 8px 10px;
+  padding: 10px 8px 8px;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scroll-snap-type: x proximity;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(0, 0, 0, 0.2) 40%,
-    rgba(0, 0, 0, 0.35) 100%
-  );
-  border-radius: 16px 16px 0 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.table-hand-opp {
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.28);
+}
+.table-hand-opp .table-hand-card.is-opp {
+  cursor: default;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+}
+.table-hand-opp .table-hand-card .whot-card {
+  --card-w: 42px;
+  --card-h: 62px;
 }
 .table-hand-card {
   appearance: none;
@@ -588,11 +578,12 @@
   }
 }
 
-/* Suit strip (left of play pad, like reference) */
+/* Suit strip (right of play pad when Whot) */
 .table-suit-strip {
   position: absolute;
-  left: max(18%, 120px);
-  top: 38%;
+  left: auto;
+  right: max(8%, 24px);
+  top: 46%;
   transform: translateY(-50%);
   z-index: 8;
   display: flex;
@@ -600,7 +591,7 @@
   align-items: center;
   gap: 8px;
   max-width: 120px;
-  opacity: 0.55;
+  opacity: 0;
   pointer-events: none;
 }
 .table-suit-strip.is-active {
@@ -663,8 +654,8 @@
 /* Status under play pad */
 .table-status {
   position: absolute;
-  left: 50%;
-  top: calc(40% + min(120px, 22vw));
+  left: 52%;
+  top: calc(46% + min(118px, 22vw));
   transform: translateX(-50%);
   z-index: 6;
   display: flex;
@@ -969,18 +960,17 @@
     grid-row: 2;
     font-size: 0.8rem;
   }
-  .table-seat-opp {
-    left: 2%;
-    top: 28%;
-    transform: scale(0.9);
-    transform-origin: left center;
+  .table-seat-opp,
+  .table-seat-me {
+    width: calc(100% - 16px);
   }
-  .table-suit-strip {
-    left: 2%;
-    top: auto;
-    bottom: 28%;
-    transform: none;
-    max-width: 100px;
+  .table-seat-row {
+    gap: 8px;
+  }
+  .table-draw.table-draw-left {
+    left: 6px;
+    top: 48%;
+    padding: 8px 10px 6px;
   }
   .table-suit-hint {
     display: none;
@@ -992,6 +982,7 @@
   .table-play-pad {
     width: min(180px, 46vw);
     height: min(180px, 46vw);
+    left: 54%;
   }
   .table-draw-stack {
     width: 60px;
@@ -1000,9 +991,6 @@
   .table-draw-stack .whot-card {
     --card-w: 58px;
     --card-h: 84px;
-  }
-  .table-draw {
-    padding: 8px 10px 6px;
   }
 }
 
@@ -1013,26 +1001,24 @@
   .table-brand-name {
     font-size: 0.8rem;
   }
-  .table-seat-opp {
-    top: 22%;
+  .table-seat-id strong {
+    font-size: 0.78rem;
   }
-  .table-suit-strip {
-    display: none;
+  .table-seat-id span {
+    font-size: 0.62rem;
   }
   .table-suit-strip.is-active {
-    display: flex;
-    left: 50%;
-    bottom: 32%;
-    top: auto;
-    transform: translateX(-50%);
-    flex-direction: row;
-    max-width: 95vw;
-  }
-  .table-suit-strip.is-active .table-suit-col {
-    flex-direction: row;
+    right: 6px;
+    left: auto;
+    top: 46%;
+    max-width: 56px;
   }
   .table-chat-float {
     max-height: 32vh;
+  }
+  .table-hand-opp .table-hand-card .whot-card {
+    --card-w: 34px;
+    --card-h: 50px;
   }
 }
 

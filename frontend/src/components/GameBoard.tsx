@@ -483,12 +483,44 @@ export function GameBoard({
             aria-hidden
           />
 
-          {/* Draw pile — top center (market) */}
+          {/* Opponent — TOP, name beside cards */}
+          <section
+            className={`table-seat table-seat-opp${
+              fx === "suspension" ? " is-frozen" : ""
+            }`}
+          >
+            <div className="table-seat-row">
+              <div className="table-seat-id">
+                <ProfileAvatar profile={oppBits} size={44} />
+                <div>
+                  <strong>{oppName}</strong>
+                  <span>{opp.hand.length} cards</span>
+                </div>
+              </div>
+              <div className="table-hand-flat table-hand-opp" aria-hidden>
+                {oppFan.map((c) => (
+                  <div key={c.id} className="table-hand-card is-opp">
+                    <WhotCard faceDown small />
+                  </div>
+                ))}
+                {opp.hand.length > 14 && (
+                  <span className="table-pile-label">+{opp.hand.length - 14}</span>
+                )}
+              </div>
+            </div>
+            {fx === "suspension" && (
+              <span className="table-freeze" aria-hidden>
+                🔒
+              </span>
+            )}
+          </section>
+
+          {/* Market stack — LEFT */}
           <button
             type="button"
-            className={`table-draw${deckShake ? " is-shake" : ""}${
-              myTurn && !state.pendingPenalty ? " is-ready" : ""
-            }`}
+            className={`table-draw table-draw-left${
+              deckShake ? " is-shake" : ""
+            }${myTurn && !state.pendingPenalty ? " is-ready" : ""}`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -518,62 +550,20 @@ export function GameBoard({
             </span>
           </button>
 
-          {/* Opponent — left */}
-          <section
-            className={`table-seat table-seat-opp${
-              fx === "suspension" ? " is-frozen" : ""
-            }`}
-          >
-            <div className="table-seat-id">
-              <ProfileAvatar profile={oppBits} size={48} />
-              <div>
-                <strong>{oppName}</strong>
-                <span>{opp.hand.length} cards</span>
-              </div>
-            </div>
-            <div className="table-fan table-fan-opp" aria-hidden>
-              {oppFan.map((c, i) => {
-                const p = fanPose(i, oppFan.length, 48, 6);
-                return (
-                  <div
-                    key={c.id}
-                    className="table-fan-card"
-                    style={{
-                      transform: `translateX(calc(-50% + ${p.x}px)) rotate(${p.rotate}deg) translateY(${p.y}px)`,
-                      zIndex: i,
-                    }}
-                  >
-                    <WhotCard faceDown small />
-                  </div>
-                );
-              })}
-            </div>
-            {fx === "suspension" && (
-              <span className="table-freeze" aria-hidden>
-                🔒
-              </span>
-            )}
-          </section>
-
-          {/* Suit strip — when calling Whot */}
-          {(pickingShape || myTurn) && (
+          {/* Suit strip — when calling Whot (right of play pad) */}
+          {pickingShape && (
             <div
-              className={`table-suit-strip${pickingShape ? " is-active" : ""}`}
-              aria-label={pickingShape ? "Call a shape" : "Suits"}
+              className="table-suit-strip is-active"
+              aria-label="Call a shape"
             >
-              <p className="table-suit-hint">
-                {pickingShape
-                  ? "Call a shape"
-                  : "If a suit selection if a wild card is played."}
-              </p>
+              <p className="table-suit-hint">Call a shape</p>
               <div className="table-suit-col">
                 {PLAYABLE_SHAPES.map((sh) => (
                   <button
                     key={sh}
                     type="button"
-                    className={pickingShape ? "pickable" : ""}
-                    disabled={!pickingShape}
-                    onClick={() => pickingShape && confirmWhot(sh)}
+                    className="pickable"
+                    onClick={() => confirmWhot(sh)}
                     aria-label={SHAPE_LABEL[sh]}
                   >
                     <SuitIcon shape={sh} size={22} />
@@ -661,95 +651,105 @@ export function GameBoard({
             )}
           </div>
 
-          {/* Your hand — flat on the table, all cards visible */}
+          {/* You — BOTTOM, name beside flat cards */}
           <section className="table-seat table-seat-me">
-            <div className="table-seat-id me">
-              <ProfileAvatar profile={meBits} size={44} />
-              <div>
-                <strong>YOU</strong>
-                <span>
-                  {ticketBalance != null
-                    ? String(ticketBalance)
-                    : `${me.hand.length} cards`}
-                </span>
+            <div className="table-seat-row me">
+              <div className="table-seat-id me">
+                <ProfileAvatar profile={meBits} size={44} />
+                <div>
+                  <strong>YOU</strong>
+                  <span>
+                    {ticketBalance != null
+                      ? String(ticketBalance)
+                      : `${me.hand.length} cards`}
+                  </span>
+                </div>
+                {gameOver && (
+                  <Link href={backHref} className="table-leave">
+                    Leave
+                  </Link>
+                )}
               </div>
-              {gameOver && (
-                <Link href={backHref} className="table-leave">
-                  Leave
-                </Link>
-              )}
-            </div>
-            <div
-              className={`table-hand-flat${gameOver ? " is-review" : ""}`}
-              aria-label="Your hand"
-            >
-              {me.hand.map((c) => {
-                const playable = myTurn && moveIds.has(c.id);
-                const isSel = selected?.id === c.id;
-                const isDrag = dragId === c.id;
-                const style: React.CSSProperties | undefined =
-                  isDrag && dragPos
-                    ? {
-                        position: "fixed",
-                        left: dragPos.x,
-                        top: dragPos.y,
-                        transform: "translate(-50%, -50%) scale(1.08)",
-                        zIndex: 90,
-                      }
-                    : undefined;
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className={`table-hand-card${
-                      playable ? " is-playable" : ""
-                    }${isSel ? " is-selected" : ""}${
-                      isDrag ? " is-dragging" : ""
-                    }`}
-                    style={style}
-                    onPointerDown={(e) => {
-                      if (gameOver || !playable) return;
-                      e.currentTarget.setPointerCapture(e.pointerId);
-                      setDragId(c.id);
-                      setDragPos({ x: e.clientX, y: e.clientY });
-                      setSelected(c);
-                      updateSpotlight(e.clientX, e.clientY);
-                    }}
-                    onPointerMove={(e) => {
-                      if (dragId !== c.id) return;
-                      setDragPos({ x: e.clientX, y: e.clientY });
-                      updateSpotlight(e.clientX, e.clientY);
-                    }}
-                    onPointerUp={(e) => {
-                      if (dragId === c.id) {
-                        endDrag(e.clientX, e.clientY, c);
-                        return;
-                      }
-                      if (gameOver) {
-                        setSelected((cur) => (cur?.id === c.id ? null : c));
-                        return;
-                      }
-                      if (playable) tryPlay(c);
-                    }}
-                    onPointerCancel={() => {
-                      setDragId(null);
-                      setDragPos(null);
-                      setSpotlight(null);
-                    }}
-                    onClick={() => {
-                      if (dragId) return;
-                      if (gameOver) {
-                        setSelected((cur) => (cur?.id === c.id ? null : c));
-                        return;
-                      }
-                      if (playable) tryPlay(c);
-                    }}
-                    aria-label={`Play ${c.shape} ${c.number}`}
-                  >
-                    <WhotCard card={c} playable={playable} selected={isSel} />
-                  </button>
-                );
-              })}
+              <div
+                className={`table-hand-flat${gameOver ? " is-review" : ""}`}
+                aria-label="Your hand"
+              >
+                {me.hand.map((c) => {
+                  const playable = myTurn && moveIds.has(c.id);
+                  const isSel = selected?.id === c.id;
+                  const isDrag = dragId === c.id;
+                  const style: React.CSSProperties | undefined =
+                    isDrag && dragPos
+                      ? {
+                          position: "fixed",
+                          left: dragPos.x,
+                          top: dragPos.y,
+                          transform: "translate(-50%, -50%) scale(1.08)",
+                          zIndex: 90,
+                        }
+                      : undefined;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`table-hand-card${
+                        playable ? " is-playable" : ""
+                      }${isSel ? " is-selected" : ""}${
+                        isDrag ? " is-dragging" : ""
+                      }`}
+                      style={style}
+                      onPointerDown={(e) => {
+                        if (gameOver || !playable) return;
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                        setDragId(c.id);
+                        setDragPos({ x: e.clientX, y: e.clientY });
+                        setSelected(c);
+                        updateSpotlight(e.clientX, e.clientY);
+                      }}
+                      onPointerMove={(e) => {
+                        if (dragId !== c.id) return;
+                        setDragPos({ x: e.clientX, y: e.clientY });
+                        updateSpotlight(e.clientX, e.clientY);
+                      }}
+                      onPointerUp={(e) => {
+                        if (dragId === c.id) {
+                          endDrag(e.clientX, e.clientY, c);
+                          return;
+                        }
+                        if (gameOver) {
+                          setSelected((cur) =>
+                            cur?.id === c.id ? null : c
+                          );
+                          return;
+                        }
+                        if (playable) tryPlay(c);
+                      }}
+                      onPointerCancel={() => {
+                        setDragId(null);
+                        setDragPos(null);
+                        setSpotlight(null);
+                      }}
+                      onClick={() => {
+                        if (dragId) return;
+                        if (gameOver) {
+                          setSelected((cur) =>
+                            cur?.id === c.id ? null : c
+                          );
+                          return;
+                        }
+                        if (playable) tryPlay(c);
+                      }}
+                      aria-label={`Play ${c.shape} ${c.number}`}
+                    >
+                      <WhotCard
+                        card={c}
+                        playable={playable}
+                        selected={isSel}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </section>
 
