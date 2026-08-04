@@ -116,6 +116,8 @@ export function GameBoard({
   const [feedOpen, setFeedOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const feedEndRef = useRef<HTMLDivElement>(null);
+  /** User closed chat — don't force it back open on re-render */
+  const chatClosedByUser = useRef(false);
   const [fx, setFx] = useState<FxKind>(null);
   const [ripple, setRipple] = useState(0);
   const [deckShake, setDeckShake] = useState(false);
@@ -145,10 +147,6 @@ export function GameBoard({
   useEffect(() => {
     setSoundMuted(isMoveSoundMuted());
   }, []);
-
-  useEffect(() => {
-    if (chatContent) setChatOpen(true);
-  }, [chatContent]);
 
   useEffect(() => {
     if (!feedOpen) return;
@@ -448,7 +446,11 @@ export function GameBoard({
                 type="button"
                 className={`table-icon-btn${chatOpen ? " active" : ""}`}
                 onClick={() => {
-                  setChatOpen((v) => !v);
+                  setChatOpen((v) => {
+                    const next = !v;
+                    chatClosedByUser.current = !next;
+                    return next;
+                  });
                   setMenuOpen(false);
                 }}
                 aria-label="Chat"
@@ -855,7 +857,10 @@ export function GameBoard({
               <button
                 type="button"
                 className="table-icon-btn sm"
-                onClick={() => setChatOpen(false)}
+                onClick={() => {
+                  chatClosedByUser.current = true;
+                  setChatOpen(false);
+                }}
                 aria-label="Close chat"
               >
                 ×
@@ -868,7 +873,10 @@ export function GameBoard({
           <button
             type="button"
             className="table-chat-fab"
-            onClick={() => setChatOpen(true)}
+            onClick={() => {
+              chatClosedByUser.current = false;
+              setChatOpen(true);
+            }}
           >
             Chat
           </button>

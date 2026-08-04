@@ -99,13 +99,22 @@ export async function loadMatchMeta(
 
   if (!force) {
     const hit = mem().get(matchId);
-    if (hit && Date.now() - hit.cachedAt < MEM_TTL_MS) {
+    // Waiting tables flip to Active on join — keep a short TTL so posts aren't blocked
+    const ttl =
+      hit && Number(hit.status) === 1 ? 8_000 : MEM_TTL_MS;
+    if (hit && Date.now() - hit.cachedAt < ttl) {
       return { meta: hit, from: "memory" };
     }
     const redis = await readRedisMeta(matchId);
     if (redis) {
-      mem().set(matchId, { ...redis, cachedAt: Date.now() });
-      return { meta: redis, from: "redis" };
+      // Don't trust long-lived Waiting meta from Redis after join
+      const redisAge = Date.now() - (redis.cachedAt || 0);
+      if (Number(redis.status) === 1 && redisAge > 8_000) {
+        /* fall through to chain */
+      } else {
+        mem().set(matchId, { ...redis, cachedAt: Date.now() });
+        return { meta: redis, from: "redis" };
+      }
     }
   }
 

@@ -116,12 +116,12 @@ export async function POST(
 
   try {
     let { meta, error: rpcError } = await loadMatchMeta(params.matchId, id);
-    if (!meta) {
+    if (!meta || Number(meta.status) === 0) {
       const retry = await loadMatchMeta(params.matchId, id, {
         forceRefresh: true,
       });
-      meta = retry.meta;
-      rpcError = retry.error;
+      if (retry.meta) meta = retry.meta;
+      if (retry.error) rpcError = retry.error;
     }
 
     if (!meta) {
@@ -136,15 +136,17 @@ export async function POST(
       );
     }
 
-    // Allow chat while waiting (table open) or active; not after cancel/resolve optional
-    // Keep chat open after resolve for a bit of trash talk / coord
-    if (meta.status === 0) {
+    // Allow chat while waiting or active (and after resolve for trash talk)
+    if (Number(meta.status) === 0) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
 
     const p1 = meta.player1.toLowerCase();
-    const p2 = meta.player2.toLowerCase();
-    if (address !== p1 && address !== p2) {
+    const p2 = (meta.player2 || "").toLowerCase();
+    const zero = "0x0000000000000000000000000000000000000000";
+    const isP1 = address === p1;
+    const isP2 = p2 && p2 !== zero && address === p2;
+    if (!isP1 && !isP2) {
       return NextResponse.json(
         { error: "Only match players can chat" },
         { status: 403 }

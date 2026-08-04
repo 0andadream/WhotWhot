@@ -145,15 +145,15 @@ export async function POST(
   }
 
   try {
-    // Prefer cache; force refresh only if missing
+    // Prefer cache; force refresh if missing or not Active (stale Waiting is common after join)
     let { meta, error: rpcError } = await loadMatchMeta(params.matchId, id);
-    if (!meta) {
-      // One forced retry for posts (auth needs real players)
+    const statusNum = () => (meta ? Number(meta.status) : -1);
+    if (!meta || statusNum() !== 2) {
       const retry = await loadMatchMeta(params.matchId, id, {
         forceRefresh: true,
       });
-      meta = retry.meta;
-      rpcError = retry.error;
+      if (retry.meta) meta = retry.meta;
+      if (retry.error) rpcError = retry.error;
     }
 
     if (!meta) {
@@ -168,9 +168,16 @@ export async function POST(
       );
     }
 
-    if (meta.status !== 2) {
+    if (statusNum() !== 2) {
       return NextResponse.json(
-        { error: "Match is not active" },
+        {
+          error:
+            statusNum() === 1
+              ? "Match still waiting for opponent"
+              : "Match is not active",
+          status: statusNum(),
+          storage: relayStorageMode(),
+        },
         { status: 400 }
       );
     }

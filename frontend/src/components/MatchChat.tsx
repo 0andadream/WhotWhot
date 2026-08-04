@@ -86,13 +86,29 @@ export function MatchChat({
     unlockMoveSound();
     setSending(true);
     setError(null);
+    // Optimistic bubble so UX feels instant
+    const optimistic: ChatMessage = {
+      id: `local-${Date.now()}`,
+      address: address.toLowerCase(),
+      name: displayName || "You",
+      text: t,
+      at: Date.now(),
+    };
+    setMessages((prev) => [...prev, optimistic]);
+    setText("");
     try {
       const data = await postChat(matchId, address, t, displayName);
-      setText("");
       lastCountRef.current = (data.messages || []).length;
       setMessages(data.messages || []);
       if (data.storage) setStorage(data.storage);
+      if (data.storage === "memory") {
+        setError(
+          "Chat is temporary on this server — set Upstash Redis on Vercel so both players share messages."
+        );
+      }
     } catch (err) {
+      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+      setText(t);
       setError(err instanceof Error ? err.message : "Send failed");
     } finally {
       setSending(false);

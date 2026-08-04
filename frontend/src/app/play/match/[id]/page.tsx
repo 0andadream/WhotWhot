@@ -266,11 +266,15 @@ export default function MatchPage() {
       setRelayOk(true);
       if (data.warning && data.storage === "memory") {
         setMsg(
-          "Move relay is using temporary memory (no Redis). Moves may not reach the other player until UPSTASH_REDIS_REST_URL is set on Vercel."
+          "Relay is temporary (no Redis) — opponent may not see moves/chat until Upstash is set on Vercel."
         );
-      } else if (!data.warning) {
+      } else {
+        // Clear sticky sync toasts once pull succeeds
         setMsg((m) =>
-          m && (m.includes("Relay") || m.includes("rate limit") || m.includes("RPC"))
+          m &&
+          (/sync|Relay|rate limit|RPC|saved on this device|not active|Network busy/i.test(
+            m
+          ))
             ? null
             : m
         );
@@ -400,11 +404,21 @@ export default function MatchPage() {
       soundReadyRef.current = true;
 
       try {
-        const data = await postRelayMove(
-          matchKey,
-          address as Address,
-          action
-        );
+        let data;
+        try {
+          data = await postRelayMove(matchKey, address as Address, action);
+        } catch (first: unknown) {
+          // Stale "not active" after join — refresh on-chain match then retry once
+          const msg =
+            first instanceof Error ? first.message : String(first || "");
+          if (/not active|waiting for opponent/i.test(msg)) {
+            await refetch();
+            await new Promise((r) => setTimeout(r, 600));
+            data = await postRelayMove(matchKey, address as Address, action);
+          } else {
+            throw first;
+          }
+        }
         setRelayOk(true);
         failStreak.current = 0;
         if (data.storage) setRelayStorage(data.storage);
@@ -426,9 +440,36 @@ export default function MatchPage() {
           e instanceof Error
             ? e.message
             : "Could not send move. Check internet and try again.";
+        // Quiet sticky banner: short message; board still works offline-local
         setMsg(
-          `${detail} Move saved on this device. Tap Refresh board to retry sync.`
+          /not active|waiting/i.test(detail)
+            ? "Syncing table… try again in a second."
+            : /rate limit|RPC/i.test(detail)
+              ? "Network busy — move saved, retrying…"
+              : `${detail}`
         );
+        // Background retry without nagging
+        window.setTimeout(() => {
+          void (async () => {
+            try {
+              const data = await postRelayMove(
+                matchKey,
+                address as Address,
+                action
+              );
+              applyActionList(
+                data.actions,
+                match.gameSeed!,
+                namesRef.current.p1,
+                namesRef.current.p2
+              );
+              setMsg(null);
+              setRelayOk(true);
+            } catch {
+              /* pullRelay may push local later */
+            }
+          })();
+        }, 2000);
       } finally {
         postingLock.current = false;
         setPosting(false);
@@ -441,6 +482,7 @@ export default function MatchPage() {
       match?.gameSeed,
       posting,
       applyActionList,
+      refetch,
     ]
   );
 
@@ -618,17 +660,42 @@ export default function MatchPage() {
         />
         {msg && (
           <div
-            className="alert"
+            className="table-toast"
+            role="status"
             style={{
               position: "fixed",
               left: "50%",
-              top: 64,
+              top: 72,
               transform: "translateX(-50%)",
               zIndex: 60,
-              maxWidth: "min(420px, 92vw)",
+              maxWidth: "min(380px, 90vw)",
+              padding: "10px 16px",
+              borderRadius: 12,
+              background: "rgba(18,14,12,0.92)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "#f5f0e8",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              boxShadow: "0 12px 32px rgba(0,0,0,0.4)",
+              textAlign: "center",
             }}
           >
             {msg}
+            <button
+              type="button"
+              onClick={() => setMsg(null)}
+              style={{
+                marginLeft: 10,
+                border: "none",
+                background: "transparent",
+                color: "#fecaca",
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
           </div>
         )}
         {settledWinner && (
