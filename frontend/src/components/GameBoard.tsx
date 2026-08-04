@@ -135,6 +135,12 @@ export function GameBoard({
   /** Opponent wins after local player ran out of time */
   const [timeoutWinner, setTimeoutWinner] = useState<PlayerId | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const [turnPulse, setTurnPulse] = useState(0);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const [spotlight, setSpotlight] = useState<{ x: number; y: number } | null>(
+    null
+  );
 
   const arenaRef = useRef<HTMLDivElement>(null);
   const prevTopId = useRef<string | null>(null);
@@ -246,6 +252,7 @@ export function GameBoard({
     if (prevTurn.current !== state.turn) {
       setTurnLeft(TURN_SECONDS);
       timeoutFiredRef.current = false;
+      setTurnPulse((n) => n + 1);
       prevTurn.current = state.turn;
     }
   }, [state.turn, effectiveWinner]);
@@ -349,6 +356,26 @@ export function GameBoard({
     setDeckShake(true);
     window.setTimeout(() => setDeckShake(false), 420);
     apply({ type: "DRAW", player: humanPlayer });
+  };
+
+  const updateSpotlight = (clientX: number, clientY: number) => {
+    if (!arenaRef.current) return;
+    const r = arenaRef.current.getBoundingClientRect();
+    setSpotlight({ x: clientX - r.left, y: clientY - r.top });
+  };
+
+  const endDrag = (clientX: number, clientY: number, card: Card) => {
+    setDragId(null);
+    setDragPos(null);
+    setSpotlight(null);
+    if (!myTurn || !moveIds.has(card.id) || !arenaRef.current) return;
+    const r = arenaRef.current.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const dist = Math.hypot(clientX - cx, clientY - cy);
+    if (dist < r.width * 0.48) {
+      tryPlay(card);
+    }
   };
 
   const timerPct =
@@ -464,21 +491,45 @@ export function GameBoard({
           </div>
         </section>
 
-        {/* Circular arena */}
+        {/* Circular arena + attached match details */}
         <div className="arena-stage-wrap">
+          <div className="arena-match-details">
+            <div className="arena-match-details-title">🎟 Match details</div>
+            <div className="arena-match-details-row">
+              <span>Stake</span>
+              <strong>
+                {stakeTickets} Ticket{stakeTickets === 1 ? "" : "s"}
+              </strong>
+            </div>
+            <div className="arena-match-details-row">
+              <span>Total pot</span>
+              <strong>
+                {potTickets} Ticket{potTickets === 1 ? "" : "s"}
+              </strong>
+            </div>
+          </div>
+
           <div
             ref={arenaRef}
             className={`arena-circle${fx === "hold_on" ? " is-hold" : ""}${
               fx === "whot" || pickingShape ? " is-whot" : ""
-            }${fx === "impact" || impactKey ? " is-impact" : ""}`}
+            }${fx === "impact" || impactKey ? " is-impact" : ""}${
+              turnPulse ? " is-turn-pulse" : ""
+            }`}
+            key={`pulse-${turnPulse}`}
+            onPointerMove={(e) => {
+              if (dragId) updateSpotlight(e.clientX, e.clientY);
+            }}
           >
             <div className="arena-glow" aria-hidden />
+            <div className="arena-glow arena-glow-soft" aria-hidden />
             <div className="arena-ring" aria-hidden />
             <div className="arena-ring-spin" aria-hidden />
+            <div className="arena-ring-spin arena-ring-spin-slow" aria-hidden />
 
             {!reduceMotion && (
               <div className="arena-particles" aria-hidden>
-                {Array.from({ length: 14 }).map((_, i) => (
+                {Array.from({ length: 16 }).map((_, i) => (
                   <span
                     key={i}
                     className="arena-particle"
@@ -493,22 +544,25 @@ export function GameBoard({
               className={`arena-ripple${ripple ? " go" : ""}`}
               aria-hidden
             />
+            <div
+              key={`r2-${ripple}`}
+              className={`arena-ripple arena-ripple-delay${ripple ? " go" : ""}`}
+              aria-hidden
+            />
 
-            {/* Stake glass */}
-            <div className="arena-stake">
-              <div className="arena-stake-row">
-                <span>🎟 Stake</span>
-                <strong>
-                  {stakeTickets} Ticket{stakeTickets === 1 ? "" : "s"}
-                </strong>
-              </div>
-              <div className="arena-stake-row">
-                <span>🏆 Total pot</span>
-                <strong>
-                  {potTickets} Ticket{potTickets === 1 ? "" : "s"}
-                </strong>
-              </div>
-            </div>
+            <div
+              className={`arena-spotlight${spotlight ? " on" : ""}`}
+              style={
+                spotlight
+                  ? { left: spotlight.x, top: spotlight.y }
+                  : undefined
+              }
+              aria-hidden
+            />
+            <div
+              className={`arena-drop-hint${dragId ? " on" : ""}`}
+              aria-hidden
+            />
 
             <div className="arena-center">
               <button
@@ -526,24 +580,26 @@ export function GameBoard({
 
               <div className="arena-active-wrap">
                 <div className="arena-active-glow" aria-hidden />
+                <div className="arena-active-lift" aria-hidden />
                 <motion.div
                   key={top?.id || "empty"}
+                  className="arena-active-card"
                   initial={
                     reduceMotion
                       ? false
-                      : { scale: 0.7, y: 40, opacity: 0, rotate: -8 }
+                      : { scale: 0.65, y: 48, opacity: 0, rotate: -10 }
                   }
                   animate={{ scale: 1, y: 0, opacity: 1, rotate: 0 }}
                   transition={{
                     type: "spring",
-                    stiffness: 420,
-                    damping: 18,
-                    mass: 0.7,
+                    stiffness: 380,
+                    damping: 16,
+                    mass: 0.75,
                   }}
                 >
                   <WhotCard card={top} />
                 </motion.div>
-                <span className="arena-stack-label" style={{ marginTop: 8 }}>
+                <span className="arena-stack-label" style={{ marginTop: 10 }}>
                   <SuitIcon
                     shape={
                       state.currentShape === "whot"
@@ -706,14 +762,59 @@ export function GameBoard({
             {me.hand.map((c) => {
               const playable = myTurn && moveIds.has(c.id);
               const isSel = selected?.id === c.id;
+              const isDrag = dragId === c.id;
+              const dragStyle: React.CSSProperties | undefined =
+                isDrag && dragPos
+                  ? {
+                      position: "fixed",
+                      left: dragPos.x,
+                      top: dragPos.y,
+                      transform: "translate(-50%, -50%) scale(1.08)",
+                      zIndex: 80,
+                      pointerEvents: "none",
+                    }
+                  : undefined;
               return (
                 <button
                   key={c.id}
                   type="button"
                   className={`arena-flat-card${playable ? " is-playable" : ""}${
                     isSel ? " is-selected" : ""
-                  }${gameOver ? " is-review" : ""}`}
+                  }${isDrag ? " is-dragging" : ""}${
+                    gameOver ? " is-review" : ""
+                  }`}
+                  style={dragStyle}
+                  onPointerDown={(e) => {
+                    if (gameOver || !playable) return;
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    setDragId(c.id);
+                    setDragPos({ x: e.clientX, y: e.clientY });
+                    setSelected(c);
+                    updateSpotlight(e.clientX, e.clientY);
+                  }}
+                  onPointerMove={(e) => {
+                    if (dragId !== c.id) return;
+                    setDragPos({ x: e.clientX, y: e.clientY });
+                    updateSpotlight(e.clientX, e.clientY);
+                  }}
+                  onPointerUp={(e) => {
+                    if (dragId === c.id) {
+                      endDrag(e.clientX, e.clientY, c);
+                      return;
+                    }
+                    if (gameOver) {
+                      setSelected((cur) => (cur?.id === c.id ? null : c));
+                      return;
+                    }
+                    if (playable) tryPlay(c);
+                  }}
+                  onPointerCancel={() => {
+                    setDragId(null);
+                    setDragPos(null);
+                    setSpotlight(null);
+                  }}
                   onClick={() => {
+                    if (dragId) return;
                     if (gameOver) {
                       setSelected((cur) => (cur?.id === c.id ? null : c));
                       return;
@@ -726,15 +827,13 @@ export function GameBoard({
                       : `Play ${c.shape} ${c.number}`
                   }
                 >
-                  <WhotCard
-                    card={c}
-                    playable={playable}
-                    selected={isSel}
-                  />
+                  <WhotCard card={c} playable={playable} selected={isSel} />
                 </button>
               );
             })}
           </div>
+          {/* Reserve bottom-right for future floating live chat */}
+          <div className="arena-chat-reserve" aria-hidden />
           {gameOver && selected && (
             <p className="arena-inspect-hint">
               {selected.special === "whot"

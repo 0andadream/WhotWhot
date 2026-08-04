@@ -35,8 +35,14 @@
   display: grid;
   grid-template-rows: auto 1fr auto auto auto;
   gap: 10px;
-  padding: 14px 20px 18px;
+  /* Extra right padding reserves bottom-right for future live chat */
+  padding: 14px max(20px, 7vw) 18px 20px;
   box-sizing: border-box;
+}
+@media (min-width: 960px) {
+  .arena-shell {
+    padding-right: 120px;
+  }
 }
 
 /* ── Top nav (chat + menu only) ── */
@@ -98,8 +104,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   z-index: 5;
+  padding-top: 8px;
+  margin-bottom: 4px;
   transition: filter 0.35s ease, opacity 0.35s ease;
 }
 .arena-opp.is-frozen {
@@ -109,6 +117,7 @@
 .arena-opp-meta {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
 }
 .arena-opp-name {
@@ -126,7 +135,8 @@
 .arena-opp-fan {
   position: relative;
   width: min(420px, 70vw);
-  height: 72px;
+  height: 76px;
+  margin-top: 4px;
   perspective: 800px;
 }
 .arena-opp-fan .arena-fan-card {
@@ -140,10 +150,73 @@
 .arena-stage-wrap {
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 0;
   z-index: 2;
+  gap: 0;
+}
+
+/* Match details — glass pill attached to arena top edge */
+.arena-match-details {
+  position: relative;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+  max-width: min(280px, 88vw);
+  margin: 0 auto -18px;
+  padding: 10px 16px 12px;
+  border-radius: 14px;
+  background: rgba(22, 22, 26, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    0 0 0 1px rgba(196, 30, 58, 0.12),
+    0 0 28px rgba(196, 30, 58, 0.18),
+    0 10px 28px rgba(0, 0, 0, 0.4);
+  text-align: left;
+}
+.arena-match-details::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  width: 42%;
+  height: 14px;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(196, 30, 58, 0.35),
+    transparent 70%
+  );
+  pointer-events: none;
+}
+.arena-match-details-title {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fecaca;
+  margin-bottom: 2px;
+}
+.arena-match-details-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--arena-muted);
+}
+.arena-match-details-row strong {
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: -0.02em;
 }
 
 .arena-circle {
@@ -156,6 +229,7 @@
   justify-content: center;
   animation: arena-breathe 5.5s ease-in-out infinite;
   transform-style: preserve-3d;
+  margin-top: 0;
 }
 .arena-circle.is-hold {
   animation: arena-hold-pulse 1.2s ease-in-out;
@@ -165,6 +239,21 @@
 }
 .arena-circle.is-impact .arena-active-glow {
   animation: arena-impact-glow 0.55s ease-out;
+}
+.arena-circle.is-turn-pulse {
+  animation: arena-turn-soft-pulse 0.85s ease-out;
+}
+@keyframes arena-turn-soft-pulse {
+  0% {
+    filter: brightness(1);
+    box-shadow: none;
+  }
+  40% {
+    filter: brightness(1.12);
+  }
+  100% {
+    filter: brightness(1);
+  }
 }
 
 @keyframes arena-breathe {
@@ -224,6 +313,30 @@
   pointer-events: none;
   filter: blur(8px);
   z-index: 0;
+  animation: arena-glow-breathe 6s ease-in-out infinite;
+}
+.arena-glow-soft {
+  inset: -28%;
+  background: radial-gradient(
+    circle,
+    rgba(196, 30, 58, 0.14) 0%,
+    transparent 62%
+  );
+  filter: blur(18px);
+  opacity: 0.85;
+  animation-duration: 8s;
+  animation-direction: reverse;
+}
+@keyframes arena-glow-breathe {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
 }
 
 .arena-ring {
@@ -262,12 +375,27 @@
     rgba(196, 30, 58, 0.25) 240deg,
     transparent 300deg
   );
-  animation: arena-ring-rotate 12s linear infinite;
+  animation: arena-ring-rotate 14s linear infinite;
   mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
   pointer-events: none;
   z-index: 2;
   opacity: 0.85;
+}
+.arena-ring-spin-slow {
+  inset: -8px;
+  animation-duration: 28s;
+  animation-direction: reverse;
+  opacity: 0.45;
+  background: conic-gradient(
+    from 90deg,
+    transparent 0deg,
+    rgba(252, 165, 165, 0.25) 30deg,
+    transparent 80deg,
+    transparent 180deg,
+    rgba(196, 30, 58, 0.2) 210deg,
+    transparent 280deg
+  );
 }
 @keyframes arena-ring-rotate {
   to {
@@ -325,6 +453,10 @@
 .arena-ripple.go {
   animation: arena-ripple-out 0.7s ease-out forwards;
 }
+.arena-ripple-delay.go {
+  animation-delay: 0.12s;
+  border-color: rgba(196, 30, 58, 0.3);
+}
 @keyframes arena-ripple-out {
   0% {
     opacity: 0.8;
@@ -338,17 +470,35 @@
 
 .arena-spotlight {
   position: absolute;
-  width: 140px;
-  height: 140px;
+  width: 160px;
+  height: 160px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.1), transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(196, 30, 58, 0.08) 40%,
+    transparent 70%
+  );
   pointer-events: none;
   z-index: 3;
   transform: translate(-50%, -50%);
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.12s ease;
 }
 .arena-spotlight.on {
+  opacity: 1;
+}
+.arena-drop-hint {
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  border: 2px dashed rgba(252, 165, 165, 0.4);
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.arena-drop-hint.on {
   opacity: 1;
 }
 
@@ -407,36 +557,79 @@
 
 .arena-active-wrap {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 .arena-active-glow {
   position: absolute;
   left: 50%;
-  top: 50%;
-  width: 140%;
-  height: 140%;
+  top: 42%;
+  width: 160%;
+  height: 160%;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(252, 165, 165, 0.35), transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(252, 165, 165, 0.42) 0%,
+    rgba(196, 30, 58, 0.18) 40%,
+    transparent 70%
+  );
   transform: translate(-50%, -50%);
-  opacity: 0.55;
+  opacity: 0.65;
   pointer-events: none;
   z-index: 0;
+  filter: blur(2px);
 }
-.arena-active-wrap .whot-card {
+.arena-active-lift {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  width: 72%;
+  height: 18px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse,
+    rgba(0, 0, 0, 0.55),
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(4px);
+}
+.arena-active-card {
+  position: relative;
+  z-index: 1;
+}
+.arena-active-wrap .whot-card,
+.arena-active-card .whot-card {
   position: relative;
   z-index: 1;
   box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(255, 255, 255, 0.08);
+    0 2px 4px rgba(0, 0, 0, 0.25),
+    0 14px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 0 28px rgba(196, 30, 58, 0.22);
 }
 
-.arena-center .whot-card {
-  --card-w: 92px;
-  --card-h: 134px;
+/* Active card ~12–15% larger than market / hand */
+.arena-center .arena-stack .whot-card {
+  --card-w: 88px;
+  --card-h: 128px;
+}
+.arena-center .arena-active-card .whot-card,
+.arena-center .arena-active-wrap > .arena-active-card .whot-card {
+  --card-w: 104px;
+  --card-h: 152px;
 }
 @media (min-width: 900px) {
-  .arena-center .whot-card {
-    --card-w: 104px;
-    --card-h: 152px;
+  .arena-center .arena-stack .whot-card {
+    --card-w: 96px;
+    --card-h: 140px;
+  }
+  .arena-center .arena-active-card .whot-card {
+    --card-w: 112px;
+    --card-h: 164px;
   }
 }
 
@@ -480,40 +673,6 @@
     opacity: 1;
     transform: scale(1);
   }
-}
-
-/* ── Stake glass panel ── */
-.arena-stake {
-  position: absolute;
-  top: 18px;
-  left: 18px;
-  z-index: 12;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(22, 22, 26, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-  min-width: 148px;
-}
-.arena-stake-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 0.78rem;
-  color: var(--arena-muted);
-  font-weight: 600;
-}
-.arena-stake-row strong {
-  color: #fff;
-  font-weight: 800;
-  font-size: 0.88rem;
-  letter-spacing: -0.02em;
 }
 
 /* ── Turn strip ── */
@@ -680,8 +839,8 @@
 }
 .arena-flat-card.is-playable:hover,
 .arena-flat-card.is-playable:focus-visible {
-  transform: translateY(-12px) scale(1.04);
-  filter: drop-shadow(0 14px 22px rgba(196, 30, 58, 0.4));
+  transform: translateY(-14px) scale(1.05);
+  filter: drop-shadow(0 16px 24px rgba(196, 30, 58, 0.42));
   outline: none;
 }
 .arena-flat-card.is-playable .whot-card {
@@ -689,8 +848,13 @@
   outline-offset: 2px;
 }
 .arena-flat-card.is-selected {
-  transform: translateY(-14px) scale(1.06);
+  transform: translateY(-16px) scale(1.06);
   z-index: 2;
+}
+.arena-flat-card.is-dragging {
+  transition: none;
+  filter: drop-shadow(0 20px 28px rgba(0, 0, 0, 0.55));
+  opacity: 0.96;
 }
 .arena-flat-card.is-review:hover,
 .arena-flat-card.is-review:focus-visible {
@@ -742,6 +906,25 @@
 .arena-turn-label.loss {
   color: #fca5a5;
   text-shadow: 0 0 16px rgba(196, 30, 58, 0.4);
+}
+
+/* Bottom-right reserve for expandable live chat widget */
+.arena-chat-reserve {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: min(88px, 18vw);
+  height: min(88px, 18vw);
+  pointer-events: none;
+  z-index: 1;
+}
+@media (min-width: 960px) {
+  .arena-chat-reserve {
+    right: 24px;
+    bottom: 24px;
+    width: 100px;
+    height: 100px;
+  }
 }
 
 /* Leave / timeout flash */
@@ -984,7 +1167,7 @@
 /* ── Responsive ── */
 @media (max-width: 860px) {
   .arena-shell {
-    padding: 10px 12px 12px;
+    padding: 10px 56px 12px 12px;
     gap: 8px;
   }
   .arena-circle {
@@ -994,26 +1177,26 @@
   .arena-center {
     gap: 18px;
   }
-  .arena-center .whot-card {
-    --card-w: 72px;
-    --card-h: 104px;
+  .arena-center .arena-stack .whot-card {
+    --card-w: 68px;
+    --card-h: 98px;
   }
-  .arena-stake {
-    top: 8px;
-    left: 8px;
-    padding: 8px 10px;
-    min-width: 120px;
+  .arena-center .arena-active-card .whot-card {
+    --card-w: 80px;
+    --card-h: 116px;
+  }
+  .arena-match-details {
+    margin-bottom: -14px;
+    min-width: 170px;
+    padding: 8px 12px 10px;
+  }
+  .arena-opp {
+    padding-top: 6px;
+    gap: 8px;
   }
   .arena-opp-fan {
     height: 56px;
     width: min(300px, 80vw);
-  }
-  .arena-hand {
-    height: 120px;
-  }
-  .arena-hand-card .whot-card {
-    --card-w: 64px;
-    --card-h: 94px;
   }
   .arena-nav-brand span {
     display: none;
@@ -1021,25 +1204,28 @@
 }
 
 @media (max-width: 520px) {
+  .arena-shell {
+    padding-right: 48px;
+  }
   .arena-circle {
     width: min(300px, 90vw, 40vh);
     height: min(300px, 90vw, 40vh);
   }
-  .arena-center .whot-card {
-    --card-w: 58px;
-    --card-h: 84px;
+  .arena-center .arena-stack .whot-card {
+    --card-w: 54px;
+    --card-h: 78px;
+  }
+  .arena-center .arena-active-card .whot-card {
+    --card-w: 64px;
+    --card-h: 94px;
   }
   .arena-icon-btn {
     padding: 0 12px;
     min-height: 36px;
     font-size: 0.78rem;
   }
-  .arena-hand {
-    height: 108px;
-  }
-  .arena-hand-card .whot-card {
-    --card-w: 54px;
-    --card-h: 78px;
+  .arena-match-details {
+    margin-bottom: -12px;
   }
 }
 
