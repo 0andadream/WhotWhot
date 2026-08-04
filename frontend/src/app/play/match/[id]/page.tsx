@@ -317,8 +317,11 @@ export default function MatchPage() {
       pollMs.current = 3000;
       setRelayOk(true);
       if (data.warning && data.storage === "memory") {
-        setMsg(
-          "Relay is temporary (no Redis) — opponent may not see moves/chat until Upstash is set on Vercel."
+        // Don't spam a sticky banner every poll — only once-ish via soft toast
+        setMsg((m) =>
+          m?.includes("Upstash") || m?.includes("Redis")
+            ? m
+            : "Multiplayer sync needs Upstash Redis on Vercel (Settings → Env)."
         );
       } else {
         // Clear sticky sync toasts once pull succeeds

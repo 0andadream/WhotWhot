@@ -135,7 +135,7 @@ export function MatchChat({
       );
       if (data.storage === "memory") {
         setError(
-          "Chat is temporary without Redis — opponent may not see messages until Upstash is set on Vercel."
+          "Shared chat needs Redis on Vercel (Upstash). Messages may not reach the other player yet."
         );
       }
     } catch (err) {
