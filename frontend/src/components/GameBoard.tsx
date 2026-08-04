@@ -20,7 +20,7 @@ import {
   legalMoves,
   reduce,
 } from "@/lib/whot/engine";
-import { SHAPE_LABEL } from "@/lib/whot/deck";
+import { PLAYABLE_SHAPES, SHAPE_LABEL } from "@/lib/whot/deck";
 import type { Card, GameState, PlayerId, Shape } from "@/lib/whot/types";
 import type { PlayerProfile } from "@/lib/profile";
 import {
@@ -83,19 +83,6 @@ function fanPose(i: number, n: number, spread = 42, lift = 10) {
   };
 }
 
-function particleStyle(i: number): React.CSSProperties {
-  const left = 12 + ((i * 37) % 76);
-  const top = 20 + ((i * 53) % 60);
-  const delay = (i * 0.45) % 4;
-  const dur = 3.2 + (i % 5) * 0.35;
-  return {
-    left: `${left}%`,
-    top: `${top}%`,
-    animationDelay: `${delay}s`,
-    animationDuration: `${dur}s`,
-  };
-}
-
 export function GameBoard({
   seed,
   humanPlayer = "p1",
@@ -125,7 +112,7 @@ export function GameBoard({
   const [selected, setSelected] = useState<Card | null>(null);
   const [pickingShape, setPickingShape] = useState(false);
   const [soundMuted, setSoundMuted] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(!!chatContent);
   const [menuOpen, setMenuOpen] = useState(false);
   const [fx, setFx] = useState<FxKind>(null);
   const [ripple, setRipple] = useState(0);
@@ -378,22 +365,12 @@ export function GameBoard({
     }
   };
 
-  const timerPct =
-    state.turn === humanPlayer && !gameOver
-      ? turnLeft / TURN_SECONDS
-      : 1;
-  const circumference = 2 * Math.PI * 20;
-  const dash = circumference * timerPct;
   const timerLow = turnLeft <= 10 && myTurn && !gameOver;
   const timedOut = !!timeoutWinner;
 
-  const oppFan = opp.hand.slice(0, 12);
-  const suitOrbit = [
-    { shape: "circle" as Shape, angle: -90 },
-    { shape: "triangle" as Shape, angle: 0 },
-    { shape: "cross" as Shape, angle: 90 },
-    { shape: "square" as Shape, angle: 180 },
-  ];
+  const oppFan = opp.hand.slice(0, 14);
+  const meName = meBits.username || me.name;
+  const oppName = oppBits.username || opp.name;
 
   const turnLabel = effectiveWinner
     ? timedOut && effectiveWinner !== humanPlayer
@@ -407,498 +384,439 @@ export function GameBoard({
         ? "Your turn"
         : `${opp.name}'s turn`;
 
+  const stakeLabel =
+    stakeTickets === 0
+      ? "Free"
+      : `${stakeTickets} ticket${stakeTickets === 1 ? "" : "s"}`;
+  const potLabel =
+    potTickets === 0
+      ? "Practice"
+      : `${potTickets} ticket${potTickets === 1 ? "" : "s"}`;
+
   return (
     <div
-      className={`arena-page${leaving ? " is-leaving" : ""}${
+      className={`table-page${leaving ? " is-leaving" : ""}${
         gameOver ? " is-over" : ""
+      }${fx === "hold_on" ? " is-hold" : ""}${
+        fx === "suspension" ? " is-suspension" : ""
       }`}
       onPointerDown={() => unlockMoveSound()}
     >
-      <div className="arena-shell">
-        {/* Nav */}
-        <nav className="arena-nav" aria-label="Game">
-          <Link href={backHref} className="arena-nav-brand">
-            <BrandLogo href="" withWordmark={false} size={28} />
-            WhotWhot
-            <span>{vsAi ? "· practice" : "· live"}</span>
-          </Link>
-          <div className="arena-nav-actions">
+      <div className="table-wood">
+        <div className="table-wood-grain" aria-hidden />
+
+        {/* Top chrome */}
+        <header className="table-topbar">
+          <div className="table-brand-glass">
+            <Link href={backHref} className="table-brand-link">
+              <BrandLogo href="" withWordmark={false} size={26} />
+              <span className="table-brand-name">
+                WhotWhot
+                <em>{vsAi ? "Practice" : "Live"}</em>
+              </span>
+            </Link>
+            <div className="table-brand-tabs">
+              <Link href="/play">Play</Link>
+              <Link href="/guide">Rules</Link>
+            </div>
+          </div>
+
+          <div className="table-match-title">
+            Current Match:{" "}
+            <strong>
+              {oppName} vs. {meName}
+            </strong>
+            <span className="table-match-meta">
+              🎟 {stakeLabel} · Pot {potLabel}
+            </span>
+          </div>
+
+          <div className="table-top-actions">
             {chatContent && (
               <button
                 type="button"
-                className={`arena-icon-btn${chatOpen ? " active" : ""}`}
+                className={`table-icon-btn${chatOpen ? " active" : ""}`}
                 onClick={() => {
                   setChatOpen((v) => !v);
                   setMenuOpen(false);
                 }}
+                aria-label="Chat"
               >
-                Chat
+                💬
               </button>
             )}
             <button
               type="button"
-              className={`arena-icon-btn${menuOpen ? " active" : ""}`}
+              className={`table-icon-btn${menuOpen ? " active" : ""}`}
               onClick={() => {
                 setMenuOpen((v) => !v);
                 setChatOpen(false);
               }}
+              aria-label="Settings"
             >
-              Menu
+              ⚙
             </button>
           </div>
-        </nav>
+        </header>
 
-        {/* Opponent */}
-        <section
-          className={`arena-opp${fx === "suspension" ? " is-frozen" : ""}`}
+        {/* Main table field */}
+        <div
+          ref={arenaRef}
+          className={`table-field${turnPulse ? " is-turn-pulse" : ""}${
+            fx === "impact" || impactKey ? " is-impact" : ""
+          }`}
+          key={`pulse-${turnPulse}`}
+          onPointerMove={(e) => {
+            if (dragId) updateSpotlight(e.clientX, e.clientY);
+          }}
         >
-          <div className="arena-opp-meta">
-            <ProfileAvatar profile={oppBits} size={36} />
-            <div>
-              <div className="arena-opp-name">{oppBits.username || opp.name}</div>
-              <div className="arena-opp-count">{opp.hand.length} cards</div>
+          <div
+            className={`table-spotlight${spotlight ? " on" : ""}`}
+            style={
+              spotlight ? { left: spotlight.x, top: spotlight.y } : undefined
+            }
+            aria-hidden
+          />
+          <div
+            key={ripple}
+            className={`table-ripple${ripple ? " go" : ""}`}
+            aria-hidden
+          />
+
+          {/* Draw pile — top center */}
+          <button
+            type="button"
+            className={`table-draw${deckShake ? " is-shake" : ""}`}
+            onClick={onDraw}
+            disabled={!myTurn || !!state.pendingPenalty}
+            aria-label="Draw from market"
+          >
+            <div className="table-draw-stack">
+              <WhotCard faceDown />
+              <WhotCard faceDown />
             </div>
-          </div>
-          <div className="arena-opp-fan" aria-hidden>
-            {oppFan.map((c, i) => {
-              const p = fanPose(i, oppFan.length, 36, 8);
-              return (
-                <div
-                  key={c.id}
-                  className="arena-fan-card"
-                  style={{
-                    transform: `translateX(calc(-50% + ${p.x}px)) rotate(${p.rotate}deg) translateY(${p.y}px)`,
-                    zIndex: i,
-                  }}
-                >
-                  <WhotCard faceDown small />
-                </div>
-              );
-            })}
-            {opp.hand.length > 12 && (
-              <span
-                className="arena-stack-label"
-                style={{ position: "absolute", right: 0, bottom: 8 }}
-              >
-                +{opp.hand.length - 12}
-              </span>
-            )}
+            <span className="table-pile-label">
+              Draw pile
+              <em>{state.deck.length}</em>
+            </span>
+          </button>
+
+          {/* Opponent — left */}
+          <section
+            className={`table-seat table-seat-opp${
+              fx === "suspension" ? " is-frozen" : ""
+            }`}
+          >
+            <div className="table-seat-id">
+              <ProfileAvatar profile={oppBits} size={48} />
+              <div>
+                <strong>{oppName}</strong>
+                <span>{opp.hand.length} cards</span>
+              </div>
+            </div>
+            <div className="table-fan table-fan-opp" aria-hidden>
+              {oppFan.map((c, i) => {
+                const p = fanPose(i, oppFan.length, 48, 6);
+                return (
+                  <div
+                    key={c.id}
+                    className="table-fan-card"
+                    style={{
+                      transform: `translateX(calc(-50% + ${p.x}px)) rotate(${p.rotate}deg) translateY(${p.y}px)`,
+                      zIndex: i,
+                    }}
+                  >
+                    <WhotCard faceDown small />
+                  </div>
+                );
+              })}
+            </div>
             {fx === "suspension" && (
-              <span className="arena-freeze-lock" aria-hidden>
+              <span className="table-freeze" aria-hidden>
                 🔒
               </span>
             )}
-          </div>
-        </section>
+          </section>
 
-        {/* Circular arena + attached match details */}
-        <div className="arena-stage-wrap">
-          <div className="arena-match-details">
-            <div className="arena-match-details-title">🎟 Match details</div>
-            <div className="arena-match-details-row">
-              <span>Stake</span>
-              <strong>
-                {stakeTickets === 0
-                  ? "Free"
-                  : `${stakeTickets} Ticket${stakeTickets === 1 ? "" : "s"}`}
-              </strong>
-            </div>
-            <div className="arena-match-details-row">
-              <span>Total pot</span>
-              <strong>
-                {potTickets === 0
-                  ? "Practice"
-                  : `${potTickets} Ticket${potTickets === 1 ? "" : "s"}`}
-              </strong>
-            </div>
-          </div>
-
-          <div
-            ref={arenaRef}
-            className={`arena-circle${fx === "hold_on" ? " is-hold" : ""}${
-              fx === "whot" || pickingShape ? " is-whot" : ""
-            }${fx === "impact" || impactKey ? " is-impact" : ""}${
-              turnPulse ? " is-turn-pulse" : ""
-            }`}
-            key={`pulse-${turnPulse}`}
-            onPointerMove={(e) => {
-              if (dragId) updateSpotlight(e.clientX, e.clientY);
-            }}
-          >
-            <div className="arena-glow" aria-hidden />
-            <div className="arena-glow arena-glow-soft" aria-hidden />
-            <div className="arena-ring" aria-hidden />
-            <div className="arena-ring-spin" aria-hidden />
-            <div className="arena-ring-spin arena-ring-spin-slow" aria-hidden />
-
-            {!reduceMotion && (
-              <div className="arena-particles" aria-hidden>
-                {Array.from({ length: 16 }).map((_, i) => (
-                  <span
-                    key={i}
-                    className="arena-particle"
-                    style={particleStyle(i)}
-                  />
+          {/* Suit strip — when calling Whot */}
+          {(pickingShape || myTurn) && (
+            <div
+              className={`table-suit-strip${pickingShape ? " is-active" : ""}`}
+              aria-label={pickingShape ? "Call a shape" : "Suits"}
+            >
+              <p className="table-suit-hint">
+                {pickingShape
+                  ? "Call a shape"
+                  : "If a suit selection if a wild card is played."}
+              </p>
+              <div className="table-suit-col">
+                {PLAYABLE_SHAPES.map((sh) => (
+                  <button
+                    key={sh}
+                    type="button"
+                    className={pickingShape ? "pickable" : ""}
+                    disabled={!pickingShape}
+                    onClick={() => pickingShape && confirmWhot(sh)}
+                    aria-label={SHAPE_LABEL[sh]}
+                  >
+                    <SuitIcon shape={sh} size={22} />
+                  </button>
                 ))}
               </div>
-            )}
+            </div>
+          )}
 
-            <div
-              key={ripple}
-              className={`arena-ripple${ripple ? " go" : ""}`}
-              aria-hidden
-            />
-            <div
-              key={`r2-${ripple}`}
-              className={`arena-ripple arena-ripple-delay${ripple ? " go" : ""}`}
-              aria-hidden
-            />
-
-            <div
-              className={`arena-spotlight${spotlight ? " on" : ""}`}
-              style={
-                spotlight
-                  ? { left: spotlight.x, top: spotlight.y }
-                  : undefined
+          {/* Play pile — center pad */}
+          <div className="table-play-pad">
+            <span className="table-pile-label top">Play pile</span>
+            <motion.div
+              key={top?.id || "empty"}
+              className="table-play-card"
+              initial={
+                reduceMotion
+                  ? false
+                  : { scale: 0.7, y: 36, opacity: 0, rotate: -8 }
               }
-              aria-hidden
-            />
-            <div
-              className={`arena-drop-hint${dragId ? " on" : ""}`}
-              aria-hidden
-            />
+              animate={{ scale: 1, y: 0, opacity: 1, rotate: 0 }}
+              transition={{
+                type: "spring",
+                stiffness: 380,
+                damping: 16,
+                mass: 0.75,
+              }}
+            >
+              <WhotCard card={top} />
+            </motion.div>
+            <span className="table-pile-label bottom">
+              <SuitIcon
+                shape={
+                  state.currentShape === "whot" ? "circle" : state.currentShape
+                }
+                size={12}
+              />
+              {SHAPE_LABEL[state.currentShape]}
+              {state.currentNumber !== 20 ? ` · #${state.currentNumber}` : ""}
+            </span>
+          </div>
 
-            <div className="arena-center">
+          {/* Status under pad */}
+          <div className="table-status">
+            <span
+              className={
+                gameOver
+                  ? timedOut
+                    ? "loss"
+                    : "win"
+                  : myTurn
+                    ? "yours"
+                    : "wait"
+              }
+            >
+              {turnLabel}
+            </span>
+            {!gameOver && state.turn === humanPlayer && (
+              <span className={`table-timer${timerLow ? " low" : ""}`}>
+                {turnLeft}s
+              </span>
+            )}
+            {myTurn && state.pendingPenalty && (
               <button
                 type="button"
-                className={`arena-stack${deckShake ? " is-shake" : ""}`}
-                onClick={onDraw}
-                disabled={!myTurn || !!state.pendingPenalty}
-                aria-label="Draw from market"
+                className="table-action-btn"
+                onClick={() =>
+                  apply({ type: "ACCEPT_PENALTY", player: humanPlayer })
+                }
               >
-                <WhotCard faceDown />
-                <span className="arena-stack-label">
-                  Market · {state.deck.length}
-                </span>
+                Accept pick {state.pendingPenalty.amount}
               </button>
+            )}
+          </div>
 
-              <div className="arena-active-wrap">
-                <div className="arena-active-glow" aria-hidden />
-                <div className="arena-active-lift" aria-hidden />
-                <motion.div
-                  key={top?.id || "empty"}
-                  className="arena-active-card"
-                  initial={
-                    reduceMotion
-                      ? false
-                      : { scale: 0.65, y: 48, opacity: 0, rotate: -10 }
-                  }
-                  animate={{ scale: 1, y: 0, opacity: 1, rotate: 0 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 380,
-                    damping: 16,
-                    mass: 0.75,
-                  }}
-                >
-                  <WhotCard card={top} />
-                </motion.div>
-                <span className="arena-stack-label" style={{ marginTop: 10 }}>
-                  <SuitIcon
-                    shape={
-                      state.currentShape === "whot"
-                        ? "circle"
-                        : state.currentShape
-                    }
-                    size={12}
-                  />{" "}
-                  {SHAPE_LABEL[state.currentShape]}
-                  {state.currentNumber !== 20
-                    ? ` · #${state.currentNumber}`
-                    : ""}
+          {/* Your hand — bottom fan */}
+          <section className="table-seat table-seat-me">
+            <div className="table-seat-id me">
+              <ProfileAvatar profile={meBits} size={44} />
+              <div>
+                <strong>YOU</strong>
+                <span>
+                  {ticketBalance != null
+                    ? String(ticketBalance)
+                    : `${me.hand.length} cards`}
                 </span>
               </div>
+              {gameOver && (
+                <Link href={backHref} className="table-leave">
+                  Leave
+                </Link>
+              )}
             </div>
+            <div
+              className={`table-fan table-fan-me${gameOver ? " is-review" : ""}`}
+              aria-label="Your hand"
+            >
+              {me.hand.map((c, i) => {
+                const n = me.hand.length;
+                const p = fanPose(i, n, Math.min(56, 10 + n * 2.4), 12);
+                const playable = myTurn && moveIds.has(c.id);
+                const isSel = selected?.id === c.id;
+                const isDrag = dragId === c.id;
+                const style: React.CSSProperties =
+                  isDrag && dragPos
+                    ? {
+                        position: "fixed",
+                        left: dragPos.x,
+                        top: dragPos.y,
+                        transform: "translate(-50%, -50%) scale(1.08) rotate(0)",
+                        zIndex: 90,
+                        bottom: "auto",
+                      }
+                    : {
+                        transform: `translateX(calc(-50% + ${p.x}px)) rotate(${p.rotate}deg) translateY(${
+                          p.y + (isSel ? -18 : 0)
+                        }px)${isSel ? " scale(1.05)" : ""}`,
+                        zIndex: isSel || isDrag ? 40 : i,
+                      };
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`table-fan-card me-card${
+                      playable ? " is-playable" : ""
+                    }${isSel ? " is-selected" : ""}${
+                      isDrag ? " is-dragging" : ""
+                    }`}
+                    style={style}
+                    onPointerDown={(e) => {
+                      if (gameOver || !playable) return;
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                      setDragId(c.id);
+                      setDragPos({ x: e.clientX, y: e.clientY });
+                      setSelected(c);
+                      updateSpotlight(e.clientX, e.clientY);
+                    }}
+                    onPointerMove={(e) => {
+                      if (dragId !== c.id) return;
+                      setDragPos({ x: e.clientX, y: e.clientY });
+                      updateSpotlight(e.clientX, e.clientY);
+                    }}
+                    onPointerUp={(e) => {
+                      if (dragId === c.id) {
+                        endDrag(e.clientX, e.clientY, c);
+                        return;
+                      }
+                      if (gameOver) {
+                        setSelected((cur) => (cur?.id === c.id ? null : c));
+                        return;
+                      }
+                      if (playable) tryPlay(c);
+                    }}
+                    onPointerCancel={() => {
+                      setDragId(null);
+                      setDragPos(null);
+                      setSpotlight(null);
+                    }}
+                    onClick={() => {
+                      if (dragId) return;
+                      if (gameOver) {
+                        setSelected((cur) => (cur?.id === c.id ? null : c));
+                        return;
+                      }
+                      if (playable) tryPlay(c);
+                    }}
+                    aria-label={`Play ${c.shape} ${c.number}`}
+                  >
+                    <WhotCard card={c} playable={playable} selected={isSel} />
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
-            {/* Whot suit orbit */}
-            {pickingShape && (
-              <div className="arena-suit-orbit" aria-label="Call a shape">
-                {suitOrbit.map((s, i) => {
-                  const rad = (s.angle * Math.PI) / 180;
-                  const r = 118;
-                  const x = Math.cos(rad) * r;
-                  const y = Math.sin(rad) * r;
-                  return (
-                    <button
-                      key={s.shape}
-                      type="button"
-                      style={{
-                        transform: `translate(${x}px, ${y}px)`,
-                        animationDelay: `${i * 0.05}s`,
-                      }}
-                      onClick={() => confirmWhot(s.shape)}
-                      aria-label={SHAPE_LABEL[s.shape]}
-                    >
-                      <SuitIcon shape={s.shape} size={22} />
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Special FX cards */}
-            <div className="arena-fx" aria-hidden>
-              {(fx === "pick_two" || fx === "pick_three") &&
-                Array.from({
-                  length: fx === "pick_three" ? 3 : 2,
-                }).map((_, i) => (
+          {/* FX */}
+          <div className="table-fx" aria-hidden>
+            {(fx === "pick_two" || fx === "pick_three") &&
+              Array.from({ length: fx === "pick_three" ? 3 : 2 }).map(
+                (_, i) => (
                   <span
                     key={i}
-                    className={`arena-fx-card ${
+                    className={`table-fx-card ${
                       state.turn === humanPlayer ? "fly-me" : "fly-opp"
                     }`}
                     style={{ animationDelay: `${i * 0.08}s` }}
                   />
-                ))}
-              {fx === "general_market" &&
-                [0, 1, 2, 3, 4].map((i) => (
-                  <span
-                    key={i}
-                    className="arena-fx-card fly-market"
-                    style={
-                      {
-                        animationDelay: `${i * 0.06}s`,
-                        ["--dx" as string]: `${(i - 2) * 36}px`,
-                        ["--dy" as string]: `${
-                          state.turn === humanPlayer ? 140 : -140
-                        }px`,
-                      } as React.CSSProperties
-                    }
-                  />
-                ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Turn */}
-        <div className="arena-turn">
-          <div
-            className={`arena-turn-label${
-              gameOver
-                ? timedOut
-                  ? " loss"
-                  : " win"
-                : myTurn
-                  ? " yours"
-                  : " waiting"
-            }`}
-          >
-            {turnLabel}
-          </div>
-          {!gameOver && state.turn === humanPlayer && (
-            <div className={`arena-timer${timerLow ? " low" : ""}`}>
-              <svg viewBox="0 0 48 48" aria-hidden>
-                <circle className="track" cx="24" cy="24" r="20" />
-                <circle
-                  className="prog"
-                  cx="24"
-                  cy="24"
-                  r="20"
-                  strokeDasharray={`${dash} ${circumference}`}
-                />
-              </svg>
-              <span className="num">{turnLeft}</span>
-            </div>
-          )}
-          {myTurn && (
-            <div className="arena-turn-actions">
-              {state.pendingPenalty ? (
-                <button
-                  type="button"
-                  className="prem-btn-white sm"
-                  onClick={() =>
-                    apply({ type: "ACCEPT_PENALTY", player: humanPlayer })
-                  }
-                >
-                  Accept pick {state.pendingPenalty.amount}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="prem-btn-ghost sm"
-                  onClick={onDraw}
-                >
-                  Go to market
-                </button>
+                )
               )}
-            </div>
-          )}
+            {fx === "general_market" &&
+              [0, 1, 2, 3, 4].map((i) => (
+                <span
+                  key={i}
+                  className="table-fx-card fly-market"
+                  style={
+                    {
+                      animationDelay: `${i * 0.06}s`,
+                      ["--dx" as string]: `${(i - 2) * 40}px`,
+                    } as React.CSSProperties
+                  }
+                />
+              ))}
+          </div>
         </div>
 
-        {/* Flat hand — always visible & tappable */}
-        <section className="arena-me">
-          <div className="arena-me-meta">
-            <ProfileAvatar profile={meBits} size={40} />
-            <div className="arena-me-info">
-              <div className="arena-me-name">{meBits.username || me.name}</div>
-              <div className="arena-me-tickets">
-                {gameOver ? "Your hand · " : "Balance · "}
-                <em>
-                  {gameOver
-                    ? `${me.hand.length} cards`
-                    : ticketBalance != null
-                      ? ticketBalance
-                      : `${me.hand.length} cards`}
-                </em>
-              </div>
+        {/* Bottom-left floating chat */}
+        {chatContent && chatOpen && (
+          <div className="table-chat-float">
+            <div className="table-chat-float-head">
+              <strong>Chat</strong>
+              <button
+                type="button"
+                className="table-icon-btn sm"
+                onClick={() => setChatOpen(false)}
+                aria-label="Close chat"
+              >
+                ×
+              </button>
             </div>
-            {gameOver && (
-              <Link href={backHref} className="arena-icon-btn arena-leave-btn">
-                Leave
-              </Link>
-            )}
+            <div className="table-chat-float-body">{chatContent}</div>
           </div>
-
-          <div
-            className={`arena-hand-flat${gameOver ? " is-review" : ""}`}
-            aria-label="Your hand"
+        )}
+        {chatContent && !chatOpen && (
+          <button
+            type="button"
+            className="table-chat-fab"
+            onClick={() => setChatOpen(true)}
           >
-            {me.hand.map((c) => {
-              const playable = myTurn && moveIds.has(c.id);
-              const isSel = selected?.id === c.id;
-              const isDrag = dragId === c.id;
-              const dragStyle: React.CSSProperties | undefined =
-                isDrag && dragPos
-                  ? {
-                      position: "fixed",
-                      left: dragPos.x,
-                      top: dragPos.y,
-                      transform: "translate(-50%, -50%) scale(1.08)",
-                      zIndex: 80,
-                      pointerEvents: "none",
-                    }
-                  : undefined;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  className={`arena-flat-card${playable ? " is-playable" : ""}${
-                    isSel ? " is-selected" : ""
-                  }${isDrag ? " is-dragging" : ""}${
-                    gameOver ? " is-review" : ""
-                  }`}
-                  style={dragStyle}
-                  onPointerDown={(e) => {
-                    if (gameOver || !playable) return;
-                    e.currentTarget.setPointerCapture(e.pointerId);
-                    setDragId(c.id);
-                    setDragPos({ x: e.clientX, y: e.clientY });
-                    setSelected(c);
-                    updateSpotlight(e.clientX, e.clientY);
-                  }}
-                  onPointerMove={(e) => {
-                    if (dragId !== c.id) return;
-                    setDragPos({ x: e.clientX, y: e.clientY });
-                    updateSpotlight(e.clientX, e.clientY);
-                  }}
-                  onPointerUp={(e) => {
-                    if (dragId === c.id) {
-                      endDrag(e.clientX, e.clientY, c);
-                      return;
-                    }
-                    if (gameOver) {
-                      setSelected((cur) => (cur?.id === c.id ? null : c));
-                      return;
-                    }
-                    if (playable) tryPlay(c);
-                  }}
-                  onPointerCancel={() => {
-                    setDragId(null);
-                    setDragPos(null);
-                    setSpotlight(null);
-                  }}
-                  onClick={() => {
-                    if (dragId) return;
-                    if (gameOver) {
-                      setSelected((cur) => (cur?.id === c.id ? null : c));
-                      return;
-                    }
-                    if (playable) tryPlay(c);
-                  }}
-                  aria-label={
-                    gameOver
-                      ? `Inspect ${c.shape} ${c.number}`
-                      : `Play ${c.shape} ${c.number}`
-                  }
-                >
-                  <WhotCard card={c} playable={playable} selected={isSel} />
-                </button>
-              );
-            })}
-          </div>
-          {/* Reserve bottom-right for future floating live chat */}
-          <div className="arena-chat-reserve" aria-hidden />
-          {gameOver && selected && (
-            <p className="arena-inspect-hint">
-              {selected.special === "whot"
-                ? "WHOT 20"
-                : `${SHAPE_LABEL[selected.shape]} · ${selected.number}`}
-              {selected.special && selected.special !== "whot"
-                ? ` · ${selected.special.replace(/_/g, " ")}`
-                : ""}
-            </p>
-          )}
-        </section>
+            Chat
+          </button>
+        )}
       </div>
 
       {leaving && (
-        <div className="arena-leave-flash" aria-hidden>
+        <div className="table-leave-flash" aria-hidden>
           <span>Time&apos;s up</span>
         </div>
       )}
 
-      {/* Drawers */}
-      {(chatOpen || menuOpen) && (
-        <div
-          className="arena-drawer-backdrop"
-          onClick={() => {
-            setChatOpen(false);
-            setMenuOpen(false);
-          }}
-        />
-      )}
-      {chatOpen && chatContent && (
-        <aside className="arena-drawer" aria-label="Chat">
-          <div className="arena-drawer-head">
-            <h3>Chat</h3>
-            <button
-              type="button"
-              className="arena-icon-btn"
-              onClick={() => setChatOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-          {chatContent}
-        </aside>
-      )}
       {menuOpen && (
-        <aside className="arena-drawer" aria-label="Menu">
-          <div className="arena-drawer-head">
-            <h3>Menu</h3>
-            <button
-              type="button"
-              className="arena-icon-btn"
-              onClick={() => setMenuOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-          <div className="arena-menu-list">
-            <Link href={backHref} onClick={() => setMenuOpen(false)}>
-              ← Leave table
-            </Link>
-            {(showSoundToggle || vsAi || true) && (
+        <>
+          <div
+            className="table-menu-backdrop"
+            onClick={() => setMenuOpen(false)}
+          />
+          <aside className="table-menu" aria-label="Menu">
+            <div className="table-menu-head">
+              <h3>Menu</h3>
+              <button
+                type="button"
+                className="table-icon-btn"
+                onClick={() => setMenuOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="table-menu-list">
+              <Link href={backHref} onClick={() => setMenuOpen(false)}>
+                ← Leave table
+              </Link>
               <button
                 type="button"
                 onClick={() => {
@@ -911,13 +829,13 @@ export function GameBoard({
               >
                 {soundMuted ? "Sound off" : "Sound on"}
               </button>
-            )}
-            <Link href="/guide" onClick={() => setMenuOpen(false)}>
-              How to play
-            </Link>
-            {menuExtra}
-          </div>
-        </aside>
+              <Link href="/guide" onClick={() => setMenuOpen(false)}>
+                How to play
+              </Link>
+              {menuExtra}
+            </div>
+          </aside>
+        </>
       )}
     </div>
   );
