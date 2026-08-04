@@ -41,25 +41,42 @@ export function sanitizeChatText(raw: string): string {
   return raw.replace(/\s+/g, " ").trim().slice(0, MAX_TEXT);
 }
 
+function mergeChatPayload(a: ChatPayload, b: ChatPayload): ChatPayload {
+  const byId = new Map<string, ChatMessage>();
+  for (const m of a.messages || []) byId.set(m.id, m);
+  for (const m of b.messages || []) byId.set(m.id, m);
+  const messages = Array.from(byId.values())
+    .sort((x, y) => x.at - y.at)
+    .slice(-MAX_MESSAGES);
+  return {
+    messages,
+    updatedAt: Math.max(a.updatedAt || 0, b.updatedAt || 0, Date.now()),
+  };
+}
+
 export async function getChat(matchId: string): Promise<ChatPayload> {
+  const local = mem().get(matchId) || { messages: [], updatedAt: 0 };
   if (upstashConfigured()) {
     try {
       const data = await upstashCommand(["GET", chatKey(matchId)]);
       const raw = data?.result;
       if (!raw || typeof raw !== "string") {
-        return { messages: [], updatedAt: 0 };
+        return local; // keep instance memory if Redis empty
       }
       const parsed = JSON.parse(raw) as ChatPayload;
-      return {
+      const remote: ChatPayload = {
         messages: Array.isArray(parsed.messages) ? parsed.messages : [],
         updatedAt: Number(parsed.updatedAt) || 0,
       };
+      const merged = mergeChatPayload(local, remote);
+      mem().set(matchId, merged);
+      return merged;
     } catch (e) {
       console.error("chat get", e);
-      return mem().get(matchId) || { messages: [], updatedAt: 0 };
+      return local;
     }
   }
-  return mem().get(matchId) || { messages: [], updatedAt: 0 };
+  return local;
 }
 
 export async function setChat(
@@ -68,13 +85,17 @@ export async function setChat(
 ): Promise<void> {
   mem().set(matchId, payload);
   if (upstashConfigured()) {
-    await upstashCommand([
-      "SET",
-      chatKey(matchId),
-      JSON.stringify(payload),
-      "EX",
-      604800,
-    ]);
+    try {
+      await upstashCommand([
+        "SET",
+        chatKey(matchId),
+        JSON.stringify(payload),
+        "EX",
+        604800,
+      ]);
+    } catch (e) {
+      console.error("chat set", e);
+    }
   }
 }
 
@@ -83,6 +104,8 @@ export async function appendChatMessage(
   msg: ChatMessage
 ): Promise<ChatPayload> {
   const cur = await getChat(matchId);
+  // Dedup exact same message id
+  if (cur.messages.some((m) => m.id === msg.id)) return cur;
   const messages = [...cur.messages, msg].slice(-MAX_MESSAGES);
   const next: ChatPayload = { messages, updatedAt: Date.now() };
   await setChat(matchId, next);

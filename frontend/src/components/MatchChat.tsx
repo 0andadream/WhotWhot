@@ -4,6 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Address } from "viem";
 import { fetchChat, postChat, type ChatMessage } from "@/lib/matchChatClient";
 import { playOpponentMoveSound, unlockMoveSound } from "@/lib/moveSound";
+import {
+  loadCachedChat,
+  mergeChatMessages,
+  saveCachedChat,
+} from "@/lib/matchShareCache";
 
 const MAX_TEXT = 280;
 
@@ -42,7 +47,20 @@ export function MatchChat({
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastCountRef = useRef(0);
   const readyRef = useRef(false);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
   const me = address?.toLowerCase();
+
+  const applyMessages = useCallback(
+    (incoming: ChatMessage[] | undefined | null) => {
+      setMessages((prev) => {
+        const merged = mergeChatMessages(prev, incoming);
+        saveCachedChat(matchId, merged);
+        return merged;
+      });
+    },
+    [matchId]
+  );
 
   const pull = useCallback(async () => {
     try {
@@ -50,29 +68,41 @@ export function MatchChat({
       if (data.storage) setStorage(data.storage);
       const list = data.messages || [];
 
-      // Soft chime on new messages from opponent
-      if (readyRef.current && me && list.length > lastCountRef.current) {
-        const fresh = list.slice(lastCountRef.current);
+      // Soft chime on new messages from opponent (by count of merged unique)
+      if (readyRef.current && me && list.length > 0) {
+        const prevIds = new Set(messagesRef.current.map((m) => m.id));
+        const fresh = list.filter(
+          (m) => !prevIds.has(m.id) && !m.id.startsWith("local-")
+        );
         if (fresh.some((m) => m.address.toLowerCase() !== me)) {
           playOpponentMoveSound();
         }
       }
-      lastCountRef.current = list.length;
+      // Never wipe with empty poll
+      if (list.length > 0) {
+        applyMessages(list);
+        lastCountRef.current = Math.max(lastCountRef.current, list.length);
+      }
       readyRef.current = true;
-      setMessages(list);
-      setError(null);
+      if (data.storage === "redis") setError(null);
     } catch (e) {
+      // Keep existing messages on pull failure
       setError(e instanceof Error ? e.message : "Chat offline");
     }
-  }, [matchId, me]);
+  }, [matchId, me, applyMessages]);
 
+  // Hydrate from localStorage first
   useEffect(() => {
+    const cached = loadCachedChat(matchId);
+    if (cached.length) {
+      setMessages(cached);
+      lastCountRef.current = cached.length;
+    }
     readyRef.current = false;
-    lastCountRef.current = 0;
     void pull();
     const id = window.setInterval(() => void pull(), 2500);
     return () => window.clearInterval(id);
-  }, [pull]);
+  }, [matchId, pull]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -86,7 +116,6 @@ export function MatchChat({
     unlockMoveSound();
     setSending(true);
     setError(null);
-    // Optimistic bubble so UX feels instant
     const optimistic: ChatMessage = {
       id: `local-${Date.now()}`,
       address: address.toLowerCase(),
@@ -94,22 +123,33 @@ export function MatchChat({
       text: t,
       at: Date.now(),
     };
-    setMessages((prev) => [...prev, optimistic]);
+    applyMessages([optimistic]);
     setText("");
     try {
       const data = await postChat(matchId, address, t, displayName);
-      lastCountRef.current = (data.messages || []).length;
-      setMessages(data.messages || []);
       if (data.storage) setStorage(data.storage);
+      applyMessages(data.messages || []);
+      lastCountRef.current = Math.max(
+        lastCountRef.current,
+        (data.messages || []).length
+      );
       if (data.storage === "memory") {
         setError(
-          "Chat is temporary on this server — set Upstash Redis on Vercel so both players share messages."
+          "Chat is temporary without Redis — opponent may not see messages until Upstash is set on Vercel."
         );
       }
     } catch (err) {
-      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-      setText(t);
-      setError(err instanceof Error ? err.message : "Send failed");
+      // Keep optimistic message; show error
+      setError(err instanceof Error ? err.message : "Send failed — retrying…");
+      // Retry once
+      try {
+        await new Promise((r) => setTimeout(r, 800));
+        const data = await postChat(matchId, address, t, displayName);
+        applyMessages(data.messages || []);
+        setError(null);
+      } catch (e2) {
+        setError(e2 instanceof Error ? e2.message : "Send failed");
+      }
     } finally {
       setSending(false);
     }
@@ -120,7 +160,11 @@ export function MatchChat({
       <div className="match-chat-head">
         <h3 className="match-chat-title">Live chat</h3>
         <span className="muted" style={{ fontSize: "0.72rem" }}>
-          {storage === "memory" ? "temp storage" : storage === "redis" ? "live" : "…"}
+          {storage === "memory"
+            ? "temp storage"
+            : storage === "redis"
+              ? "live"
+              : "…"}
         </span>
       </div>
 
@@ -179,9 +223,7 @@ export function MatchChat({
         <button
           type="submit"
           className="btn btn-primary btn-sm"
-          disabled={
-            !isPlayer || !canChat || sending || !text.trim()
-          }
+          disabled={!isPlayer || !canChat || sending || !text.trim()}
         >
           {sending ? "…" : "Send"}
         </button>
