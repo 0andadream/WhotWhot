@@ -23,8 +23,10 @@ import {
   loadLocalRelay,
   postRelayMove,
   postRelayOutcome,
+  postRelayReady,
   pushRelayReplace,
   saveLocalRelay,
+  type RelayReadyState,
 } from "@/lib/matchRelayClient";
 import {
   isMoveSoundMuted,
@@ -126,6 +128,12 @@ export default function MatchPage() {
   const [submitted, setSubmitted] = useState(false);
   const [posting, setPosting] = useState(false);
   const [forfeitWinner, setForfeitWinner] = useState<PlayerId | null>(null);
+  const [readyState, setReadyState] = useState<RelayReadyState>({
+    p1: false,
+    p2: false,
+    updatedAt: 0,
+  });
+  const [readyBusy, setReadyBusy] = useState(false);
   const [p1Name, setP1Name] = useState("Host");
   const [p2Name, setP2Name] = useState("Opponent");
   const [syncing, setSyncing] = useState(false);
@@ -352,13 +360,29 @@ export default function MatchPage() {
         }
       }
 
+      // Ready-up state (both must click Ready before board starts)
+      if (data.ready) {
+        setReadyState({
+          p1: !!data.ready.p1,
+          p2: !!data.ready.p2,
+          updatedAt: Number(data.ready.updatedAt) || 0,
+        });
+      }
+
+      // If game already has moves, treat as started (reconnect mid-match)
+      const bothReady =
+        (!!data.ready?.p1 && !!data.ready?.p2) || serverActions.length > 0;
+
       maybeNotifyOpponentMoves(serverActions);
-      applyActionList(
-        serverActions,
-        match.gameSeed,
-        namesRef.current.p1,
-        namesRef.current.p2
-      );
+      // Only load the board once both are ready (or game already underway)
+      if (bothReady || serverActions.length > 0) {
+        applyActionList(
+          serverActions,
+          match.gameSeed,
+          namesRef.current.p1,
+          namesRef.current.p2
+        );
+      }
     } catch (e) {
       failStreak.current += 1;
       pollMs.current = Math.min(12_000, 3000 * Math.min(failStreak.current, 4));
@@ -409,7 +433,7 @@ export default function MatchPage() {
     soundReadyRef.current = false;
   }, [matchKey]);
 
-  // Poll relay with adaptive interval (slower after RPC blips)
+  // Poll relay with adaptive interval (faster while waiting for ready)
   useEffect(() => {
     if (!match || match.status !== MatchStatus.Active) return;
     let cancelled = false;
@@ -419,7 +443,10 @@ export default function MatchPage() {
       if (cancelled) return;
       await pullRelay();
       if (cancelled) return;
-      timer = window.setTimeout(tick, pollMs.current);
+      const both =
+        (readyState.p1 && readyState.p2) || actionsRef.current.length > 0;
+      const ms = both ? pollMs.current : 1500;
+      timer = window.setTimeout(tick, ms);
     };
     void tick();
     return () => {
@@ -428,6 +455,50 @@ export default function MatchPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match?.status, match?.gameSeed, matchKey]);
+
+  const onToggleReady = useCallback(async () => {
+    if (!matchKey || !address || !humanPlayer || readyBusy) return;
+    setReadyBusy(true);
+    try {
+      const currently =
+        humanPlayer === "p1" ? readyState.p1 : readyState.p2;
+      const data = await postRelayReady(
+        matchKey,
+        address as Address,
+        !currently
+      );
+      if (data.ready) {
+        setReadyState({
+          p1: !!data.ready.p1,
+          p2: !!data.ready.p2,
+          updatedAt: Number(data.ready.updatedAt) || Date.now(),
+        });
+      }
+      if (data.ready?.p1 && data.ready?.p2 && match?.gameSeed) {
+        // Both ready — start board from current actions (usually empty)
+        applyActionList(
+          data.actions || [],
+          match.gameSeed,
+          namesRef.current.p1,
+          namesRef.current.p2
+        );
+        setMsg(null);
+      }
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Could not set ready");
+    } finally {
+      setReadyBusy(false);
+    }
+  }, [
+    matchKey,
+    address,
+    humanPlayer,
+    readyBusy,
+    readyState.p1,
+    readyState.p2,
+    match?.gameSeed,
+    applyActionList,
+  ]);
 
   /** Play card: free, no wallet. Posted to relay for opponent. */
   const onAction = useCallback(
@@ -716,8 +787,189 @@ export default function MatchPage() {
         ? forAddress(match.player1 as string)
         : null;
 
-  /* ── Live play: circular arena ── */
-  if (match.status === MatchStatus.Active && game && humanPlayer) {
+  const bothPlayersReady =
+    (readyState.p1 && readyState.p2) || actions.length > 0;
+  const iAmReady =
+    humanPlayer === "p1"
+      ? readyState.p1
+      : humanPlayer === "p2"
+        ? readyState.p2
+        : false;
+  const oppIsReady =
+    humanPlayer === "p1"
+      ? readyState.p2
+      : humanPlayer === "p2"
+        ? readyState.p1
+        : false;
+
+  /* ── Active but waiting for both Ready clicks ── */
+  if (
+    match.status === MatchStatus.Active &&
+    humanPlayer &&
+    !bothPlayersReady &&
+    !settledWinner
+  ) {
+    return (
+      <div className="landing-premium ds">
+        <SiteNav />
+        <div className="app-shell shell-wide">
+          <header className="header">
+            <Link href="/play" className="btn btn-ghost btn-sm">
+              ← Play
+            </Link>
+          </header>
+
+          <div className="card-panel stack" style={{ maxWidth: 520 }}>
+            <p className="prem-how-eyebrow" style={{ marginBottom: 8 }}>
+              Table ready
+            </p>
+            <h2 style={{ margin: "0 0 8px" }}>Both players click Ready</h2>
+            <p className="muted" style={{ marginTop: 0 }}>
+              Tickets are staked. The game starts only when you and your
+              opponent both ready up.
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                margin: "16px 0",
+              }}
+            >
+              <div
+                className="ready-row"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  padding: "12px 14px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "rgba(255,255,255,0.04)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <ProfileAvatar
+                    profile={
+                      forAddress(match.player1 as string) || {
+                        username: p1Name,
+                        avatar: "🃏",
+                        color: "#c41e3a",
+                      }
+                    }
+                    size={40}
+                  />
+                  <div>
+                    <strong>{p1Name}</strong>
+                    <div className="muted" style={{ fontSize: "0.75rem" }}>
+                      Host
+                    </div>
+                  </div>
+                </div>
+                <span
+                  style={{
+                    fontWeight: 800,
+                    fontSize: "0.85rem",
+                    color: readyState.p1 ? "#86efac" : "#9a9aa3",
+                  }}
+                >
+                  {readyState.p1 ? "Ready ✓" : "Not ready"}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  padding: "12px 14px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "rgba(255,255,255,0.04)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <ProfileAvatar
+                    profile={
+                      forAddress(match.player2 as string) || {
+                        username: p2Name,
+                        avatar: "🃏",
+                        color: "#3b82f6",
+                      }
+                    }
+                    size={40}
+                  />
+                  <div>
+                    <strong>{p2Name}</strong>
+                    <div className="muted" style={{ fontSize: "0.75rem" }}>
+                      Guest
+                    </div>
+                  </div>
+                </div>
+                <span
+                  style={{
+                    fontWeight: 800,
+                    fontSize: "0.85rem",
+                    color: readyState.p2 ? "#86efac" : "#9a9aa3",
+                  }}
+                >
+                  {readyState.p2 ? "Ready ✓" : "Not ready"}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className={iAmReady ? "prem-btn-ghost" : "prem-btn-white"}
+              disabled={readyBusy}
+              onClick={() => void onToggleReady()}
+              style={{ width: "100%", minHeight: 48 }}
+            >
+              {readyBusy
+                ? "…"
+                : iAmReady
+                  ? oppIsReady
+                    ? "Starting…"
+                    : "Cancel ready"
+                  : "I'm ready"}
+            </button>
+
+            <p
+              className="muted"
+              style={{ fontSize: "0.8rem", marginBottom: 0, textAlign: "center" }}
+            >
+              {iAmReady && !oppIsReady
+                ? "Waiting for opponent to ready up…"
+                : !iAmReady && oppIsReady
+                  ? "Opponent is ready — click I'm ready to start."
+                  : "Click I'm ready when you're set."}
+            </p>
+
+            {msg && <div className="alert">{msg}</div>}
+
+            <MatchChat
+              matchId={matchKey}
+              address={address}
+              displayName={chatName}
+              canChat
+              isPlayer
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Live play: circular arena (only after both ready) ── */
+  if (
+    match.status === MatchStatus.Active &&
+    game &&
+    humanPlayer &&
+    bothPlayersReady
+  ) {
     return (
       <>
         <GameBoard

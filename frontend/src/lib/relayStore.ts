@@ -16,10 +16,18 @@ export type RelayOutcome = {
   at: number;
 };
 
+/** Both players must ready-up before the board starts */
+export type RelayReady = {
+  p1: boolean;
+  p2: boolean;
+  updatedAt: number;
+};
+
 export type RelayPayload = {
   actions: GameAction[];
   updatedAt: number;
   outcome?: RelayOutcome | null;
+  ready?: RelayReady | null;
 };
 
 const g = globalThis as unknown as {
@@ -130,10 +138,18 @@ function redisKey(matchId: string) {
 
 function normalizePayload(parsed: RelayPayload | null | undefined): RelayPayload {
   if (!parsed) return { actions: [], updatedAt: 0 };
+  const ready = parsed.ready;
   return {
     actions: Array.isArray(parsed.actions) ? parsed.actions : [],
     updatedAt: Number(parsed.updatedAt) || 0,
     outcome: parsed.outcome || null,
+    ready: ready
+      ? {
+          p1: !!ready.p1,
+          p2: !!ready.p2,
+          updatedAt: Number(ready.updatedAt) || 0,
+        }
+      : null,
   };
 }
 
@@ -178,6 +194,7 @@ export async function appendRelayAction(
     actions: [...cur.actions, action],
     updatedAt: Date.now(),
     outcome: cur.outcome || null,
+    ready: cur.ready || null,
   };
   await setRelay(matchId, next);
   return next;
@@ -193,6 +210,29 @@ export async function setRelayOutcome(
     actions: cur.actions,
     updatedAt: Date.now(),
     outcome: cur.outcome || outcome,
+    ready: cur.ready || null,
+  };
+  await setRelay(matchId, next);
+  return next;
+}
+
+export async function setPlayerReady(
+  matchId: string,
+  slot: "p1" | "p2",
+  ready: boolean
+): Promise<RelayPayload> {
+  const cur = await getRelay(matchId);
+  const prev = cur.ready || { p1: false, p2: false, updatedAt: 0 };
+  const nextReady: RelayReady = {
+    p1: slot === "p1" ? ready : !!prev.p1,
+    p2: slot === "p2" ? ready : !!prev.p2,
+    updatedAt: Date.now(),
+  };
+  const next: RelayPayload = {
+    actions: cur.actions,
+    updatedAt: Date.now(),
+    outcome: cur.outcome || null,
+    ready: nextReady,
   };
   await setRelay(matchId, next);
   return next;

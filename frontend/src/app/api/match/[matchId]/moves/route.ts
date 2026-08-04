@@ -5,6 +5,7 @@ import {
   getRelay,
   isGameAction,
   relayStorageMode,
+  setPlayerReady,
   setRelay,
   setRelayOutcome,
   type RelayOutcome,
@@ -83,6 +84,7 @@ export async function GET(
       actions: payload.actions,
       updatedAt: payload.updatedAt,
       outcome: payload.outcome || null,
+      ready: payload.ready || { p1: false, p2: false, updatedAt: 0 },
       status: meta.status,
       gameSeed: meta.gameSeed,
       player1: meta.player1,
@@ -100,6 +102,7 @@ export async function GET(
         matchId: params.matchId,
         actions: payload.actions,
         updatedAt: payload.updatedAt,
+        ready: payload.ready || { p1: false, p2: false, updatedAt: 0 },
         storage: relayStorageMode(),
         warning: shortRpcError(
           e instanceof Error ? e.message : "Failed to load moves"
@@ -137,6 +140,7 @@ export async function POST(
     action?: unknown;
     replace?: GameAction[];
     outcome?: { winner?: string; reason?: string };
+    ready?: boolean;
   };
   try {
     body = await req.json();
@@ -201,6 +205,21 @@ export async function POST(
 
     rememberMatchMeta(params.matchId, meta);
 
+    const slot: "p1" | "p2" = address === p1 ? "p1" : "p2";
+
+    // Ready-up before the board starts
+    if (typeof body.ready === "boolean") {
+      const next = await setPlayerReady(params.matchId, slot, body.ready);
+      return NextResponse.json({
+        matchId: params.matchId,
+        actions: next.actions,
+        updatedAt: next.updatedAt,
+        outcome: next.outcome || null,
+        ready: next.ready,
+        storage: relayStorageMode(),
+      });
+    }
+
     // Declare shared outcome (timeout forfeit) so opponent can confirm on-chain
     if (body.outcome?.winner === "p1" || body.outcome?.winner === "p2") {
       const outcome: RelayOutcome = {
@@ -218,6 +237,7 @@ export async function POST(
         actions: next.actions,
         updatedAt: next.updatedAt,
         outcome: next.outcome,
+        ready: next.ready || null,
         storage: relayStorageMode(),
       });
     }
@@ -230,6 +250,7 @@ export async function POST(
         actions,
         updatedAt: Date.now(),
         outcome: cur.outcome || null,
+        ready: cur.ready || null,
       };
       await setRelay(params.matchId, payload);
       return NextResponse.json({
@@ -237,6 +258,7 @@ export async function POST(
         actions: payload.actions,
         updatedAt: payload.updatedAt,
         outcome: payload.outcome,
+        ready: payload.ready,
         storage: relayStorageMode(),
       });
     }
@@ -246,7 +268,6 @@ export async function POST(
     }
 
     const action = body.action as GameAction;
-    const slot = address === p1 ? "p1" : "p2";
     if (action.player !== slot) {
       return NextResponse.json(
         { error: "Action player does not match wallet" },
@@ -257,6 +278,17 @@ export async function POST(
     const cur = await getRelay(params.matchId);
     if (cur.actions.length > 500) {
       return NextResponse.json({ error: "Match log too long" }, { status: 400 });
+    }
+
+    // Block moves until both players ready (unless game already has moves)
+    if (
+      cur.actions.length === 0 &&
+      !(cur.ready?.p1 && cur.ready?.p2)
+    ) {
+      return NextResponse.json(
+        { error: "Both players must click Ready first" },
+        { status: 400 }
+      );
     }
 
     // Dedup: ignore exact last action (double-tap / double poll race)

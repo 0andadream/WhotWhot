@@ -2,11 +2,18 @@ import type { GameAction, PlayerId } from "@/lib/whot/types";
 import type { Address } from "viem";
 import type { RelayOutcome } from "@/lib/relayStore";
 
+export type RelayReadyState = {
+  p1: boolean;
+  p2: boolean;
+  updatedAt: number;
+};
+
 export type RelayResponse = {
   matchId: string;
   actions: GameAction[];
   updatedAt: number;
   outcome?: RelayOutcome | null;
+  ready?: RelayReadyState | null;
   status?: number;
   gameSeed?: string;
   player1?: string;
@@ -113,6 +120,20 @@ export async function postRelayOutcome(
       address,
       outcome: { winner, reason },
     }),
+  });
+  return parseRelayResponse(res);
+}
+
+/** Mark this player ready (or unready) before the board starts */
+export async function postRelayReady(
+  matchId: string,
+  address: Address,
+  ready: boolean
+): Promise<RelayResponse> {
+  const res = await fetch(`/api/match/${matchId}/moves`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ address, ready }),
   });
   return parseRelayResponse(res);
 }
