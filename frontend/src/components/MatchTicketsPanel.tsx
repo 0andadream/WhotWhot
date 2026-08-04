@@ -244,16 +244,6 @@ export function MatchTicketsPanel({
           {tickets.loading ? "Loading…" : "Refresh"}
         </button>
       </div>
-      <div className="banner" style={{ marginTop: 10 }}>
-        <strong>You do not need to finish Whot to see lottery results.</strong>{" "}
-        Numbers and prizes show as soon as Megapot draws. Whot only matters for{" "}
-        <em>who holds the NFT</em>: claim cash/free-ticket prizes after the
-        ticket is in your wallet (match resolve, or cancel after 2h).
-      </div>
-      <p className="muted" style={{ marginTop: 8, fontSize: "0.85rem" }}>
-        Prizes pay in USDC via Megapot <code>claimWinnings</code> to the current
-        NFT owner.
-      </p>
 
       {tickets.error && (
         <div className="alert" style={{ marginTop: 12 }}>
