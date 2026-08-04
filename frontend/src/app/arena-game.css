@@ -812,31 +812,41 @@
   backdrop-filter: blur(10px);
 }
 
-/* Floating chat — bottom left (multiplayer) */
+/* Floating chat — same conversation UI as waiting room (.ds .match-chat) */
 .table-chat-float {
   position: absolute;
   left: 14px;
   bottom: 14px;
   z-index: 30;
-  width: min(300px, calc(100vw - 28px));
-  max-height: min(280px, 36vh);
+  width: min(340px, calc(100vw - 28px));
+  max-height: min(420px, 52vh);
   display: flex;
   flex-direction: column;
   border-radius: 14px;
-  background: rgba(18, 14, 12, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  background: #16161a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
-.table-chat-float-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 0.85rem;
-  flex-shrink: 0;
+.table-chat-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.table-chat-close:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 .table-chat-float-body {
   flex: 1;
@@ -845,42 +855,126 @@
   display: flex;
   flex-direction: column;
 }
+/* Match waiting-room match-chat layout */
 .table-chat-float-body .match-chat,
 .table-chat-float-body .card-panel {
   flex: 1;
-  min-height: 0;
-  max-height: none !important;
+  min-height: 280px;
+  max-height: min(400px, 50vh) !important;
+  margin: 0 !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  padding: 8px 10px !important;
-  display: flex;
-  flex-direction: column;
+  border-radius: 0 !important;
+  padding: 14px 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0;
 }
 .table-chat-float-body .match-chat-head {
-  display: none;
+  display: flex !important;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+  gap: 8px;
+  padding-right: 36px; /* room for × */
+}
+.table-chat-float-body .match-chat-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fafafa;
 }
 .table-chat-float-body .match-chat-log {
-  flex: 1;
-  min-height: 80px;
-  max-height: 140px;
-  overflow-y: auto;
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  padding: 8px 2px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  min-height: 160px !important;
+  max-height: none !important;
 }
+.table-chat-float-body .match-chat-bubble {
+  max-width: 92%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.table-chat-float-body .match-chat-bubble.mine {
+  align-self: flex-end !important;
+  background: rgba(196, 30, 58, 0.18) !important;
+  border: 1px solid rgba(196, 30, 58, 0.35) !important;
+}
+.table-chat-float-body .match-chat-bubble.theirs {
+  align-self: flex-start !important;
+  background: #111114 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+.table-chat-float-body .match-chat-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.68rem;
+  color: #9a9aa3;
+  margin-bottom: 4px;
+}
+.table-chat-float-body .match-chat-meta strong {
+  color: #ececf0;
+  font-weight: 600;
+}
+.table-chat-float-body .match-chat-text {
+  color: #fafafa;
+}
+.table-chat-float-body .match-chat-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: center;
+}
+.table-chat-float-body .match-chat-input,
+.table-chat-float-body .input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 40px;
+  background: #111114 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  color: #fff !important;
+  padding: 8px 12px;
+}
+.table-chat-float-body .btn,
+.table-chat-float-body .btn-primary {
+  border-radius: 999px !important;
+  min-height: 40px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
 .table-chat-fab {
   position: absolute;
   left: 14px;
   bottom: 14px;
   z-index: 30;
-  min-height: 40px;
-  padding: 0 16px;
+  min-height: 44px;
+  padding: 0 18px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(18, 14, 12, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: #16161a;
   color: #fff;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   cursor: pointer;
-  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.table-chat-fab:hover {
+  border-color: rgba(252, 165, 165, 0.45);
+  background: rgba(196, 30, 58, 0.15);
 }
 
 @media (max-width: 700px) {
@@ -893,8 +987,12 @@
   .table-chat-float {
     left: 8px;
     bottom: 8px;
-    max-height: min(180px, 26vh);
-    width: min(220px, 46vw);
+    max-height: min(360px, 48vh);
+    width: min(300px, calc(100vw - 16px));
+  }
+  .table-chat-float-body .match-chat,
+  .table-chat-float-body .card-panel {
+    min-height: 240px;
   }
   .table-feed-line {
     font-size: 0.7rem;

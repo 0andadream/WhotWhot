@@ -849,23 +849,20 @@ export function GameBoard({
           </button>
         )}
 
-        {/* Multiplayer live chat */}
+        {/* Multiplayer live chat — same convo layout as waiting room */}
         {chatContent && chatOpen && (
-          <div className="table-chat-float">
-            <div className="table-chat-float-head">
-              <strong>Live chat</strong>
-              <button
-                type="button"
-                className="table-icon-btn sm"
-                onClick={() => {
-                  chatClosedByUser.current = true;
-                  setChatOpen(false);
-                }}
-                aria-label="Close chat"
-              >
-                ×
-              </button>
-            </div>
+          <div className="table-chat-float landing-premium ds">
+            <button
+              type="button"
+              className="table-chat-close"
+              onClick={() => {
+                chatClosedByUser.current = true;
+                setChatOpen(false);
+              }}
+              aria-label="Close chat"
+            >
+              ×
+            </button>
             <div className="table-chat-float-body">{chatContent}</div>
           </div>
         )}
