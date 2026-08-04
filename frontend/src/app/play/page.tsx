@@ -7,12 +7,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import { SiteNav } from "@/components/SiteNav";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { HeroCardFan } from "@/components/landing/HeroCardFan";
-import { useAccount, useConnect, useWriteContract } from "wagmi";
-import {
-  useCountdown,
-  useJackpotInfo,
-  useBuyRandomTicket,
-} from "@/hooks/useMegapot";
+import { useAccount, useConnect, usePublicClient, useWriteContract } from "wagmi";
+import { useCountdown, useJackpotInfo } from "@/hooks/useMegapot";
 import { useUserTickets } from "@/hooks/useUserTickets";
 import {
   useEscrowReady,
@@ -54,10 +50,13 @@ export default function PlayLobbyPage() {
   } = useMyMatches();
   const { tables: openTables, loading: openLoading, refetch: refetchOpen } =
     useOpenTables();
-  const { isSuccess, error } = useBuyRandomTicket();
   const { writeContractAsync } = useWriteContract();
-  const [buyStep, setBuyStep] = useState<"idle" | "approve" | "buy">("idle");
+  const publicClient = usePublicClient({ chainId: 8453 });
+  const [buyStep, setBuyStep] = useState<
+    "idle" | "approve" | "buy" | "confirming"
+  >("idle");
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [buyError, setBuyError] = useState<string | null>(null);
   const [screen, setScreen] = useState<Screen>("modes");
   const [historyTab, setHistoryTab] = useState<HistoryTab>("live");
   const [openProfiles, setOpenProfiles] = useState<
@@ -69,14 +68,6 @@ export default function PlayLobbyPage() {
     return () => clearInterval(id);
   }, []);
   void tick;
-
-  useEffect(() => {
-    if (isSuccess) {
-      setStatusMsg("Ticket purchased! You can stake it in a few seconds.");
-      setBuyStep("idle");
-      setTimeout(() => refetchTickets(), 4000);
-    }
-  }, [isSuccess, refetchTickets]);
 
   // Load host profiles for open tables
   useEffect(() => {
@@ -116,15 +107,23 @@ export default function PlayLobbyPage() {
     if (!address || !jackpot.ticketPriceRaw) return;
     try {
       setStatusMsg(null);
+      setBuyError(null);
       setBuyStep("approve");
-      await writeContractAsync({
+      setStatusMsg("Approve USDC in your wallet…");
+      const approveHash = await writeContractAsync({
         address: ADDRESSES.usdc,
         abi: erc20Abi,
         functionName: "approve",
         args: [ADDRESSES.jackpotRandomTicketBuyer, jackpot.ticketPriceRaw],
         chainId: 8453,
       });
+      if (publicClient) {
+        setStatusMsg("Waiting for USDC approval…");
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      }
+
       setBuyStep("buy");
+      setStatusMsg("Confirm ticket purchase in your wallet…");
       const referrer = (process.env.NEXT_PUBLIC_REFERRER_ADDRESS ||
         "0x0000000000000000000000000000000000000000") as `0x${string}`;
       const source = stringToHex(
@@ -133,7 +132,7 @@ export default function PlayLobbyPage() {
       );
       const hasReferrer =
         referrer !== "0x0000000000000000000000000000000000000000";
-      await writeContractAsync({
+      const buyHash = await writeContractAsync({
         address: ADDRESSES.jackpotRandomTicketBuyer,
         abi: randomBuyerAbi,
         functionName: "buyTickets",
@@ -146,10 +145,28 @@ export default function PlayLobbyPage() {
         ],
         chainId: 8453,
       });
-      setStatusMsg("Confirming purchase in your wallet…");
+
+      setBuyStep("confirming");
+      setStatusMsg("Purchase submitted — waiting for Base confirmation…");
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash: buyHash });
+      }
+
+      setBuyStep("idle");
+      setStatusMsg("Ticket purchased! Updating your balance…");
+      // NFT index can lag a few seconds after mint
+      await refetchTickets();
+      window.setTimeout(() => void refetchTickets(), 2500);
+      window.setTimeout(() => {
+        void refetchTickets();
+        setStatusMsg("Ticket ready — you can stake it now.");
+      }, 6000);
+      window.setTimeout(() => setStatusMsg(null), 10_000);
     } catch (e: unknown) {
       setBuyStep("idle");
-      setStatusMsg(e instanceof Error ? e.message : "Purchase failed");
+      const err = e instanceof Error ? e.message : "Purchase failed";
+      setBuyError(err);
+      setStatusMsg(err);
     }
   };
 
@@ -228,14 +245,15 @@ export default function PlayLobbyPage() {
               : buyStep === "approve"
                 ? "Approve…"
                 : buyStep === "buy"
-                  ? "Buying…"
-                  : `Buy · ${jackpot.ticketPriceUsd ?? "$1"}`}
+                  ? "Buy in wallet…"
+                  : buyStep === "confirming"
+                    ? "Confirming…"
+                    : `Buy · ${jackpot.ticketPriceUsd ?? "$1"}`}
           </button>
         </div>
-        {(statusMsg || error) && (
+        {(statusMsg || buyError) && (
           <div className="alert" style={{ margin: "0 0 12px" }}>
-            {statusMsg ||
-              (error instanceof Error ? error.message : String(error))}
+            {statusMsg || buyError}
           </div>
         )}
 
