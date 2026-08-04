@@ -444,10 +444,13 @@ export default function MatchPage() {
     ]
   );
 
+  const [forfeitWinner, setForfeitWinner] = useState<PlayerId | null>(null);
+  const settledWinner = forfeitWinner || game?.winner || null;
+
   const onConfirmWinner = useCallback(async () => {
-    if (!match || !matchId || !address || !game?.winner || submitted) return;
+    if (!match || !matchId || !address || !settledWinner || submitted) return;
     const winnerAddr =
-      game.winner === "p1"
+      settledWinner === "p1"
         ? (match.player1 as Address)
         : (match.player2 as Address);
     try {
@@ -463,7 +466,7 @@ export default function MatchPage() {
     match,
     matchId,
     address,
-    game?.winner,
+    settledWinner,
     submitted,
     submitResult,
     refetch,
@@ -471,6 +474,13 @@ export default function MatchPage() {
 
   const onWin = useCallback((_winner: PlayerId) => {
     setMsg("Game over. Confirm the winner below when both agree.");
+  }, []);
+
+  const onTimeoutForfeit = useCallback((winner: PlayerId) => {
+    setForfeitWinner(winner);
+    setMsg(
+      "Time's up — you forfeit. Opponent wins. Confirm below to settle tickets."
+    );
   }, []);
 
   if (!matchId) {
@@ -553,6 +563,7 @@ export default function MatchPage() {
           externalState={game}
           onAction={(a) => void onAction(a)}
           onWin={onWin}
+          onTimeoutForfeit={onTimeoutForfeit}
           p1Name={p1Name}
           p2Name={p2Name}
           readOnly={posting}
@@ -620,7 +631,7 @@ export default function MatchPage() {
             {msg}
           </div>
         )}
-        {game.winner && (
+        {settledWinner && (
           <button
             type="button"
             className="btn btn-primary arena-confirm"
@@ -629,7 +640,7 @@ export default function MatchPage() {
           >
             {submitted
               ? "Submitted — await opponent"
-              : `Confirm ${game.winner === humanPlayer ? "you won" : "opponent won"}`}
+              : `Confirm ${settledWinner === humanPlayer ? "you won" : "opponent won"}`}
           </button>
         )}
       </>

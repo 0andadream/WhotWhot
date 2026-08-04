@@ -41,6 +41,8 @@ interface Props {
   p1Name?: string;
   p2Name?: string;
   onWin?: (winner: PlayerId) => void;
+  /** Fired when local player times out (opponent wins) */
+  onTimeoutForfeit?: (winner: PlayerId) => void;
   externalState?: GameState;
   onAction?: (action: Parameters<typeof reduce>[1]) => void;
   readOnly?: boolean;
@@ -101,6 +103,7 @@ export function GameBoard({
   p1Name = "You",
   p2Name = "AI",
   onWin,
+  onTimeoutForfeit,
   externalState,
   onAction,
   readOnly,
@@ -128,20 +131,21 @@ export function GameBoard({
   const [ripple, setRipple] = useState(0);
   const [deckShake, setDeckShake] = useState(false);
   const [turnLeft, setTurnLeft] = useState(TURN_SECONDS);
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
-  const [spotlight, setSpotlight] = useState<{ x: number; y: number } | null>(
-    null
-  );
   const [impactKey, setImpactKey] = useState(0);
+  /** Opponent wins after local player ran out of time */
+  const [timeoutWinner, setTimeoutWinner] = useState<PlayerId | null>(null);
+  const [leaving, setLeaving] = useState(false);
 
   const arenaRef = useRef<HTMLDivElement>(null);
   const prevTopId = useRef<string | null>(null);
   const prevLogLen = useRef(0);
   const prevTurn = useRef(state.turn);
   const winFiredRef = useRef(false);
+  const timeoutFiredRef = useRef(false);
   const onWinRef = useRef(onWin);
+  const onTimeoutRef = useRef(onTimeoutForfeit);
   onWinRef.current = onWin;
+  onTimeoutRef.current = onTimeoutForfeit;
 
   useEffect(() => {
     setSoundMuted(isMoveSoundMuted());
@@ -159,15 +163,17 @@ export function GameBoard({
     [onAction]
   );
 
+  const effectiveWinner = timeoutWinner || state.winner;
+
   useEffect(() => {
-    if (!state.winner || winFiredRef.current) return;
+    if (!effectiveWinner || winFiredRef.current) return;
     winFiredRef.current = true;
-    onWinRef.current?.(state.winner);
-  }, [state.winner]);
+    onWinRef.current?.(effectiveWinner);
+  }, [effectiveWinner]);
 
   /* AI turns */
   useEffect(() => {
-    if (!vsAi || externalState || state.winner) return;
+    if (!vsAi || externalState || effectiveWinner) return;
     const ai: PlayerId = humanPlayer === "p1" ? "p2" : "p1";
     if (state.turn !== ai) return;
 
@@ -193,7 +199,7 @@ export function GameBoard({
       cancelled = true;
       timers.forEach((id) => window.clearTimeout(id));
     };
-  }, [state.turn, state.winner, vsAi, humanPlayer, externalState]);
+  }, [state.turn, effectiveWinner, vsAi, humanPlayer, externalState]);
 
   /* Living table reactions from state changes */
   useEffect(() => {
@@ -234,26 +240,66 @@ export function GameBoard({
     prevLogLen.current = state.log.length;
   }, [state.log]);
 
-  /* Soft turn countdown (visual only) */
+  /* Turn countdown — only ticks on your turn; timeout = forfeit */
   useEffect(() => {
-    if (state.winner) return;
+    if (effectiveWinner) return;
     if (prevTurn.current !== state.turn) {
       setTurnLeft(TURN_SECONDS);
+      timeoutFiredRef.current = false;
       prevTurn.current = state.turn;
     }
-  }, [state.turn, state.winner]);
+  }, [state.turn, effectiveWinner]);
 
   useEffect(() => {
-    if (state.winner) return;
+    if (effectiveWinner || readOnly) return;
+    if (state.turn !== humanPlayer) return;
     const id = window.setInterval(() => {
       setTurnLeft((s) => (s > 0 ? s - 1 : 0));
     }, 1000);
     return () => window.clearInterval(id);
-  }, [state.turn, state.winner]);
+  }, [state.turn, effectiveWinner, humanPlayer, readOnly]);
+
+  useEffect(() => {
+    if (effectiveWinner || readOnly || timeoutFiredRef.current) return;
+    if (turnLeft > 0) return;
+    if (state.turn !== humanPlayer) return;
+
+    timeoutFiredRef.current = true;
+    const oppId: PlayerId = humanPlayer === "p1" ? "p2" : "p1";
+    setTimeoutWinner(oppId);
+    setPickingShape(false);
+    setSelected(null);
+    setLeaving(true);
+
+    if (!externalState) {
+      setLocal((s) => ({
+        ...s,
+        winner: oppId,
+        log: [
+          ...s.log,
+          `Time's up — ${s.players[humanPlayer === "p1" ? 0 : 1].name} forfeits.`,
+        ],
+      }));
+    }
+
+    onTimeoutRef.current?.(oppId);
+    // Leave flash then settle into flat hand review
+    const t = window.setTimeout(() => setLeaving(false), 900);
+    return () => window.clearTimeout(t);
+  }, [
+    turnLeft,
+    effectiveWinner,
+    humanPlayer,
+    readOnly,
+    externalState,
+    state.turn,
+  ]);
 
   const me = state.players[humanPlayer === "p1" ? 0 : 1];
   const opp = state.players[humanPlayer === "p1" ? 1 : 0];
-  const myTurn = state.turn === humanPlayer && !state.winner && !readOnly;
+  const gameOver = !!effectiveWinner;
+  const myTurn =
+    state.turn === humanPlayer && !gameOver && !readOnly;
   const moves = useMemo(
     () => (myTurn ? legalMoves(state, humanPlayer) : []),
     [state, humanPlayer, myTurn]
@@ -305,30 +351,14 @@ export function GameBoard({
     apply({ type: "DRAW", player: humanPlayer });
   };
 
-  const onPointerMoveArena = (e: React.PointerEvent) => {
-    if (!arenaRef.current || !dragId) return;
-    const r = arenaRef.current.getBoundingClientRect();
-    setSpotlight({ x: e.clientX - r.left, y: e.clientY - r.top });
-  };
-
-  const endDrag = (clientX: number, clientY: number, card: Card) => {
-    setDragId(null);
-    setDragPos(null);
-    setSpotlight(null);
-    if (!myTurn || !moveIds.has(card.id) || !arenaRef.current) return;
-    const r = arenaRef.current.getBoundingClientRect();
-    const cx = r.left + r.width / 2;
-    const cy = r.top + r.height / 2;
-    const dist = Math.hypot(clientX - cx, clientY - cy);
-    if (dist < r.width * 0.42) {
-      tryPlay(card);
-    }
-  };
-
-  const timerPct = turnLeft / TURN_SECONDS;
+  const timerPct =
+    state.turn === humanPlayer && !gameOver
+      ? turnLeft / TURN_SECONDS
+      : 1;
   const circumference = 2 * Math.PI * 20;
   const dash = circumference * timerPct;
-  const timerLow = turnLeft <= 10 && myTurn && !state.winner;
+  const timerLow = turnLeft <= 10 && myTurn && !gameOver;
+  const timedOut = !!timeoutWinner;
 
   const oppFan = opp.hand.slice(0, 12);
   const suitOrbit = [
@@ -338,10 +368,12 @@ export function GameBoard({
     { shape: "square" as Shape, angle: 180 },
   ];
 
-  const turnLabel = state.winner
-    ? state.winner === humanPlayer
-      ? "You win"
-      : `${opp.name} wins`
+  const turnLabel = effectiveWinner
+    ? timedOut && effectiveWinner !== humanPlayer
+      ? "Time's up — you lose"
+      : effectiveWinner === humanPlayer
+        ? "You win"
+        : `${opp.name} wins`
     : state.pendingPenalty
       ? `Pick ${state.pendingPenalty.amount} or stack`
       : myTurn
@@ -350,7 +382,9 @@ export function GameBoard({
 
   return (
     <div
-      className="arena-page"
+      className={`arena-page${leaving ? " is-leaving" : ""}${
+        gameOver ? " is-over" : ""
+      }`}
       onPointerDown={() => unlockMoveSound()}
     >
       <div className="arena-shell">
@@ -437,7 +471,6 @@ export function GameBoard({
             className={`arena-circle${fx === "hold_on" ? " is-hold" : ""}${
               fx === "whot" || pickingShape ? " is-whot" : ""
             }${fx === "impact" || impactKey ? " is-impact" : ""}`}
-            onPointerMove={onPointerMoveArena}
           >
             <div className="arena-glow" aria-hidden />
             <div className="arena-ring" aria-hidden />
@@ -460,18 +493,6 @@ export function GameBoard({
               className={`arena-ripple${ripple ? " go" : ""}`}
               aria-hidden
             />
-
-            <div
-              className={`arena-spotlight${spotlight ? " on" : ""}`}
-              style={
-                spotlight
-                  ? { left: spotlight.x, top: spotlight.y }
-                  : undefined
-              }
-              aria-hidden
-            />
-
-            <div className={`arena-drop-hint${dragId ? " on" : ""}`} aria-hidden />
 
             {/* Stake glass */}
             <div className="arena-stake">
@@ -603,8 +624,10 @@ export function GameBoard({
         <div className="arena-turn">
           <div
             className={`arena-turn-label${
-              state.winner
-                ? " win"
+              gameOver
+                ? timedOut
+                  ? " loss"
+                  : " win"
                 : myTurn
                   ? " yours"
                   : " waiting"
@@ -612,7 +635,7 @@ export function GameBoard({
           >
             {turnLabel}
           </div>
-          {!state.winner && (
+          {!gameOver && state.turn === humanPlayer && (
             <div className={`arena-timer${timerLow ? " low" : ""}`}>
               <svg viewBox="0 0 48 48" aria-hidden>
                 <circle className="track" cx="24" cy="24" r="20" />
@@ -650,90 +673,92 @@ export function GameBoard({
               )}
             </div>
           )}
+          {timedOut && (
+            <p className="arena-timeout-note">
+              Clock hit zero. Opponent wins. Your hand is flat below — tap a card
+              to inspect it.
+            </p>
+          )}
         </div>
 
-        {/* Player hand */}
+        {/* Flat hand — always visible & tappable */}
         <section className="arena-me">
           <div className="arena-me-meta">
             <ProfileAvatar profile={meBits} size={40} />
             <div className="arena-me-info">
               <div className="arena-me-name">{meBits.username || me.name}</div>
               <div className="arena-me-tickets">
-                Balance ·{" "}
+                {gameOver ? "Your hand · " : "Balance · "}
                 <em>
-                  {ticketBalance != null
-                    ? ticketBalance
-                    : `${me.hand.length} cards`}
+                  {gameOver
+                    ? `${me.hand.length} cards`
+                    : ticketBalance != null
+                      ? ticketBalance
+                      : `${me.hand.length} cards`}
                 </em>
               </div>
             </div>
+            {gameOver && (
+              <Link href={backHref} className="arena-icon-btn arena-leave-btn">
+                Leave
+              </Link>
+            )}
           </div>
 
-          <div className="arena-hand" aria-label="Your hand">
-            {me.hand.map((c, i) => {
-              const n = me.hand.length;
-              const p = fanPose(i, n, Math.min(52, 8 + n * 2.2), 14);
+          <div
+            className={`arena-hand-flat${gameOver ? " is-review" : ""}`}
+            aria-label="Your hand"
+          >
+            {me.hand.map((c) => {
               const playable = myTurn && moveIds.has(c.id);
               const isSel = selected?.id === c.id;
-              const isDrag = dragId === c.id;
-              const lift = isSel || isDrag ? -28 : playable ? 0 : 0;
-              const style: React.CSSProperties = isDrag && dragPos
-                ? {
-                    left: dragPos.x,
-                    top: dragPos.y,
-                    bottom: "auto",
-                    transform: "translate(-50%, -50%) rotate(0deg) scale(1.08)",
-                    zIndex: 50,
-                    position: "fixed",
-                  }
-                : {
-                    transform: `translateX(calc(-50% + ${p.x}px)) rotate(${p.rotate}deg) translateY(${p.y + lift}px)${
-                      isSel ? " scale(1.06)" : ""
-                    }`,
-                    zIndex: isSel || isDrag ? 40 : i,
-                  };
-
               return (
-                <div
+                <button
                   key={c.id}
-                  className={`arena-hand-card${playable ? " is-playable" : ""}${
+                  type="button"
+                  className={`arena-flat-card${playable ? " is-playable" : ""}${
                     isSel ? " is-selected" : ""
-                  }${isDrag ? " is-dragging" : ""}`}
-                  style={style}
-                  onPointerDown={(e) => {
-                    if (!playable) return;
-                    e.currentTarget.setPointerCapture(e.pointerId);
-                    setDragId(c.id);
-                    setDragPos({ x: e.clientX, y: e.clientY });
-                    setSelected(c);
-                  }}
-                  onPointerMove={(e) => {
-                    if (dragId !== c.id) return;
-                    setDragPos({ x: e.clientX, y: e.clientY });
-                  }}
-                  onPointerUp={(e) => {
-                    if (dragId !== c.id) {
-                      if (playable) tryPlay(c);
+                  }${gameOver ? " is-review" : ""}`}
+                  onClick={() => {
+                    if (gameOver) {
+                      setSelected((cur) => (cur?.id === c.id ? null : c));
                       return;
                     }
-                    endDrag(e.clientX, e.clientY, c);
+                    if (playable) tryPlay(c);
                   }}
-                  onPointerCancel={() => {
-                    setDragId(null);
-                    setDragPos(null);
-                    setSpotlight(null);
-                  }}
-                  onClick={() => {
-                    if (!dragId && playable) tryPlay(c);
-                  }}
+                  aria-label={
+                    gameOver
+                      ? `Inspect ${c.shape} ${c.number}`
+                      : `Play ${c.shape} ${c.number}`
+                  }
                 >
-                  <WhotCard card={c} playable={playable} selected={isSel} />
-                </div>
+                  <WhotCard
+                    card={c}
+                    playable={playable}
+                    selected={isSel}
+                  />
+                </button>
               );
             })}
           </div>
+          {gameOver && selected && (
+            <p className="arena-inspect-hint">
+              {selected.special === "whot"
+                ? "WHOT 20"
+                : `${SHAPE_LABEL[selected.shape]} · ${selected.number}`}
+              {selected.special && selected.special !== "whot"
+                ? ` · ${selected.special.replace(/_/g, " ")}`
+                : ""}
+            </p>
+          )}
         </section>
       </div>
+
+      {leaving && (
+        <div className="arena-leave-flash" aria-hidden>
+          <span>Time&apos;s up</span>
+        </div>
+      )}
 
       {/* Drawers */}
       {(chatOpen || menuOpen) && (
