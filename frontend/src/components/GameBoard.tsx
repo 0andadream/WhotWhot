@@ -113,7 +113,9 @@ export function GameBoard({
   const [pickingShape, setPickingShape] = useState(false);
   const [soundMuted, setSoundMuted] = useState(false);
   const [chatOpen, setChatOpen] = useState(!!chatContent);
+  const [feedOpen, setFeedOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const feedEndRef = useRef<HTMLDivElement>(null);
   const [fx, setFx] = useState<FxKind>(null);
   const [ripple, setRipple] = useState(0);
   const [deckShake, setDeckShake] = useState(false);
@@ -143,6 +145,15 @@ export function GameBoard({
   useEffect(() => {
     setSoundMuted(isMoveSoundMuted());
   }, []);
+
+  useEffect(() => {
+    if (chatContent) setChatOpen(true);
+  }, [chatContent]);
+
+  useEffect(() => {
+    if (!feedOpen) return;
+    feedEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [state.log.length, feedOpen]);
 
   const apply = useCallback(
     (action: Parameters<typeof reduce>[1]) => {
@@ -800,11 +811,47 @@ export function GameBoard({
           </div>
         </div>
 
-        {/* Bottom-left floating chat */}
+        {/* Live feed — what happened this game */}
+        {feedOpen ? (
+          <div className="table-feed-float" aria-label="Live feed">
+            <div className="table-feed-head">
+              <strong>Live feed</strong>
+              <button
+                type="button"
+                className="table-icon-btn sm"
+                onClick={() => setFeedOpen(false)}
+                aria-label="Minimize feed"
+              >
+                −
+              </button>
+            </div>
+            <div className="table-feed-log">
+              {state.log.length === 0 && (
+                <p className="table-feed-empty">Waiting for the first move…</p>
+              )}
+              {[...state.log].map((line, i) => (
+                <div key={`${i}-${line.slice(0, 24)}`} className="table-feed-line">
+                  {line}
+                </div>
+              ))}
+              <div ref={feedEndRef} />
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="table-feed-fab"
+            onClick={() => setFeedOpen(true)}
+          >
+            Live feed
+          </button>
+        )}
+
+        {/* Multiplayer live chat */}
         {chatContent && chatOpen && (
           <div className="table-chat-float">
             <div className="table-chat-float-head">
-              <strong>Chat</strong>
+              <strong>Live chat</strong>
               <button
                 type="button"
                 className="table-icon-btn sm"

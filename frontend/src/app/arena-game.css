@@ -745,7 +745,74 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* Floating chat — bottom left like reference */
+/* Live feed — bottom right (move log) */
+.table-feed-float {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 30;
+  width: min(300px, calc(100vw - 28px));
+  max-height: min(240px, 32vh);
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  background: rgba(18, 14, 12, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+.table-feed-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.table-feed-log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px 10px;
+  -webkit-overflow-scrolling: touch;
+}
+.table-feed-line {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #d4c4b0;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.table-feed-line:last-of-type {
+  color: #fecaca;
+  font-weight: 600;
+  border-bottom: none;
+}
+.table-feed-empty {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.table-feed-fab {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 30;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(18, 14, 12, 0.85);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+/* Floating chat — bottom left (multiplayer) */
 .table-chat-float {
   position: absolute;
   left: 14px;
@@ -756,7 +823,7 @@
   display: flex;
   flex-direction: column;
   border-radius: 14px;
-  background: rgba(18, 14, 12, 0.88);
+  background: rgba(18, 14, 12, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(16px);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
@@ -769,6 +836,7 @@
   padding: 8px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 0.85rem;
+  flex-shrink: 0;
 }
 .table-chat-float-body {
   flex: 1;
@@ -813,6 +881,24 @@
   font-size: 0.85rem;
   cursor: pointer;
   backdrop-filter: blur(10px);
+}
+
+@media (max-width: 700px) {
+  .table-feed-float {
+    right: 8px;
+    bottom: 8px;
+    max-height: min(160px, 24vh);
+    width: min(220px, 46vw);
+  }
+  .table-chat-float {
+    left: 8px;
+    bottom: 8px;
+    max-height: min(180px, 26vh);
+    width: min(220px, 46vw);
+  }
+  .table-feed-line {
+    font-size: 0.7rem;
+  }
 }
 
 /* Menu */
