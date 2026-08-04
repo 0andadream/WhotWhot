@@ -6,9 +6,11 @@ import {
   isGameAction,
   relayStorageMode,
   setRelay,
+  setRelayOutcome,
+  type RelayOutcome,
 } from "@/lib/relayStore";
 import { loadMatchMeta, rememberMatchMeta } from "@/lib/matchMetaCache";
-import type { GameAction } from "@/lib/whot/types";
+import type { GameAction, PlayerId } from "@/lib/whot/types";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -80,6 +82,7 @@ export async function GET(
       matchId: params.matchId,
       actions: payload.actions,
       updatedAt: payload.updatedAt,
+      outcome: payload.outcome || null,
       status: meta.status,
       gameSeed: meta.gameSeed,
       player1: meta.player1,
@@ -129,7 +132,12 @@ export async function POST(
     return NextResponse.json({ error: "Invalid match id" }, { status: 400 });
   }
 
-  let body: { address?: string; action?: unknown; replace?: GameAction[] };
+  let body: {
+    address?: string;
+    action?: unknown;
+    replace?: GameAction[];
+    outcome?: { winner?: string; reason?: string };
+  };
   try {
     body = await req.json();
   } catch {
@@ -193,15 +201,42 @@ export async function POST(
 
     rememberMatchMeta(params.matchId, meta);
 
+    // Declare shared outcome (timeout forfeit) so opponent can confirm on-chain
+    if (body.outcome?.winner === "p1" || body.outcome?.winner === "p2") {
+      const outcome: RelayOutcome = {
+        winner: body.outcome.winner as PlayerId,
+        reason:
+          body.outcome.reason === "game" || body.outcome.reason === "forfeit"
+            ? body.outcome.reason
+            : "timeout",
+        by: address,
+        at: Date.now(),
+      };
+      const next = await setRelayOutcome(params.matchId, outcome);
+      return NextResponse.json({
+        matchId: params.matchId,
+        actions: next.actions,
+        updatedAt: next.updatedAt,
+        outcome: next.outcome,
+        storage: relayStorageMode(),
+      });
+    }
+
     // Full replace (recovery) — must still be a player
     if (Array.isArray(body.replace)) {
+      const cur = await getRelay(params.matchId);
       const actions = body.replace.filter(isGameAction);
-      const payload = { actions, updatedAt: Date.now() };
+      const payload = {
+        actions,
+        updatedAt: Date.now(),
+        outcome: cur.outcome || null,
+      };
       await setRelay(params.matchId, payload);
       return NextResponse.json({
         matchId: params.matchId,
         actions: payload.actions,
         updatedAt: payload.updatedAt,
+        outcome: payload.outcome,
         storage: relayStorageMode(),
       });
     }
@@ -231,6 +266,7 @@ export async function POST(
         matchId: params.matchId,
         actions: cur.actions,
         updatedAt: cur.updatedAt,
+        outcome: cur.outcome || null,
         storage: relayStorageMode(),
         deduped: true,
       });
@@ -239,6 +275,7 @@ export async function POST(
     const next = await appendRelayAction(params.matchId, action);
     return NextResponse.json({
       matchId: params.matchId,
+      outcome: next.outcome || null,
       actions: next.actions,
       updatedAt: next.updatedAt,
       storage: relayStorageMode(),

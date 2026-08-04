@@ -1,10 +1,12 @@
-import type { GameAction } from "@/lib/whot/types";
+import type { GameAction, PlayerId } from "@/lib/whot/types";
 import type { Address } from "viem";
+import type { RelayOutcome } from "@/lib/relayStore";
 
 export type RelayResponse = {
   matchId: string;
   actions: GameAction[];
   updatedAt: number;
+  outcome?: RelayOutcome | null;
   status?: number;
   gameSeed?: string;
   player1?: string;
@@ -14,6 +16,8 @@ export type RelayResponse = {
   warning?: string;
   metaSource?: string;
 };
+
+export type { RelayOutcome };
 
 const LS_PREFIX = "whotwhot:relay:";
 
@@ -91,6 +95,24 @@ export async function pushRelayReplace(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ address, replace: actions }),
+  });
+  return parseRelayResponse(res);
+}
+
+/** Share timeout/forfeit outcome so opponent can confirm on-chain */
+export async function postRelayOutcome(
+  matchId: string,
+  address: Address,
+  winner: PlayerId,
+  reason: "timeout" | "game" | "forfeit" = "timeout"
+): Promise<RelayResponse> {
+  const res = await fetch(`/api/match/${matchId}/moves`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      address,
+      outcome: { winner, reason },
+    }),
   });
   return parseRelayResponse(res);
 }

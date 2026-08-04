@@ -22,6 +22,7 @@ import {
   fetchRelayMoves,
   loadLocalRelay,
   postRelayMove,
+  postRelayOutcome,
   pushRelayReplace,
   saveLocalRelay,
 } from "@/lib/matchRelayClient";
@@ -112,7 +113,11 @@ export default function MatchPage() {
 
   const matchKey = matchId != null ? matchId.toString() : "";
   const { address } = useAccount();
-  const { match, refetch } = useMatch(matchId);
+  const [settleMode, setSettleMode] = useState(false);
+  const { match, refetch } = useMatch(matchId, {
+    // Poll chain faster while dual-confirm is pending
+    refetchIntervalMs: settleMode ? 5_000 : 12_000,
+  });
   const { submitResult, isPending } = useEscrowActions();
 
   const [game, setGame] = useState<GameState | null>(null);
@@ -120,6 +125,7 @@ export default function MatchPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [forfeitWinner, setForfeitWinner] = useState<PlayerId | null>(null);
   const [p1Name, setP1Name] = useState("Host");
   const [p2Name, setP2Name] = useState("Opponent");
   const [syncing, setSyncing] = useState(false);
@@ -150,6 +156,52 @@ export default function MatchPage() {
     if (match.player2.toLowerCase() === address.toLowerCase()) return "p2";
     return null;
   }, [match, address]);
+
+  const ZERO = "0x0000000000000000000000000000000000000000";
+
+  /** Winner slot from on-chain dual-confirm submissions (either side) */
+  const chainWinnerSlot: PlayerId | null = useMemo(() => {
+    if (!match) return null;
+    const r1 = (match.player1Result as string | undefined)?.toLowerCase() || "";
+    const r2 = (match.player2Result as string | undefined)?.toLowerCase() || "";
+    const z = ZERO.toLowerCase();
+    const winnerAddr =
+      r1 && r1 !== z ? r1 : r2 && r2 !== z ? r2 : null;
+    if (!winnerAddr) return null;
+    if (winnerAddr === (match.player1 as string).toLowerCase()) return "p1";
+    if (winnerAddr === (match.player2 as string).toLowerCase()) return "p2";
+    return null;
+  }, [match]);
+
+  const myOnChainResult = useMemo(() => {
+    if (!match || !humanPlayer) return null;
+    const r =
+      humanPlayer === "p1" ? match.player1Result : match.player2Result;
+    const addr = (r as string | undefined)?.toLowerCase() || "";
+    if (!addr || addr === ZERO.toLowerCase()) return null;
+    return addr;
+  }, [match, humanPlayer]);
+
+  const oppOnChainResult = useMemo(() => {
+    if (!match || !humanPlayer) return null;
+    const r =
+      humanPlayer === "p1" ? match.player2Result : match.player1Result;
+    const addr = (r as string | undefined)?.toLowerCase() || "";
+    if (!addr || addr === ZERO.toLowerCase()) return null;
+    return addr;
+  }, [match, humanPlayer]);
+
+  // If we already submitted on-chain (this session or earlier), mark submitted
+  useEffect(() => {
+    if (myOnChainResult) setSubmitted(true);
+  }, [myOnChainResult]);
+
+  // Enter settle mode when any result is known
+  useEffect(() => {
+    if (forfeitWinner || chainWinnerSlot || game?.winner) {
+      setSettleMode(true);
+    }
+  }, [forfeitWinner, chainWinnerSlot, game?.winner]);
 
   const { forAddress } = useMatchProfiles(
     matchKey || null,
@@ -278,6 +330,23 @@ export default function MatchPage() {
             ? null
             : m
         );
+      }
+
+      // Shared timeout/forfeit so winner can confirm on their phone
+      if (
+        data.outcome?.winner === "p1" ||
+        data.outcome?.winner === "p2"
+      ) {
+        setForfeitWinner(data.outcome.winner);
+        if (humanPlayer && data.outcome.winner === humanPlayer) {
+          setMsg(
+            "Opponent timed out — you win. Confirm below to claim both tickets."
+          );
+        } else if (humanPlayer) {
+          setMsg(
+            "Time expired — opponent wins. Confirm below so tickets can settle."
+          );
+        }
       }
 
       maybeNotifyOpponentMoves(serverActions);
@@ -486,11 +555,16 @@ export default function MatchPage() {
     ]
   );
 
-  const [forfeitWinner, setForfeitWinner] = useState<PlayerId | null>(null);
-  const settledWinner = forfeitWinner || game?.winner || null;
+  const settledWinner =
+    forfeitWinner || game?.winner || chainWinnerSlot || null;
 
   const onConfirmWinner = useCallback(async () => {
     if (!match || !matchId || !address || !settledWinner || submitted) return;
+    if (myOnChainResult) {
+      setSubmitted(true);
+      setMsg("You already confirmed. Waiting for opponent…");
+      return;
+    }
     const winnerAddr =
       settledWinner === "p1"
         ? (match.player1 as Address)
@@ -499,8 +573,12 @@ export default function MatchPage() {
       setMsg("Confirm in wallet once. This settles the tickets.");
       await submitResult(matchId, winnerAddr);
       setSubmitted(true);
-      setMsg("Result submitted. Waiting for opponent to confirm too…");
-      refetch();
+      setMsg(
+        "Result submitted. Opponent must confirm the same winner for tickets to transfer."
+      );
+      // Refresh chain so opponent sees player1Result/player2Result
+      window.setTimeout(() => void refetch(), 1500);
+      window.setTimeout(() => void refetch(), 4000);
     } catch (e: unknown) {
       setMsg(e instanceof Error ? e.message : "Submit failed");
     }
@@ -510,20 +588,61 @@ export default function MatchPage() {
     address,
     settledWinner,
     submitted,
+    myOnChainResult,
     submitResult,
     refetch,
   ]);
 
-  const onWin = useCallback((_winner: PlayerId) => {
-    setMsg("Game over. Confirm the winner below when both agree.");
+  const onWin = useCallback((winner: PlayerId) => {
+    setForfeitWinner((w) => w || winner);
+    setMsg("Game over. Both players must confirm the winner on-chain.");
   }, []);
 
-  const onTimeoutForfeit = useCallback((winner: PlayerId) => {
-    setForfeitWinner(winner);
+  const onTimeoutForfeit = useCallback(
+    (winner: PlayerId) => {
+      setForfeitWinner(winner);
+      setMsg(
+        winner === humanPlayer
+          ? "Opponent timed out — you win. Confirm below to claim tickets."
+          : "Time's up — you forfeit. Confirm opponent won so tickets can settle."
+      );
+      // Sync forfeit to opponent via relay
+      if (address && matchKey) {
+        void postRelayOutcome(
+          matchKey,
+          address as Address,
+          winner,
+          "timeout"
+        ).catch(() => {
+          /* local still has forfeit; opponent may see via on-chain after you submit */
+        });
+      }
+    },
+    [address, matchKey, humanPlayer]
+  );
+
+  // When opponent already submitted on-chain, prompt us to match
+  useEffect(() => {
+    if (!match || match.status !== MatchStatus.Active) return;
+    if (!oppOnChainResult || !chainWinnerSlot) return;
+    if (myOnChainResult) {
+      setMsg(
+        "Waiting for opponent to confirm the same winner (dual confirm)…"
+      );
+      return;
+    }
     setMsg(
-      "Time's up — you forfeit. Opponent wins. Confirm below to settle tickets."
+      chainWinnerSlot === humanPlayer
+        ? "Opponent confirmed you won. Confirm below to claim both tickets."
+        : "Opponent submitted a result. Confirm the same winner below to settle."
     );
-  }, []);
+  }, [
+    match,
+    oppOnChainResult,
+    myOnChainResult,
+    chainWinnerSlot,
+    humanPlayer,
+  ]);
 
   if (!matchId) {
     return (
@@ -699,18 +818,95 @@ export default function MatchPage() {
           </div>
         )}
         {settledWinner && (
-          <button
-            type="button"
-            className="btn btn-primary arena-confirm"
-            disabled={isPending || submitted}
-            onClick={() => void onConfirmWinner()}
-          >
-            {submitted
-              ? "Submitted — await opponent"
-              : `Confirm ${settledWinner === humanPlayer ? "you won" : "opponent won"}`}
-          </button>
+          <div className="arena-confirm" style={{ textAlign: "center" }}>
+            <p
+              style={{
+                margin: "0 0 10px",
+                fontSize: "0.85rem",
+                color: "#d4c4b0",
+                fontWeight: 600,
+              }}
+            >
+              {submitted || myOnChainResult
+                ? "You confirmed. Opponent must confirm the same winner before tickets move."
+                : settledWinner === humanPlayer
+                  ? "You won — both players must sign the result on-chain."
+                  : "Opponent wins — confirm so tickets can transfer."}
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={isPending || submitted || !!myOnChainResult}
+              onClick={() => void onConfirmWinner()}
+              style={{ minWidth: 220 }}
+            >
+              {isPending
+                ? "Confirm in wallet…"
+                : submitted || myOnChainResult
+                  ? "Waiting for opponent…"
+                  : `Confirm ${settledWinner === humanPlayer ? "you won" : "opponent won"}`}
+            </button>
+            {(submitted || myOnChainResult) && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ marginLeft: 8 }}
+                onClick={() => void refetch()}
+              >
+                Refresh status
+              </button>
+            )}
+          </div>
         )}
       </>
+    );
+  }
+
+  // Still Active but board not ready — or settling after forfeit without full game state
+  if (
+    match.status === MatchStatus.Active &&
+    humanPlayer &&
+    settledWinner
+  ) {
+    return (
+      <div className="landing-premium ds">
+        <SiteNav />
+        <div className="app-shell shell-wide">
+          <header className="header">
+            <Link href="/play" className="btn btn-ghost btn-sm">
+              ← Play
+            </Link>
+          </header>
+          <div className="card-panel stack" style={{ maxWidth: 480 }}>
+            <h2 style={{ marginTop: 0 }}>Confirm match result</h2>
+            <p className="muted">
+              {settledWinner === humanPlayer
+                ? "You are the winner. Both wallets must confirm so tickets transfer."
+                : "Opponent is the winner. Confirm so the dual-submit can finish."}
+            </p>
+            {msg && <div className="alert">{msg}</div>}
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={isPending || submitted || !!myOnChainResult}
+              onClick={() => void onConfirmWinner()}
+            >
+              {isPending
+                ? "Confirm in wallet…"
+                : submitted || myOnChainResult
+                  ? "Waiting for opponent…"
+                  : `Confirm ${settledWinner === humanPlayer ? "you won" : "opponent won"}`}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => void refetch()}
+            >
+              Refresh on-chain status
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -771,16 +967,33 @@ export default function MatchPage() {
 
           {match.status === MatchStatus.Resolved && (
             <div className="banner win" style={{ marginTop: 12 }}>
-              Match over. Both ticket NFTs went to the winner.{" "}
+              Match settled. Tickets went to the winner.{" "}
               <Link
                 href={`/play/match/${matchId.toString()}/tickets`}
                 style={{ color: "inherit", textDecoration: "underline" }}
               >
-                Claim Megapot prizes on Tickets &amp; results
+                Open tickets &amp; claim Megapot prizes
               </Link>
               .
             </div>
           )}
+
+          {match.status === MatchStatus.Active &&
+            (oppOnChainResult || myOnChainResult) &&
+            !settledWinner && (
+              <div className="alert" style={{ marginTop: 12 }}>
+                A result was submitted on-chain. Refresh if the confirm button
+                does not appear.
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ marginLeft: 8 }}
+                  onClick={() => void refetch()}
+                >
+                  Refresh
+                </button>
+              </div>
+            )}
         </div>
 
         {msg && <div className="alert">{msg}</div>}

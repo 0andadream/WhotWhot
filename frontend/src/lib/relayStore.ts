@@ -6,11 +6,20 @@
  * Vercel multiplayer requires Redis env so both players share one log.
  */
 
-import type { GameAction } from "@/lib/whot/types";
+import type { GameAction, PlayerId } from "@/lib/whot/types";
+
+/** Shared end-of-match outcome (e.g. timeout forfeit) so both clients agree */
+export type RelayOutcome = {
+  winner: PlayerId;
+  reason: "timeout" | "game" | "forfeit";
+  by?: string; // address that declared it
+  at: number;
+};
 
 export type RelayPayload = {
   actions: GameAction[];
   updatedAt: number;
+  outcome?: RelayOutcome | null;
 };
 
 const g = globalThis as unknown as {
@@ -73,6 +82,15 @@ function redisKey(matchId: string) {
   return `whotwhot:relay:${matchId}`;
 }
 
+function normalizePayload(parsed: RelayPayload | null | undefined): RelayPayload {
+  if (!parsed) return { actions: [], updatedAt: 0 };
+  return {
+    actions: Array.isArray(parsed.actions) ? parsed.actions : [],
+    updatedAt: Number(parsed.updatedAt) || 0,
+    outcome: parsed.outcome || null,
+  };
+}
+
 export async function getRelay(matchId: string): Promise<RelayPayload> {
   if (upstashConfigured()) {
     try {
@@ -81,18 +99,14 @@ export async function getRelay(matchId: string): Promise<RelayPayload> {
       if (!raw || typeof raw !== "string") {
         return { actions: [], updatedAt: 0 };
       }
-      const parsed = JSON.parse(raw) as RelayPayload;
-      return {
-        actions: Array.isArray(parsed.actions) ? parsed.actions : [],
-        updatedAt: Number(parsed.updatedAt) || 0,
-      };
+      return normalizePayload(JSON.parse(raw) as RelayPayload);
     } catch (e) {
       console.error("relay get upstash", e);
       // Fall through to memory so a Redis blip does not wipe a warm instance
-      return mem().get(matchId) || { actions: [], updatedAt: 0 };
+      return normalizePayload(mem().get(matchId));
     }
   }
-  return mem().get(matchId) || { actions: [], updatedAt: 0 };
+  return normalizePayload(mem().get(matchId));
 }
 
 export async function setRelay(
@@ -117,6 +131,22 @@ export async function appendRelayAction(
   const next: RelayPayload = {
     actions: [...cur.actions, action],
     updatedAt: Date.now(),
+    outcome: cur.outcome || null,
+  };
+  await setRelay(matchId, next);
+  return next;
+}
+
+export async function setRelayOutcome(
+  matchId: string,
+  outcome: RelayOutcome
+): Promise<RelayPayload> {
+  const cur = await getRelay(matchId);
+  // First outcome wins (don't flip if already set)
+  const next: RelayPayload = {
+    actions: cur.actions,
+    updatedAt: Date.now(),
+    outcome: cur.outcome || outcome,
   };
   await setRelay(matchId, next);
   return next;

@@ -287,7 +287,11 @@ export function rememberMatchId(matchId: string | number | bigint) {
   }
 }
 
-export function useMatch(matchId: bigint | null) {
+export function useMatch(
+  matchId: bigint | null,
+  opts?: { refetchIntervalMs?: number }
+) {
+  const interval = opts?.refetchIntervalMs ?? 15_000;
   const { data, refetch, isLoading } = useReadContract({
     address: ADDRESSES.whotEscrow,
     abi: whotEscrowAbi,
@@ -296,8 +300,8 @@ export function useMatch(matchId: bigint | null) {
     chainId: 8453,
     query: {
       enabled: escrowReady && matchId != null,
-      // Match status rarely changes mid-game; avoid burning public RPC quota
-      refetchInterval: 15_000,
+      // Faster when settling dual-confirm; default slower to save RPC
+      refetchInterval: interval,
     },
   });
   return { match: data, refetch, isLoading };
