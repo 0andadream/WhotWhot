@@ -490,8 +490,21 @@ export function GameBoard({
             }`}
           >
             <div className="table-seat-row">
-              <div className={`table-seat-id${vsAi ? " no-avatar" : ""}`}>
-                {!vsAi && <ProfileAvatar profile={oppBits} size={44} />}
+              <div className="table-seat-id">
+                {vsAi ? (
+                  <span
+                    className="profile-avatar table-avatar-empty"
+                    style={{
+                      width: 44,
+                      height: 44,
+                      minWidth: 44,
+                      minHeight: 44,
+                    }}
+                    aria-hidden
+                  />
+                ) : (
+                  <ProfileAvatar profile={oppBits} size={44} />
+                )}
                 <div>
                   <strong>{oppName}</strong>
                   <span>{opp.hand.length} cards</span>
@@ -670,11 +683,9 @@ export function GameBoard({
                       : `${me.hand.length} cards`}
                   </span>
                 </div>
-                {gameOver && (
-                  <Link href={backHref} className="table-leave">
-                    Leave
-                  </Link>
-                )}
+                <Link href={backHref} className="table-leave">
+                  Leave
+                </Link>
               </div>
               <div
                 className={`table-hand-flat${gameOver ? " is-review" : ""}`}

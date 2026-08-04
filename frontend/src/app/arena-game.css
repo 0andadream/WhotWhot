@@ -489,8 +489,17 @@
 .table-seat-id.me {
   margin: 0;
 }
-.table-seat-id.no-avatar {
-  padding: 8px 14px;
+/* Empty circle placeholder (AI — no picture, keep the ring) */
+.table-avatar-empty {
+  display: inline-flex;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.table-leave {
+  flex-shrink: 0;
 }
 .table-leave {
   margin-left: 8px;
