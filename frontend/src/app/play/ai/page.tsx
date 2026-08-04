@@ -35,7 +35,7 @@ export default function PlayAiPage() {
             }
           : { username: "You", avatar: "🃏", color: "#c41e3a" }
       }
-      oppProfile={{ username: "AI", avatar: "🤖", color: "#3b82f6" }}
+      oppProfile={{ username: "AI", avatar: "", color: "#3b82f6" }}
       backHref="/play"
     />
   );

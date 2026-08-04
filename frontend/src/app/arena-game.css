@@ -300,10 +300,11 @@
 .table-draw:disabled:hover {
   transform: translateY(-50%);
 }
+/* Neat stacked market deck (aligned cascade) */
 .table-draw-stack {
   position: relative;
-  width: 76px;
-  height: 108px;
+  width: 84px;
+  height: 116px;
   pointer-events: none;
 }
 .table-draw-card {
@@ -311,15 +312,36 @@
   left: 0;
   top: 0;
   pointer-events: none;
+  /* each layer steps up-right a few px so the stack reads clearly */
 }
-.table-draw-card.top {
-  transform: translate(5px, -4px) rotate(4deg);
+.table-draw-card.c1 {
+  transform: translate(0px, 6px);
+  z-index: 1;
+  opacity: 0.92;
+}
+.table-draw-card.c2 {
+  transform: translate(3px, 4px);
+  z-index: 2;
+  opacity: 0.95;
+}
+.table-draw-card.c3 {
+  transform: translate(6px, 2px);
+  z-index: 3;
+  opacity: 0.98;
+}
+.table-draw-card.c4 {
+  transform: translate(9px, 0px);
+  z-index: 4;
 }
 .table-draw-stack .whot-card {
-  --card-w: 72px;
-  --card-h: 104px;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.45);
+  --card-w: 70px;
+  --card-h: 102px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06),
+    0 2px 4px rgba(0, 0, 0, 0.35),
+    0 8px 16px rgba(0, 0, 0, 0.4);
   pointer-events: none;
+  border-radius: 9px;
 }
 .table-draw.is-shake .table-draw-stack {
   animation: table-deck-shake 0.4s ease;
@@ -330,10 +352,10 @@
     transform: translateX(0);
   }
   25% {
-    transform: translateX(-3px) rotate(-2deg);
+    transform: translateX(-2px);
   }
   75% {
-    transform: translateX(3px) rotate(2deg);
+    transform: translateX(2px);
   }
 }
 
@@ -466,6 +488,9 @@
 }
 .table-seat-id.me {
   margin: 0;
+}
+.table-seat-id.no-avatar {
+  padding: 8px 14px;
 }
 .table-leave {
   margin-left: 8px;

@@ -490,8 +490,8 @@ export function GameBoard({
             }`}
           >
             <div className="table-seat-row">
-              <div className="table-seat-id">
-                <ProfileAvatar profile={oppBits} size={44} />
+              <div className={`table-seat-id${vsAi ? " no-avatar" : ""}`}>
+                {!vsAi && <ProfileAvatar profile={oppBits} size={44} />}
                 <div>
                   <strong>{oppName}</strong>
                   <span>{opp.hand.length} cards</span>
@@ -537,10 +537,16 @@ export function GameBoard({
             }
           >
             <div className="table-draw-stack" aria-hidden>
-              <span className="table-draw-card">
+              <span className="table-draw-card c1">
                 <WhotCard faceDown />
               </span>
-              <span className="table-draw-card top">
+              <span className="table-draw-card c2">
+                <WhotCard faceDown />
+              </span>
+              <span className="table-draw-card c3">
+                <WhotCard faceDown />
+              </span>
+              <span className="table-draw-card c4">
                 <WhotCard faceDown />
               </span>
             </div>
