@@ -20,7 +20,7 @@ import {
   legalMoves,
   reduce,
 } from "@/lib/whot/engine";
-import { PLAYABLE_SHAPES, SHAPE_LABEL } from "@/lib/whot/deck";
+import { SHAPE_LABEL } from "@/lib/whot/deck";
 import type { Card, GameState, PlayerId, Shape } from "@/lib/whot/types";
 import type { PlayerProfile } from "@/lib/profile";
 import {
@@ -498,13 +498,17 @@ export function GameBoard({
             <div className="arena-match-details-row">
               <span>Stake</span>
               <strong>
-                {stakeTickets} Ticket{stakeTickets === 1 ? "" : "s"}
+                {stakeTickets === 0
+                  ? "Free"
+                  : `${stakeTickets} Ticket${stakeTickets === 1 ? "" : "s"}`}
               </strong>
             </div>
             <div className="arena-match-details-row">
               <span>Total pot</span>
               <strong>
-                {potTickets} Ticket{potTickets === 1 ? "" : "s"}
+                {potTickets === 0
+                  ? "Practice"
+                  : `${potTickets} Ticket${potTickets === 1 ? "" : "s"}`}
               </strong>
             </div>
           </div>

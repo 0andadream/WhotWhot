@@ -5,6 +5,9 @@ import { useMemo } from "react";
 import { getProfile } from "@/lib/profile";
 import { useAccount } from "wagmi";
 
+/**
+ * Full-screen practice gameplay — circular arena (same UI as live matches).
+ */
 export default function PlayAiPage() {
   const seed = useMemo(
     () => `ai-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -22,7 +25,7 @@ export default function PlayAiPage() {
       showSoundToggle
       stakeTickets={0}
       potTickets={0}
-      ticketBalance="Practice"
+      ticketBalance="Practice · free"
       meProfile={
         profile
           ? {

@@ -12,8 +12,10 @@
   --arena-glow: rgba(196, 30, 58, 0.22);
   --arena-line: rgba(255, 255, 255, 0.08);
 
-  min-height: 100dvh;
-  min-height: 100svh;
+  height: 100dvh;
+  height: 100svh;
+  max-height: 100dvh;
+  max-height: 100svh;
   background:
     radial-gradient(1000px 520px at 50% -8%, rgba(196, 30, 58, 0.14), transparent 55%),
     radial-gradient(700px 400px at 90% 30%, rgba(80, 80, 140, 0.08), transparent 50%),
@@ -22,26 +24,29 @@
   color: #fafafa;
   font-family: "Inter", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .arena-shell {
   position: relative;
   width: 100%;
   max-width: 1280px;
+  height: 100%;
   margin: 0 auto;
-  min-height: 100dvh;
-  min-height: 100svh;
   display: grid;
-  grid-template-rows: auto 1fr auto auto auto;
-  gap: 10px;
+  /* nav | opponent | arena (grows) | turn | hand */
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  gap: 8px;
   /* Extra right padding reserves bottom-right for future live chat */
-  padding: 14px max(20px, 7vw) 18px 20px;
+  padding: 12px max(16px, 6vw) 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
+  min-height: 0;
 }
 @media (min-width: 960px) {
   .arena-shell {
     padding-right: 120px;
+    gap: 10px;
   }
 }
 
@@ -154,8 +159,10 @@
   align-items: center;
   justify-content: center;
   min-height: 0;
+  height: 100%;
   z-index: 2;
   gap: 0;
+  overflow: visible;
 }
 
 /* Match details — glass pill attached to arena top edge */
@@ -221,8 +228,10 @@
 
 .arena-circle {
   position: relative;
-  width: min(520px, 72vw, 58vh);
-  height: min(520px, 72vw, 58vh);
+  width: min(480px, 68vw, 46vh);
+  height: min(480px, 68vw, 46vh);
+  max-width: 100%;
+  max-height: 100%;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -230,6 +239,13 @@
   animation: arena-breathe 5.5s ease-in-out infinite;
   transform-style: preserve-3d;
   margin-top: 0;
+  flex-shrink: 1;
+}
+@media (min-width: 960px) and (min-height: 800px) {
+  .arena-circle {
+    width: min(520px, 58vh);
+    height: min(520px, 58vh);
+  }
 }
 .arena-circle.is-hold {
   animation: arena-hold-pulse 1.2s ease-in-out;
@@ -763,9 +779,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   z-index: 8;
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  flex-shrink: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: min(960px, 100%);
+  margin: 0 auto;
+  padding-bottom: 0;
 }
 .arena-me-meta {
   display: flex;
