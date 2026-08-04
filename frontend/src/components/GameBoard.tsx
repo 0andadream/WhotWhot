@@ -483,20 +483,37 @@ export function GameBoard({
             aria-hidden
           />
 
-          {/* Draw pile — top center */}
+          {/* Draw pile — top center (market) */}
           <button
             type="button"
-            className={`table-draw${deckShake ? " is-shake" : ""}`}
-            onClick={onDraw}
-            disabled={!myTurn || !!state.pendingPenalty}
+            className={`table-draw${deckShake ? " is-shake" : ""}${
+              myTurn && !state.pendingPenalty ? " is-ready" : ""
+            }`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDraw();
+            }}
+            disabled={!myTurn || !!state.pendingPenalty || gameOver}
             aria-label="Draw from market"
+            title={
+              !myTurn
+                ? "Wait for your turn"
+                : state.pendingPenalty
+                  ? "Accept pick or stack first"
+                  : "Draw 1 from market"
+            }
           >
-            <div className="table-draw-stack">
-              <WhotCard faceDown />
-              <WhotCard faceDown />
+            <div className="table-draw-stack" aria-hidden>
+              <span className="table-draw-card">
+                <WhotCard faceDown />
+              </span>
+              <span className="table-draw-card top">
+                <WhotCard faceDown />
+              </span>
             </div>
             <span className="table-pile-label">
-              Draw pile
+              Market
               <em>{state.deck.length}</em>
             </span>
           </button>
@@ -630,9 +647,21 @@ export function GameBoard({
                 Accept pick {state.pendingPenalty.amount}
               </button>
             )}
+            {myTurn && !state.pendingPenalty && (
+              <button
+                type="button"
+                className="table-action-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDraw();
+                }}
+              >
+                Go to market
+              </button>
+            )}
           </div>
 
-          {/* Your hand — bottom fan */}
+          {/* Your hand — flat on the table, all cards visible */}
           <section className="table-seat table-seat-me">
             <div className="table-seat-id me">
               <ProfileAvatar profile={meBits} size={44} />
@@ -651,36 +680,28 @@ export function GameBoard({
               )}
             </div>
             <div
-              className={`table-fan table-fan-me${gameOver ? " is-review" : ""}`}
+              className={`table-hand-flat${gameOver ? " is-review" : ""}`}
               aria-label="Your hand"
             >
-              {me.hand.map((c, i) => {
-                const n = me.hand.length;
-                const p = fanPose(i, n, Math.min(56, 10 + n * 2.4), 12);
+              {me.hand.map((c) => {
                 const playable = myTurn && moveIds.has(c.id);
                 const isSel = selected?.id === c.id;
                 const isDrag = dragId === c.id;
-                const style: React.CSSProperties =
+                const style: React.CSSProperties | undefined =
                   isDrag && dragPos
                     ? {
                         position: "fixed",
                         left: dragPos.x,
                         top: dragPos.y,
-                        transform: "translate(-50%, -50%) scale(1.08) rotate(0)",
+                        transform: "translate(-50%, -50%) scale(1.08)",
                         zIndex: 90,
-                        bottom: "auto",
                       }
-                    : {
-                        transform: `translateX(calc(-50% + ${p.x}px)) rotate(${p.rotate}deg) translateY(${
-                          p.y + (isSel ? -18 : 0)
-                        }px)${isSel ? " scale(1.05)" : ""}`,
-                        zIndex: isSel || isDrag ? 40 : i,
-                      };
+                    : undefined;
                 return (
                   <button
                     key={c.id}
                     type="button"
-                    className={`table-fan-card me-card${
+                    className={`table-hand-card${
                       playable ? " is-playable" : ""
                     }${isSel ? " is-selected" : ""}${
                       isDrag ? " is-dragging" : ""
