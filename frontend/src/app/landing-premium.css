@@ -1007,6 +1007,38 @@
     padding: 24px 28px 56px;
   }
 }
+/* Mobile lobby: tighter so modes fit without endless scroll */
+@media (max-width: 700px) {
+  .play-v2 {
+    padding: 10px 12px calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+  .play-v2-strip {
+    margin-bottom: 12px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .play-v2-strip-stats {
+    font-size: 0.78rem;
+    gap: 6px 12px;
+  }
+  .play-v2-title {
+    font-size: 1.35rem;
+    margin: 4px 0 6px;
+  }
+  .play-v2-mode-card {
+    padding: 16px 16px 14px;
+  }
+  .play-v2-mode-card h2 {
+    font-size: 1.15rem;
+  }
+  .play-v2-mode-card p {
+    font-size: 0.85rem;
+  }
+  .hero-stage.hero-stage-compact {
+    height: 160px;
+    margin: 0 auto 4px;
+  }
+}
 
 .play-v2-strip {
   display: flex;

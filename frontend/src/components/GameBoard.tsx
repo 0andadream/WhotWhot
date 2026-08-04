@@ -112,12 +112,25 @@ export function GameBoard({
   const [selected, setSelected] = useState<Card | null>(null);
   const [pickingShape, setPickingShape] = useState(false);
   const [soundMuted, setSoundMuted] = useState(false);
-  const [chatOpen, setChatOpen] = useState(!!chatContent);
-  const [feedOpen, setFeedOpen] = useState(true);
+  // Desktop: open chat/feed by default when available. Mobile: closed so board fits.
+  const [chatOpen, setChatOpen] = useState(false);
+  const [feedOpen, setFeedOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const feedEndRef = useRef<HTMLDivElement>(null);
   /** User closed chat — don't force it back open on re-render */
   const chatClosedByUser = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const wide = window.matchMedia("(min-width: 901px)").matches;
+    if (wide) {
+      if (chatContent && !chatClosedByUser.current) setChatOpen(true);
+      setFeedOpen(true);
+    } else {
+      setChatOpen(false);
+      setFeedOpen(false);
+    }
+  }, [chatContent]);
   const [fx, setFx] = useState<FxKind>(null);
   const [ripple, setRipple] = useState(0);
   const [deckShake, setDeckShake] = useState(false);
