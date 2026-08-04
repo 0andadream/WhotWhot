@@ -498,11 +498,16 @@
   flex-shrink: 0;
   box-sizing: border-box;
 }
-.table-leave {
+.table-seat-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
+  margin-left: 8px;
 }
 .table-leave {
-  margin-left: 8px;
+  flex-shrink: 0;
+  margin-left: 0;
   padding: 4px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -510,6 +515,28 @@
   text-decoration: none;
   font-size: 0.75rem;
   font-weight: 700;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+}
+button.table-leave {
+  appearance: none;
+}
+.table-replay {
+  border-color: rgba(248, 113, 113, 0.55);
+  background: rgba(196, 30, 58, 0.28);
+  color: #fff;
+}
+.table-replay:hover {
+  background: rgba(196, 30, 58, 0.42);
+  border-color: rgba(248, 113, 113, 0.75);
+}
+.table-action-btn.table-action-replay {
+  border-color: rgba(248, 113, 113, 0.55);
+  background: rgba(196, 30, 58, 0.32);
+  color: #fff;
+  font-weight: 800;
 }
 .table-freeze {
   position: absolute;
@@ -1249,9 +1276,16 @@
   .table-seat-id span {
     font-size: 0.58rem;
   }
+  .table-seat-actions {
+    gap: 4px;
+    margin-left: 4px;
+  }
   .table-leave {
     padding: 3px 8px;
     font-size: 0.65rem;
+  }
+  .table-replay {
+    padding: 3px 8px;
   }
   .table-avatar-empty,
   .table-seat-id .profile-avatar {

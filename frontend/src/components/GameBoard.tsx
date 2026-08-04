@@ -119,6 +119,8 @@ export function GameBoard({
   const feedEndRef = useRef<HTMLDivElement>(null);
   /** User closed chat — don't force it back open on re-render */
   const chatClosedByUser = useRef(false);
+  /** Local AI rematch — only when not driven by multiplayer externalState */
+  const canReplay = vsAi && !externalState;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -177,6 +179,33 @@ export function GameBoard({
     },
     [onAction]
   );
+
+  const onReplay = useCallback(() => {
+    if (!canReplay) return;
+    unlockMoveSound();
+    const nextSeed = `ai-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const fresh = createGame(nextSeed, p1Name, p2Name);
+    setLocal(fresh);
+    setSelected(null);
+    setPickingShape(false);
+    setTimeoutWinner(null);
+    setLeaving(false);
+    setTurnLeft(TURN_SECONDS);
+    setFx(null);
+    setDragId(null);
+    setDragPos(null);
+    setSpotlight(null);
+    setRipple(0);
+    setImpactKey(0);
+    setDeckShake(false);
+    setTurnPulse((n) => n + 1);
+    winFiredRef.current = false;
+    timeoutFiredRef.current = false;
+    prevTopId.current = null;
+    prevLogLen.current = 0;
+    prevTurn.current = fresh.turn;
+    setMenuOpen(false);
+  }, [canReplay, p1Name, p2Name]);
 
   const effectiveWinner = timeoutWinner || state.winner;
 
@@ -671,6 +700,15 @@ export function GameBoard({
                 {turnLeft}s
               </span>
             )}
+            {gameOver && canReplay && (
+              <button
+                type="button"
+                className="table-action-btn table-action-replay"
+                onClick={onReplay}
+              >
+                Replay
+              </button>
+            )}
             {myTurn && state.pendingPenalty && (
               <button
                 type="button"
@@ -709,9 +747,20 @@ export function GameBoard({
                       : `${me.hand.length} cards`}
                   </span>
                 </div>
-                <Link href={backHref} className="table-leave">
-                  Leave
-                </Link>
+                <div className="table-seat-actions">
+                  {gameOver && canReplay && (
+                    <button
+                      type="button"
+                      className="table-leave table-replay"
+                      onClick={onReplay}
+                    >
+                      Replay
+                    </button>
+                  )}
+                  <Link href={backHref} className="table-leave">
+                    Leave
+                  </Link>
+                </div>
               </div>
               <div
                 className={`table-hand-flat${gameOver ? " is-review" : ""}`}
@@ -917,6 +966,11 @@ export function GameBoard({
               </button>
             </div>
             <div className="table-menu-list">
+              {gameOver && canReplay && (
+                <button type="button" onClick={onReplay}>
+                  ↻ Replay
+                </button>
+              )}
               <Link href={backHref} onClick={() => setMenuOpen(false)}>
                 ← Leave table
               </Link>

@@ -97,27 +97,39 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  min-height: 60px;
-  padding: 10px 16px;
+  gap: 8px;
+  min-height: 56px;
+  padding: 8px 12px;
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   background: rgba(10, 10, 12, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--line);
+  overflow-x: clip;
 }
 @media (min-width: 768px) {
   .site-nav,
   .landing-nav {
     padding: 10px 32px;
     min-height: 64px;
+    gap: 12px;
   }
 }
 
 .site-nav-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
+  flex-shrink: 1;
+}
+@media (min-width: 640px) {
+  .site-nav-left {
+    gap: 12px;
+  }
 }
 
 .site-nav-live {
@@ -132,6 +144,53 @@
   font-weight: 600;
   color: #3dd68c;
   white-space: nowrap;
+}
+/* Phones: live pill → green dot only so Play/Guide/Connect fit */
+@media (max-width: 700px) {
+  .site-nav-live {
+    padding: 0;
+    width: 10px;
+    height: 10px;
+    min-width: 10px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    font-size: 0;
+    color: transparent;
+    gap: 0;
+    overflow: hidden;
+  }
+  .site-nav-live-dot {
+    width: 8px;
+    height: 8px;
+    margin: 0;
+  }
+  .site-nav-pill {
+    min-height: 32px;
+    padding: 5px 10px;
+    font-size: 0.78rem;
+  }
+  .site-nav-right {
+    gap: 6px;
+  }
+  .site-nav .btn-primary,
+  .site-nav .connect-btn.btn-primary,
+  .site-nav .btn-ghost,
+  .site-nav .connect-btn.btn-ghost,
+  .landing-nav .btn-primary,
+  .landing-nav .connect-btn.btn-primary,
+  .landing-nav .btn-ghost,
+  .landing-nav .connect-btn.btn-ghost {
+    min-height: 32px !important;
+    padding: 6px 10px !important;
+    font-size: 0.78rem !important;
+  }
+}
+@media (max-width: 380px) {
+  .site-nav-pill {
+    padding: 5px 8px;
+    font-size: 0.72rem;
+  }
 }
 .site-nav-live-dot {
   width: 6px;
