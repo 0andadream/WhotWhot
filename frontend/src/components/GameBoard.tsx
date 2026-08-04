@@ -673,12 +673,6 @@ export function GameBoard({
               )}
             </div>
           )}
-          {timedOut && (
-            <p className="arena-timeout-note">
-              Clock hit zero. Opponent wins. Your hand is flat below — tap a card
-              to inspect it.
-            </p>
-          )}
         </div>
 
         {/* Flat hand — always visible & tappable */}
