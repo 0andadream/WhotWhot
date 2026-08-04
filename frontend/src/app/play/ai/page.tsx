@@ -1,32 +1,39 @@
 "use client";
 
-import Link from "next/link";
 import { GameBoard } from "@/components/GameBoard";
-import { SiteNav } from "@/components/SiteNav";
 import { useMemo } from "react";
+import { getProfile } from "@/lib/profile";
+import { useAccount } from "wagmi";
 
 export default function PlayAiPage() {
   const seed = useMemo(
     () => `ai-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     []
   );
+  const { address } = useAccount();
+  const profile = address ? getProfile(address) : null;
 
   return (
-    <div className="landing-premium ds">
-      <SiteNav />
-      <div className="app-shell shell-wide">
-        <header className="header">
-          <Link href="/play" className="btn btn-ghost btn-sm">
-            ← Play
-          </Link>
-          <div className="pill">Practice · vs AI</div>
-        </header>
-        <p className="muted" style={{ marginBottom: 12, fontSize: "0.85rem" }}>
-          A chime plays when the AI finishes its turn. Tap the board once if
-          sound is blocked, or use Sound on/off above the table.
-        </p>
-        <GameBoard seed={seed} vsAi p1Name="You" p2Name="AI" showSoundToggle />
-      </div>
-    </div>
+    <GameBoard
+      seed={seed}
+      vsAi
+      p1Name={profile?.username || "You"}
+      p2Name="AI"
+      showSoundToggle
+      stakeTickets={0}
+      potTickets={0}
+      ticketBalance="Practice"
+      meProfile={
+        profile
+          ? {
+              username: profile.username,
+              avatar: profile.avatar,
+              color: profile.color,
+            }
+          : { username: "You", avatar: "🃏", color: "#c41e3a" }
+      }
+      oppProfile={{ username: "AI", avatar: "🤖", color: "#3b82f6" }}
+      backHref="/play"
+    />
   );
 }

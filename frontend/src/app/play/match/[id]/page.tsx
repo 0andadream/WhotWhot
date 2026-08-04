@@ -521,6 +521,122 @@ export default function MatchPage() {
         : p2Name
       : null;
 
+  const chatName =
+    getProfile(address)?.username ||
+    (humanPlayer === "p1"
+      ? p1Name
+      : humanPlayer === "p2"
+        ? p2Name
+        : getSavedDisplayName() || "Player");
+
+  const meProf =
+    humanPlayer === "p1"
+      ? forAddress(match.player1 as string)
+      : humanPlayer === "p2"
+        ? forAddress(match.player2 as string)
+        : null;
+  const oppProf =
+    humanPlayer === "p1"
+      ? forAddress(match.player2 as string)
+      : humanPlayer === "p2"
+        ? forAddress(match.player1 as string)
+        : null;
+
+  /* ── Live play: circular arena ── */
+  if (match.status === MatchStatus.Active && game && humanPlayer) {
+    return (
+      <>
+        <GameBoard
+          seed={match.gameSeed}
+          humanPlayer={humanPlayer}
+          vsAi={false}
+          externalState={game}
+          onAction={(a) => void onAction(a)}
+          onWin={onWin}
+          p1Name={p1Name}
+          p2Name={p2Name}
+          readOnly={posting}
+          stakeTickets={1}
+          potTickets={2}
+          ticketBalance="1 staked"
+          meProfile={
+            meProf
+              ? {
+                  username: meProf.username,
+                  avatar: meProf.avatar,
+                  color: meProf.color,
+                }
+              : undefined
+          }
+          oppProfile={
+            oppProf
+              ? {
+                  username: oppProf.username,
+                  avatar: oppProf.avatar,
+                  color: oppProf.color,
+                }
+              : undefined
+          }
+          chatContent={
+            <MatchChat
+              matchId={matchKey}
+              address={address}
+              displayName={chatName}
+              canChat
+              isPlayer
+            />
+          }
+          menuExtra={
+            <>
+              <Link href={`/play/match/${matchId.toString()}/tickets`}>
+                Tickets &amp; results
+              </Link>
+              <button
+                type="button"
+                disabled={syncing || posting}
+                onClick={() => {
+                  unlockMoveSound();
+                  void pullRelay();
+                }}
+              >
+                {syncing ? "Syncing…" : "Refresh board"}
+              </button>
+            </>
+          }
+          backHref="/play"
+        />
+        {msg && (
+          <div
+            className="alert"
+            style={{
+              position: "fixed",
+              left: "50%",
+              top: 64,
+              transform: "translateX(-50%)",
+              zIndex: 60,
+              maxWidth: "min(420px, 92vw)",
+            }}
+          >
+            {msg}
+          </div>
+        )}
+        {game.winner && (
+          <button
+            type="button"
+            className="btn btn-primary arena-confirm"
+            disabled={isPending || submitted}
+            onClick={() => void onConfirmWinner()}
+          >
+            {submitted
+              ? "Submitted — await opponent"
+              : `Confirm ${game.winner === humanPlayer ? "you won" : "opponent won"}`}
+          </button>
+        )}
+      </>
+    );
+  }
+
+  /* ── Waiting / resolved / spectator ── */
   return (
     <div className="landing-premium ds">
       <SiteNav />
@@ -537,39 +653,6 @@ export default function MatchPage() {
               >
                 Tickets &amp; results
               </Link>
-            )}
-            {match.status === MatchStatus.Active && (
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                disabled={syncing || posting}
-                onClick={() => {
-                  unlockMoveSound();
-                  void pullRelay();
-                }}
-              >
-                {syncing ? "Syncing…" : "Refresh board"}
-              </button>
-            )}
-            {match.status === MatchStatus.Active && (
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                title={
-                  soundMuted
-                    ? "Unmute opponent move sound"
-                    : "Mute opponent move sound"
-                }
-                onClick={() => {
-                  unlockMoveSound();
-                  const next = !soundMuted;
-                  setSoundMuted(next);
-                  setMoveSoundMuted(next);
-                  if (!next) playOpponentMoveSound();
-                }}
-              >
-                {soundMuted ? "Sound off" : "Sound on"}
-              </button>
             )}
           </div>
         </header>
@@ -601,65 +684,11 @@ export default function MatchPage() {
             <p className="muted" style={{ marginTop: 6 }}>
               Turn:{" "}
               <strong style={{ color: "var(--text)" }}>{whoseTurn}</strong>
-              {humanPlayer && game && game.turn === humanPlayer && " (yours)"}
-              {humanPlayer &&
-                game &&
-                game.turn !== humanPlayer &&
-                " (waiting for them)"}
             </p>
           )}
-          <p className="muted" style={{ marginTop: 6, fontSize: "0.8rem" }}>
-            Moves synced: {actions.length}
-            {relayOk ? "" : " · relay offline"}
-            {relayStorage === "memory"
-              ? " · storage: temp (set Upstash Redis on Vercel for multiplayer)"
-              : relayStorage === "redis"
-                ? " · storage: redis"
-                : ""}
-          </p>
-
-          <div className="stat-row" style={{ marginTop: 12 }}>
-            <div className="stat">
-              <div className="label">Player 1</div>
-              <div
-                className="value match-player-id"
-                style={{ fontSize: "1.05rem" }}
-              >
-                <ProfileAvatar
-                  profile={forAddress(match.player1 as string)}
-                  size={28}
-                />
-                {p1Name}
-              </div>
-            </div>
-            <div className="stat">
-              <div className="label">Player 2</div>
-              <div
-                className="value match-player-id"
-                style={{ fontSize: "1.05rem" }}
-              >
-                {p2Joined && (
-                  <ProfileAvatar
-                    profile={forAddress(match.player2 as string)}
-                    size={28}
-                  />
-                )}
-                {p2Joined ? p2Name : "Waiting…"}
-              </div>
-            </div>
-          </div>
 
           {match.status === MatchStatus.Waiting && (
             <ShareWaitingMatch matchId={matchId.toString()} />
-          )}
-
-          {match.status === MatchStatus.Active && (
-            <p className="muted" style={{ marginTop: 12 }}>
-              Card plays are free (no wallet). Both phones stay in sync over the
-              relay. A short chime plays when your opponent moves (tap the board
-              once if sound is blocked). You only open the wallet to stake and
-              to confirm the winner at the end.
-            </p>
           )}
 
           {match.status === MatchStatus.Resolved && (
@@ -674,89 +703,31 @@ export default function MatchPage() {
               .
             </div>
           )}
-
-          {(match.ticket1 > 0n || match.ticket2 > 0n) &&
-            match.status !== MatchStatus.Resolved && (
-              <p className="muted" style={{ marginTop: 12, fontSize: "0.85rem" }}>
-                Lottery numbers and claims are on a separate page so they do not
-                load during play.{" "}
-                <Link
-                  href={`/play/match/${matchId.toString()}/tickets`}
-                  style={{ color: "var(--text)", textDecoration: "underline" }}
-                >
-                  Open tickets &amp; draw results
-                </Link>
-              </p>
-            )}
         </div>
 
         {msg && <div className="alert">{msg}</div>}
 
         <div className="match-play-row">
           <div className="match-play-main">
-            {match.status === MatchStatus.Active && game && humanPlayer && (
-              <GameBoard
-                seed={match.gameSeed}
-                humanPlayer={humanPlayer}
-                vsAi={false}
-                externalState={game}
-                onAction={(a) => void onAction(a)}
-                onWin={onWin}
-                p1Name={p1Name}
-                p2Name={p2Name}
-                readOnly={posting}
-              />
-            )}
-
-            {match.status === MatchStatus.Active &&
-              game &&
-              humanPlayer &&
-              game.winner && (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  style={{ marginTop: 12 }}
-                  disabled={isPending || submitted}
-                  onClick={() => void onConfirmWinner()}
-                >
-                  {submitted
-                    ? "Submitted. Await opponent"
-                    : `Confirm ${game.winner === humanPlayer ? "you won" : "opponent won"}`}
-                </button>
-              )}
-
             {match.status === MatchStatus.Active && !humanPlayer && (
               <p className="muted">
                 Spectating. Connect as a match player to act.
               </p>
             )}
-
             {match.status === MatchStatus.Waiting && (
               <p className="muted" style={{ marginTop: 8 }}>
-                Chat unlocks for the host now; opponent can chat after they join.
+                Share your table code. Chat is open for the host now.
               </p>
             )}
           </div>
 
           {(match.status === MatchStatus.Waiting ||
-            match.status === MatchStatus.Active ||
             match.status === MatchStatus.Resolved) && (
             <MatchChat
               matchId={matchKey}
               address={address}
-              displayName={
-                getProfile(address)?.username ||
-                (humanPlayer === "p1"
-                  ? p1Name
-                  : humanPlayer === "p2"
-                    ? p2Name
-                    : getSavedDisplayName() || "Player")
-              }
-              canChat={
-                match.status === MatchStatus.Waiting ||
-                match.status === MatchStatus.Active ||
-                match.status === MatchStatus.Resolved
-              }
+              displayName={chatName}
+              canChat
               isPlayer={!!humanPlayer}
             />
           )}
