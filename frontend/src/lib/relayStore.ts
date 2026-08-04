@@ -36,26 +36,72 @@ export function upstashConfigured(): boolean {
   return !!(redisUrl() && redisToken());
 }
 
+/** Prefer HTTPS REST endpoints only (not rediss:// TCP URLs). */
 function redisUrl(): string | undefined {
-  return (
-    process.env.UPSTASH_REDIS_REST_URL ||
-    process.env.KV_REST_API_URL ||
-    process.env.KV_URL ||
-    undefined
-  );
+  const candidates = [
+    process.env.UPSTASH_REDIS_REST_URL,
+    process.env.KV_REST_API_URL,
+    process.env.STORAGE_KV_REST_API_URL,
+    process.env.UPSTASH_REDIS_REST_URL_PRODUCTION,
+    // Some integrations nest under custom prefixes — scan common ones
+    process.env.REDIS_REST_URL,
+  ].filter(Boolean) as string[];
+
+  for (const u of candidates) {
+    const t = u.trim();
+    if (t.startsWith("https://") || t.startsWith("http://")) return t;
+  }
+  return undefined;
 }
 
 function redisToken(): string | undefined {
-  return (
-    process.env.UPSTASH_REDIS_REST_TOKEN ||
-    process.env.KV_REST_API_TOKEN ||
-    process.env.KV_REST_API_READ_ONLY_TOKEN ||
-    undefined
-  );
+  const candidates = [
+    process.env.UPSTASH_REDIS_REST_TOKEN,
+    process.env.KV_REST_API_TOKEN,
+    process.env.STORAGE_KV_REST_API_TOKEN,
+    process.env.KV_REST_API_READ_ONLY_TOKEN,
+    process.env.UPSTASH_REDIS_REST_TOKEN_PRODUCTION,
+    process.env.REDIS_REST_TOKEN,
+  ].filter(Boolean) as string[];
+  for (const t of candidates) {
+    if (t.trim()) return t.trim();
+  }
+  return undefined;
 }
 
 export function relayStorageMode(): "redis" | "memory" {
   return upstashConfigured() ? "redis" : "memory";
+}
+
+/** Safe diagnostics — booleans only, never secret values */
+export function redisEnvDiagnostics(): {
+  storage: "redis" | "memory";
+  hasRestUrl: boolean;
+  hasRestToken: boolean;
+  keysPresent: string[];
+} {
+  const names = [
+    "UPSTASH_REDIS_REST_URL",
+    "UPSTASH_REDIS_REST_TOKEN",
+    "KV_REST_API_URL",
+    "KV_REST_API_TOKEN",
+    "KV_REST_API_READ_ONLY_TOKEN",
+    "STORAGE_KV_REST_API_URL",
+    "STORAGE_KV_REST_API_TOKEN",
+    "KV_URL",
+    "REDIS_REST_URL",
+    "REDIS_REST_TOKEN",
+  ];
+  const keysPresent = names.filter((n) => {
+    const v = process.env[n];
+    return !!(v && String(v).trim());
+  });
+  return {
+    storage: relayStorageMode(),
+    hasRestUrl: !!redisUrl(),
+    hasRestToken: !!redisToken(),
+    keysPresent,
+  };
 }
 
 export async function upstashCommand(
