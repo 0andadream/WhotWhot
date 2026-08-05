@@ -463,11 +463,26 @@
   width: min(960px, calc(100% - 24px));
   padding: 0;
   box-sizing: border-box;
-  z-index: 12;
+  z-index: 20;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
+  gap: 0;
+}
+/* Left column: turn/timer/instructions stacked above YOU name */
+.table-seat-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
+  flex-shrink: 0;
+  z-index: 22;
+  max-width: min(280px, 42vw);
+  pointer-events: auto;
+}
+.table-seat-row.me {
+  align-items: flex-end;
+  gap: 10px;
 }
 .table-seat-id {
   display: flex;
@@ -878,29 +893,29 @@ button.table-leave {
   margin-top: 1px;
 }
 
-/* Turn + timer dock — sits above your hand (never under cards) */
+/* Turn + timer + instructions — stacked above YOU name (left bottom) */
 .table-status,
 .table-status-dock {
   position: relative;
   left: auto;
   top: auto;
   transform: none;
-  z-index: 14;
+  z-index: 22;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 8px 18px;
-  border-radius: 999px;
-  background: rgba(8, 6, 5, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  font-size: 0.88rem;
+  justify-content: flex-start;
+  gap: 6px 8px;
+  padding: 7px 12px;
+  border-radius: 14px;
+  background: rgba(8, 6, 5, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 0.78rem;
   font-weight: 800;
-  max-width: min(92vw, 520px);
+  max-width: 100%;
   width: fit-content;
   letter-spacing: -0.01em;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   pointer-events: auto;
@@ -938,31 +953,34 @@ button.table-leave {
 .table-status .yours {
   color: #fecaca;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 0.92rem;
+  letter-spacing: 0.05em;
+  font-size: 0.78rem;
 }
 .table-status .wait {
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.78rem;
 }
 .table-status .win {
   color: #86efac;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
+  font-size: 0.78rem;
 }
 .table-status .loss {
   color: #fca5a5;
+  font-size: 0.78rem;
 }
 .table-timer {
   font-variant-numeric: tabular-nums;
-  min-width: 2.4em;
+  min-width: 2.2em;
   text-align: center;
-  padding: 2px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(248, 113, 113, 0.5);
   color: #fca5a5;
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
 }
 .table-timer.low {
   color: #fbbf24;
@@ -1573,6 +1591,10 @@ button.table-leave {
     min-height: 32px !important;
   }
 
+  .table-seat-left {
+    max-width: min(150px, 38vw);
+    gap: 4px;
+  }
   .table-hand-flat {
     padding: 6px;
     gap: 6px;
@@ -1580,6 +1602,8 @@ button.table-leave {
   }
   .table-hand-fan {
     padding: 14px 10px 6px;
+    min-width: 0;
+    flex: 1;
   }
   .table-hand-fan .table-hand-card {
     margin-left: -14px;
@@ -1689,22 +1713,26 @@ button.table-leave {
   }
   .table-status,
   .table-status-dock {
-    gap: 6px;
-    padding: 5px 12px;
-    font-size: 0.72rem;
-    max-width: 92vw;
+    gap: 4px 6px;
+    padding: 5px 8px;
+    font-size: 0.65rem;
+    max-width: 100%;
+    border-radius: 12px;
   }
-  .table-status .yours {
-    font-size: 0.75rem;
+  .table-status .yours,
+  .table-status .wait,
+  .table-status .win,
+  .table-status .loss {
+    font-size: 0.65rem;
   }
   .table-action-btn {
-    font-size: 0.65rem;
-    padding: 3px 8px;
+    font-size: 0.6rem;
+    padding: 3px 7px;
   }
   .table-timer {
-    font-size: 0.78rem;
-    min-width: 2.2em;
-    padding: 2px 8px;
+    font-size: 0.72rem;
+    min-width: 2em;
+    padding: 2px 6px;
   }
 
   .table-suit-hint {
