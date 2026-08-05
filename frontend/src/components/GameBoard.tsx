@@ -723,74 +723,74 @@ export function GameBoard({
             </div>
           )}
 
-          {/* Turn banner + actions */}
-          <div
-            className={`table-status${myTurn ? " is-yours" : ""}${
-              gameOver
-                ? effectiveWinner === humanPlayer
-                  ? " is-win"
-                  : " is-loss"
-                : ""
-            }`}
-          >
-            <span
-              className={
-                gameOver
-                  ? effectiveWinner === humanPlayer
-                    ? "win"
-                    : "loss"
-                  : myTurn
-                    ? "yours"
-                    : "wait"
-              }
-            >
-              {turnLabel}
-            </span>
-            {!gameOver && state.turn === humanPlayer && (
-              <span className={`table-timer${timerLow ? " low" : ""}`}>
-                {turnLeft}s
-              </span>
-            )}
-            {gameOver && canReplay && (
-              <button
-                type="button"
-                className="table-action-btn table-action-replay"
-                onClick={onReplay}
-              >
-                Replay
-              </button>
-            )}
-            {myTurn && state.pendingPenalty && (
-              <button
-                type="button"
-                className="table-action-btn"
-                onClick={() =>
-                  apply({ type: "ACCEPT_PENALTY", player: humanPlayer })
-                }
-              >
-                Accept pick {state.pendingPenalty.amount}
-              </button>
-            )}
-            {myTurn && !state.pendingPenalty && (
-              <button
-                type="button"
-                className="table-action-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDraw();
-                }}
-              >
-                Go to market
-              </button>
-            )}
-          </div>
-
-          {/* You — BOTTOM, fanned hand */}
+          {/* You — BOTTOM: turn/timer dock sits above hand so cards never cover it */}
           <section
             className={`table-seat table-seat-me${
               myTurn ? " is-active-turn" : ""
             }`}
           >
+            <div
+              className={`table-status table-status-dock${
+                myTurn ? " is-yours" : ""
+              }${
+                gameOver
+                  ? effectiveWinner === humanPlayer
+                    ? " is-win"
+                    : " is-loss"
+                  : ""
+              }`}
+            >
+              <span
+                className={
+                  gameOver
+                    ? effectiveWinner === humanPlayer
+                      ? "win"
+                      : "loss"
+                    : myTurn
+                      ? "yours"
+                      : "wait"
+                }
+              >
+                {turnLabel}
+              </span>
+              {!gameOver && state.turn === humanPlayer && (
+                <span className={`table-timer${timerLow ? " low" : ""}`}>
+                  {turnLeft}s
+                </span>
+              )}
+              {gameOver && canReplay && (
+                <button
+                  type="button"
+                  className="table-action-btn table-action-replay"
+                  onClick={onReplay}
+                >
+                  Replay
+                </button>
+              )}
+              {myTurn && state.pendingPenalty && (
+                <button
+                  type="button"
+                  className="table-action-btn"
+                  onClick={() =>
+                    apply({ type: "ACCEPT_PENALTY", player: humanPlayer })
+                  }
+                >
+                  Accept pick {state.pendingPenalty.amount}
+                </button>
+              )}
+              {myTurn && !state.pendingPenalty && (
+                <button
+                  type="button"
+                  className="table-action-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDraw();
+                  }}
+                >
+                  Go to market
+                </button>
+              )}
+            </div>
             <div className="table-seat-row me">
               <div className="table-seat-id me">
                 <ProfileAvatar profile={meBits} size={44} />
