@@ -1204,10 +1204,9 @@ export default function MatchPage() {
             <div style={{ marginTop: 16 }}>
               <MatchResultPanel
                 won={
-                  !!address &&
-                  !!match.winner &&
-                  (match.winner as string).toLowerCase() ===
-                    address.toLowerCase()
+                  !!humanPlayer &&
+                  !!chainWinnerSlot &&
+                  chainWinnerSlot === humanPlayer
                 }
                 matchId={matchId.toString()}
                 submitted
