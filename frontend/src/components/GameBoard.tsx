@@ -72,6 +72,15 @@ type FxKind =
   | "whot"
   | "impact";
 
+const FX_BANNER: Partial<Record<Exclude<FxKind, null | "impact">, string>> = {
+  pick_two: "PICK TWO",
+  pick_three: "PICK THREE",
+  general_market: "GENERAL MARKET",
+  hold_on: "HOLD ON",
+  suspension: "SUSPENSION",
+  whot: "WHOT — CALL A SHAPE",
+};
+
 function fanPose(i: number, n: number, spread = 42, lift = 10) {
   if (n <= 1) return { rotate: 0, x: 0, y: 0 };
   const t = n === 1 ? 0.5 : i / (n - 1);
@@ -427,22 +436,24 @@ export function GameBoard({
     ? timedOut && effectiveWinner !== humanPlayer
       ? "Time's up — you lose"
       : effectiveWinner === humanPlayer
-        ? "You win"
-        : `${opp.name} wins`
+        ? "You win!"
+        : `${oppName} wins`
     : state.pendingPenalty
       ? `Pick ${state.pendingPenalty.amount} or stack`
       : myTurn
         ? "Your turn"
-        : `${opp.name}'s turn`;
+        : "Opponent's turn";
 
   const stakeLabel =
     stakeTickets === 0
       ? "Free"
-      : `${stakeTickets} ticket${stakeTickets === 1 ? "" : "s"}`;
-  const potLabel =
-    potTickets === 0
-      ? "Practice"
-      : `${potTickets} ticket${potTickets === 1 ? "" : "s"}`;
+      : `${stakeTickets} each`;
+
+  const requiredShape: Shape =
+    state.currentShape === "whot" ? "circle" : state.currentShape;
+  const fxBanner =
+    fx && fx !== "impact" ? FX_BANNER[fx as keyof typeof FX_BANNER] : null;
+  const handCount = me.hand.length;
 
   return (
     <div
@@ -450,6 +461,8 @@ export function GameBoard({
         gameOver ? " is-over" : ""
       }${fx === "hold_on" ? " is-hold" : ""}${
         fx === "suspension" ? " is-suspension" : ""
+      }${myTurn ? " is-my-turn" : ""}${
+        !myTurn && !gameOver ? " is-opp-turn" : ""
       }`}
       onPointerDown={() => unlockMoveSound()}
     >
@@ -477,9 +490,29 @@ export function GameBoard({
             <strong>
               {oppName} vs. {meName}
             </strong>
-            <span className="table-match-meta">
-              🎟 {stakeLabel} · Pot {potLabel}
-            </span>
+            {/* Always-visible stake / pot */}
+            <div
+              className={`table-pot-chip${potTickets === 0 ? " is-free" : ""}`}
+              title={
+                potTickets === 0
+                  ? "Practice mode — no tickets at risk"
+                  : "Each player locks 1 ticket. Winner takes both."
+              }
+            >
+              <span className="table-pot-icon" aria-hidden>
+                🎟
+              </span>
+              <div className="table-pot-copy">
+                <strong>
+                  {potTickets === 0 ? "Practice" : `Pot: ${potTickets}`}
+                </strong>
+                <em>
+                  {potTickets === 0
+                    ? "Free · no stake"
+                    : `${stakeLabel} · winner takes both`}
+                </em>
+              </div>
+            </div>
           </div>
 
           <div className="table-top-actions">
@@ -542,7 +575,7 @@ export function GameBoard({
           <section
             className={`table-seat table-seat-opp${
               fx === "suspension" ? " is-frozen" : ""
-            }`}
+            }${!myTurn && !gameOver ? " is-active-turn" : ""}`}
           >
             <div className="table-seat-row">
               <div className="table-seat-id">
@@ -647,8 +680,8 @@ export function GameBoard({
             </div>
           )}
 
-          {/* Play pile — center pad */}
-          <div className="table-play-pad">
+          {/* Play pile — center pad + required shape */}
+          <div className={`table-play-pad${myTurn ? " is-turn" : ""}`}>
             <span className="table-pile-label top">Play pile</span>
             <motion.div
               key={top?.id || "empty"}
@@ -656,38 +689,56 @@ export function GameBoard({
               initial={
                 reduceMotion
                   ? false
-                  : { scale: 0.7, y: 36, opacity: 0, rotate: -8 }
+                  : { scale: 0.55, y: 48, opacity: 0, rotate: -12 }
               }
               animate={{ scale: 1, y: 0, opacity: 1, rotate: 0 }}
               transition={{
                 type: "spring",
-                stiffness: 380,
-                damping: 16,
-                mass: 0.75,
+                stiffness: 420,
+                damping: 18,
+                mass: 0.7,
               }}
             >
               <WhotCard card={top} />
             </motion.div>
-            <span className="table-pile-label bottom">
-              <SuitIcon
-                shape={
-                  state.currentShape === "whot" ? "circle" : state.currentShape
-                }
-                size={12}
-              />
-              {SHAPE_LABEL[state.currentShape]}
-              {state.currentNumber !== 20 ? ` · #${state.currentNumber}` : ""}
-            </span>
           </div>
 
-          {/* Status under pad */}
-          <div className="table-status">
+          {/* Required match — large & persistent */}
+          {!gameOver && (
+            <div
+              className={`table-must-match${myTurn ? " is-hot" : ""}`}
+              aria-live="polite"
+            >
+              <span className="table-must-kicker">Must match</span>
+              <div className="table-must-main">
+                <SuitIcon shape={requiredShape} size={28} />
+                <div>
+                  <strong>{SHAPE_LABEL[requiredShape]}</strong>
+                  {state.currentNumber !== 20 && (
+                    <em>or number {state.currentNumber}</em>
+                  )}
+                  {state.currentNumber === 20 && <em>or any number</em>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Turn banner + actions */}
+          <div
+            className={`table-status${myTurn ? " is-yours" : ""}${
+              gameOver
+                ? effectiveWinner === humanPlayer
+                  ? " is-win"
+                  : " is-loss"
+                : ""
+            }`}
+          >
             <span
               className={
                 gameOver
-                  ? timedOut
-                    ? "loss"
-                    : "win"
+                  ? effectiveWinner === humanPlayer
+                    ? "win"
+                    : "loss"
                   : myTurn
                     ? "yours"
                     : "wait"
@@ -734,8 +785,12 @@ export function GameBoard({
             )}
           </div>
 
-          {/* You — BOTTOM, name beside flat cards */}
-          <section className="table-seat table-seat-me">
+          {/* You — BOTTOM, fanned hand */}
+          <section
+            className={`table-seat table-seat-me${
+              myTurn ? " is-active-turn" : ""
+            }`}
+          >
             <div className="table-seat-row me">
               <div className="table-seat-id me">
                 <ProfileAvatar profile={meBits} size={44} />
@@ -763,23 +818,34 @@ export function GameBoard({
                 </div>
               </div>
               <div
-                className={`table-hand-flat${gameOver ? " is-review" : ""}`}
+                className={`table-hand-flat table-hand-fan${
+                  gameOver ? " is-review" : ""
+                }${myTurn ? " is-my-turn" : ""}`}
                 aria-label="Your hand"
               >
-                {me.hand.map((c) => {
+                {me.hand.map((c, i) => {
                   const playable = myTurn && moveIds.has(c.id);
                   const isSel = selected?.id === c.id;
                   const isDrag = dragId === c.id;
-                  const style: React.CSSProperties | undefined =
-                    isDrag && dragPos
-                      ? {
-                          position: "fixed",
-                          left: dragPos.x,
-                          top: dragPos.y,
-                          transform: "translate(-50%, -50%) scale(1.08)",
-                          zIndex: 90,
-                        }
-                      : undefined;
+                  const pose = fanPose(
+                    i,
+                    handCount,
+                    Math.min(36, 8 + handCount * 1.6),
+                    Math.min(14, 4 + handCount * 0.5)
+                  );
+                  const fanStyle: React.CSSProperties = isDrag && dragPos
+                    ? {
+                        position: "fixed",
+                        left: dragPos.x,
+                        top: dragPos.y,
+                        transform: "translate(-50%, -50%) scale(1.1) rotate(0deg)",
+                        zIndex: 90,
+                        marginLeft: 0,
+                      }
+                    : {
+                        transform: `translateY(${pose.y}px) rotate(${pose.rotate}deg)`,
+                        zIndex: isSel ? 40 : i + 1,
+                      };
                   return (
                     <button
                       key={c.id}
@@ -788,8 +854,8 @@ export function GameBoard({
                         playable ? " is-playable" : ""
                       }${isSel ? " is-selected" : ""}${
                         isDrag ? " is-dragging" : ""
-                      }`}
-                      style={style}
+                      }${c.special ? " has-special" : ""}`}
+                      style={fanStyle}
                       onPointerDown={(e) => {
                         if (gameOver || !playable) return;
                         e.currentTarget.setPointerCapture(e.pointerId);
@@ -845,8 +911,13 @@ export function GameBoard({
             </div>
           </section>
 
-          {/* FX */}
+          {/* Special FX banner + particles */}
           <div className="table-fx" aria-hidden>
+            {fxBanner && (
+              <div key={`fxb-${fx}-${impactKey}`} className={`table-fx-banner fx-${fx}`}>
+                {fxBanner}
+              </div>
+            )}
             {(fx === "pick_two" || fx === "pick_three") &&
               Array.from({ length: fx === "pick_three" ? 3 : 2 }).map(
                 (_, i) => (

@@ -268,17 +268,62 @@ export default function CreateMatchPage() {
               onChange={(e) => setChallenge(e.target.value)}
             />
 
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={
-                !isConnected || !escrowReady || !ticketId || busy || isPending
-              }
-              onClick={onCreate}
-            >
-              {busy ? "Confirm in wallet…" : "Stake & create match"}
-            </button>
-            {error && <div className="alert">{error}</div>}
+            <div className="stake-confirm-card">
+              <p className="stake-confirm-eyebrow">Stake to open table</p>
+              <ul className="stake-confirm-list">
+                <li>
+                  You lock <strong>1 Megapot ticket</strong> in escrow
+                </li>
+                <li>
+                  Opponent locks <strong>1 ticket</strong> to join
+                </li>
+                <li>
+                  Winner takes <strong>both tickets</strong> after dual confirm
+                </li>
+              </ul>
+              <p className="stake-confirm-note muted">
+                If no one joins or the match is abandoned for 2 hours, either
+                player can cancel and tickets return. If a Megapot drawing
+                finishes while tickets sit in escrow, prize rights stay with the
+                ticket NFTs — claim on the match tickets page after settle or
+                cancel.
+              </p>
+              <div className="stake-confirm-status">
+                <span>
+                  Selected:{" "}
+                  <strong style={{ color: "#fff" }}>
+                    {ticketId ? `#${ticketId.slice(0, 8)}…` : "none"}
+                  </strong>
+                </span>
+                <span>
+                  Open-draw tickets:{" "}
+                  <strong style={{ color: "#fff" }}>
+                    {isConnected ? stakeableCount : "—"}
+                  </strong>
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={
+                  !isConnected || !escrowReady || !ticketId || busy || isPending
+                }
+                onClick={onCreate}
+              >
+                {busy
+                  ? "Confirm stake in wallet…"
+                  : isPending
+                    ? "Waiting for wallet…"
+                    : "Lock ticket & create"}
+              </button>
+              {busy && (
+                <p className="muted" style={{ fontSize: "0.8rem", margin: 0 }}>
+                  Approve the transaction to lock your ticket. Table opens when
+                  the stake confirms on Base.
+                </p>
+              )}
+              {error && <div className="alert">{error}</div>}
+            </div>
           </aside>
         </div>
       </div>

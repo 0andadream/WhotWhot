@@ -219,7 +219,7 @@ export default function PlayLobbyPage() {
     <div className="landing-premium ds play-lobby-v2">
       <SiteNav />
       <main className="play-v2">
-        {/* Compact ticket strip */}
+        {/* Live Megapot + ticket count (number only — no NFT images) */}
         <div className="play-v2-strip">
           <div className="play-v2-strip-stats">
             <span>
@@ -229,7 +229,8 @@ export default function PlayLobbyPage() {
               <em>Draw</em> {countdown}
             </span>
             <span>
-              <em>Tickets</em> {isConnected ? stakeableCount : "—"}
+              <em>Megapot Tickets</em>{" "}
+              {isConnected ? stakeableCount : "—"}
             </span>
           </div>
           <button
@@ -289,6 +290,22 @@ export default function PlayLobbyPage() {
               >
                 Join with Code
               </Link>
+            </div>
+
+            <div className="play-v2-trust">
+              <p>
+                <strong>Winner takes both</strong> — each player locks 1 ticket;
+                dual confirm moves both NFTs to the winner.
+              </p>
+              <p>
+                <strong>2-hour cancel</strong> — if a match is abandoned, either
+                side can cancel after 2 hours and tickets return.
+              </p>
+              <p>
+                <strong>Mid-escrow draw</strong> — if Megapot draws while tickets
+                are locked, prize rights stay on the NFTs; claim after settle or
+                cancel on the tickets page.
+              </p>
             </div>
 
             <section className="play-v2-section">

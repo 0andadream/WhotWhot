@@ -1042,28 +1042,35 @@ img {
   }
 }
 
-/* ── Classic Whot cards ───────────────────────────────────────── */
+/* ── Classic Whot cards (cream face · bold red shapes · red backs) ── */
 .whot-card {
-  --card-w: 82px;
-  --card-h: 120px;
+  --card-w: 86px;
+  --card-h: 126px;
+  --card-red: #8b0000;
+  --card-red-mid: #c41e3a;
+  --card-cream: #faf6ee;
   width: var(--card-w);
   height: var(--card-h);
-  border-radius: 9px;
-  background: var(--cream);
-  background-image: linear-gradient(165deg, #fffdf8 0%, var(--cream) 45%, #f0e6d2 100%);
-  color: var(--red);
-  border: 1.5px solid var(--cream-edge);
-  box-shadow: var(--shadow-card);
+  border-radius: 10px;
+  background: var(--card-cream);
+  background-image:
+    linear-gradient(168deg, #fffefb 0%, #faf6ee 42%, #f0e4d0 100%);
+  color: var(--card-red);
+  border: 1.5px solid #e2d4bc;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    0 6px 16px rgba(0, 0, 0, 0.22),
+    0 14px 28px rgba(0, 0, 0, 0.18);
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: space-between;
-  padding: 6px 7px;
+  padding: 7px 8px;
   position: relative;
   user-select: none;
   -webkit-user-select: none;
   flex-shrink: 0;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, outline-color 0.12s ease;
   touch-action: manipulation;
   appearance: none;
   -webkit-appearance: none;
@@ -1074,50 +1081,68 @@ img {
   content: "";
   position: absolute;
   inset: 5px;
-  border: 1px solid rgba(139, 0, 0, 0.1);
-  border-radius: 5px;
+  border: 1.5px solid rgba(139, 0, 0, 0.14);
+  border-radius: 6px;
   pointer-events: none;
 }
+.whot-card.sm {
+  --card-w: 48px;
+  --card-h: 70px;
+  padding: 4px 5px;
+  border-radius: 7px;
+}
+.whot-card.sm .idx .n {
+  font-size: 0.72rem;
+}
+.whot-card.sm .whot-special-badge {
+  font-size: 0.42rem;
+  padding: 1px 3px;
+  bottom: 22%;
+}
 @media (min-width: 393px) {
-  .whot-card {
-    --card-w: 86px;
-    --card-h: 126px;
+  .whot-card:not(.sm) {
+    --card-w: 90px;
+    --card-h: 132px;
   }
 }
 @media (min-width: 768px) {
-  .whot-card {
-    --card-w: 100px;
-    --card-h: 146px;
+  .whot-card:not(.sm) {
+    --card-w: 104px;
+    --card-h: 152px;
   }
 }
 @media (min-width: 1100px) {
-  .whot-card {
-    --card-w: 108px;
-    --card-h: 158px;
+  .whot-card:not(.sm) {
+    --card-w: 112px;
+    --card-h: 164px;
   }
   .whot-card .idx .n {
-    font-size: 1.15rem;
+    font-size: 1.28rem;
   }
 }
 
 .whot-card.playable {
   cursor: pointer;
-  outline: 2px solid var(--orange);
+  outline: 2.5px solid var(--card-red-mid);
   outline-offset: 2px;
   box-shadow:
-    0 0 0 1px rgba(232, 93, 4, 0.35),
-    0 0 18px rgba(232, 93, 4, 0.28),
-    var(--shadow-card);
+    0 0 0 1px rgba(196, 30, 58, 0.35),
+    0 0 20px rgba(196, 30, 58, 0.32),
+    0 8px 20px rgba(0, 0, 0, 0.28);
 }
 .whot-card.playable:hover,
 .whot-card.playable:focus-visible {
-  transform: translateY(-14px) scale(1.03);
+  transform: translateY(-14px) scale(1.04);
   z-index: 5;
 }
 .whot-card.selected {
-  transform: translateY(-16px) scale(1.05);
-  outline: 3px solid var(--cream);
+  transform: translateY(-18px) scale(1.06);
+  outline: 3px solid #fff8f0;
+  outline-offset: 2px;
   z-index: 6;
+  box-shadow:
+    0 0 0 2px rgba(196, 30, 58, 0.5),
+    0 16px 32px rgba(0, 0, 0, 0.4);
 }
 
 .whot-card .idx {
@@ -1125,10 +1150,11 @@ img {
   flex-direction: column;
   align-items: center;
   line-height: 1;
-  color: var(--red);
+  color: var(--card-red);
   position: relative;
   z-index: 1;
   width: fit-content;
+  gap: 1px;
 }
 .whot-card .idx.top {
   align-self: flex-start;
@@ -1138,18 +1164,19 @@ img {
   transform: rotate(180deg);
 }
 .whot-card .idx .n {
-  font-size: 1.05rem;
+  font-size: 1.18rem;
   font-weight: 800;
-  font-family: var(--font-card);
+  font-family: Georgia, "Times New Roman", "Palatino Linotype", serif;
   letter-spacing: -0.03em;
-  color: var(--red-deep);
+  color: var(--card-red);
+  text-shadow: 0 0.5px 0 rgba(255, 255, 255, 0.4);
 }
 .whot-card .idx .w-mini {
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 900;
-  font-family: var(--font-card);
-  margin-top: 2px;
-  color: var(--red-deep);
+  font-family: Georgia, "Times New Roman", serif;
+  margin-top: 1px;
+  color: var(--card-red);
 }
 .whot-card .face-center {
   flex: 1;
@@ -1157,70 +1184,146 @@ img {
   place-items: center;
   position: relative;
   z-index: 1;
+  min-height: 0;
+}
+.whot-card .face-center .suit-icon {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.12));
 }
 .whot-card .whot-mark {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  color: var(--red-deep);
+  color: var(--card-red);
 }
 .whot-card .whot-word {
-  font-family: var(--font-card);
+  font-family: Georgia, "Times New Roman", serif;
   font-weight: 900;
-  font-size: 1rem;
-  letter-spacing: 0.14em;
-  color: var(--red-deep);
+  font-size: 1.05rem;
+  letter-spacing: 0.16em;
+  color: var(--card-red);
 }
 .whot-card .whot-num {
-  font-family: var(--font-card);
+  font-family: Georgia, "Times New Roman", serif;
   font-weight: 800;
-  font-size: 1.2rem;
-  color: var(--red);
+  font-size: 1.35rem;
+  color: var(--card-red-mid);
+  line-height: 1;
+}
+
+/* Special-card accents */
+.whot-card.special-hold-on {
+  box-shadow:
+    0 0 0 1px rgba(96, 165, 250, 0.35),
+    0 6px 16px rgba(0, 0, 0, 0.2);
+}
+.whot-card.special-pick-two,
+.whot-card.special-pick-three {
+  box-shadow:
+    0 0 0 1px rgba(248, 113, 113, 0.4),
+    0 6px 16px rgba(0, 0, 0, 0.2);
+}
+.whot-card.special-suspension {
+  box-shadow:
+    0 0 0 1px rgba(167, 139, 250, 0.4),
+    0 6px 16px rgba(0, 0, 0, 0.2);
+}
+.whot-card.special-general-market {
+  box-shadow:
+    0 0 0 1px rgba(251, 191, 36, 0.4),
+    0 6px 16px rgba(0, 0, 0, 0.2);
+}
+.whot-special-badge {
+  position: absolute;
+  left: 50%;
+  bottom: 26%;
+  transform: translateX(-50%);
+  z-index: 2;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(139, 0, 0, 0.92);
+  color: #fff8f0;
+  pointer-events: none;
+  line-height: 1.1;
+}
+.whot-card.special-hold-on .whot-special-badge {
+  background: rgba(37, 99, 235, 0.92);
+}
+.whot-card.special-suspension .whot-special-badge {
+  background: rgba(109, 40, 217, 0.92);
+}
+.whot-card.special-general-market .whot-special-badge {
+  background: rgba(180, 83, 9, 0.95);
+}
+.whot-card.special-pick-two .whot-special-badge,
+.whot-card.special-pick-three .whot-special-badge {
+  background: rgba(185, 28, 28, 0.95);
 }
 
 .whot-card.whot-wild {
-  background: linear-gradient(165deg, #fffef8 0%, #f8ecd0 100%);
-  border-color: #d4b896;
+  background: linear-gradient(165deg, #fffef9 0%, #f7ebcf 55%, #f0dcb0 100%);
+  border-color: #d4b07a;
+  box-shadow:
+    0 0 0 1.5px rgba(196, 30, 58, 0.25),
+    0 8px 20px rgba(139, 0, 0, 0.18);
+}
+.whot-card.whot-wild .whot-word {
+  letter-spacing: 0.18em;
 }
 
 /* Deep red back + elegant white Whot */
 .whot-card.back {
   background:
-    radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.06), transparent 50%),
-    linear-gradient(160deg, #a01020 0%, var(--red-deep) 40%, #5c0000 100%);
+    radial-gradient(ellipse at 28% 18%, rgba(255, 255, 255, 0.1), transparent 48%),
+    radial-gradient(ellipse at 72% 80%, rgba(0, 0, 0, 0.25), transparent 55%),
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.03) 0 2px,
+      transparent 2px 8px
+    ),
+    linear-gradient(158deg, #b01424 0%, #8b0000 38%, #5a0000 100%);
   color: #fff;
-  border-color: rgba(248, 241, 227, 0.2);
+  border-color: rgba(248, 241, 227, 0.22);
   justify-content: center;
   align-items: center;
   padding: 0;
-  box-shadow: var(--shadow-card), inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+  box-shadow:
+    var(--shadow-card),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 .whot-card.back::before {
   inset: 7px;
-  border: 1.5px solid rgba(255, 255, 255, 0.28);
-  border-radius: 4px;
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
+  border-radius: 5px;
 }
 .whot-card.back::after {
-  content: "Whot";
+  content: none;
+}
+.whot-back-mark {
   position: relative;
   z-index: 1;
-  font-family: var(--font-display);
+  font-family: var(--font-display), Georgia, serif;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-style: italic;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 .whot-card.back.sm {
-  --card-w: 46px;
-  --card-h: 68px;
-  border-radius: 6px;
+  --card-w: 48px;
+  --card-h: 70px;
+  border-radius: 7px;
 }
-.whot-card.back.sm::after {
-  font-size: 0.55rem;
-  letter-spacing: 0.08em;
+.whot-card.back.sm .whot-back-mark {
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
 }
 .whot-card.back.sm::before {
   inset: 4px;

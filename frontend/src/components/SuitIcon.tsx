@@ -2,9 +2,10 @@
 
 import type { Shape } from "@/lib/whot/types";
 
-/** Traditional Whot: bold geometric shapes in deep red */
+/** Classic Whot: bold geometric shapes in deep red on cream */
 const RED = "#8B0000";
 const RED_MID = "#C41E3A";
+const CREAM = "#F8F1E3";
 
 export function SuitIcon({
   shape,
@@ -20,26 +21,35 @@ export function SuitIcon({
     height: size,
     viewBox: "0 0 64 64",
     "aria-hidden": true as const,
+    className: "suit-icon",
   };
 
   switch (shape) {
     case "circle":
       return (
         <svg {...common}>
-          <circle cx="32" cy="32" r="26" fill={color} />
-          <circle cx="32" cy="32" r="14" fill="none" stroke="#F8F1E3" strokeWidth="3.5" opacity="0.35" />
+          <circle cx="32" cy="32" r="27" fill={color} />
+          <circle
+            cx="32"
+            cy="32"
+            r="15"
+            fill="none"
+            stroke={CREAM}
+            strokeWidth="3"
+            opacity="0.28"
+          />
         </svg>
       );
     case "triangle":
       return (
         <svg {...common}>
-          <polygon points="32,4 60,58 4,58" fill={color} />
+          <polygon points="32,3 61,58 3,58" fill={color} />
           <polygon
-            points="32,18 48,50 16,50"
+            points="32,16 48,50 16,50"
             fill="none"
-            stroke="#F8F1E3"
+            stroke={CREAM}
             strokeWidth="2.5"
-            opacity="0.3"
+            opacity="0.28"
           />
         </svg>
       );
@@ -47,7 +57,7 @@ export function SuitIcon({
       return (
         <svg {...common}>
           <path
-            d="M24 4h16v20h20v16H40v20H24V40H4V24h20V4z"
+            d="M22 4h20v18h18v20H42v18H22V42H4V22h18V4z"
             fill={color}
           />
         </svg>
@@ -55,17 +65,17 @@ export function SuitIcon({
     case "square":
       return (
         <svg {...common}>
-          <rect x="6" y="6" width="52" height="52" rx="3" fill={color} />
+          <rect x="5" y="5" width="54" height="54" rx="4" fill={color} />
           <rect
-            x="16"
-            y="16"
-            width="32"
-            height="32"
-            rx="1"
+            x="15"
+            y="15"
+            width="34"
+            height="34"
+            rx="2"
             fill="none"
-            stroke="#F8F1E3"
+            stroke={CREAM}
             strokeWidth="2.5"
-            opacity="0.3"
+            opacity="0.28"
           />
         </svg>
       );
@@ -73,7 +83,7 @@ export function SuitIcon({
       return (
         <svg {...common}>
           <polygon
-            points="32,2 40,24 64,24 45,38 52,60 32,46 12,60 19,38 0,24 24,24"
+            points="32,2 39.5,22.5 61,24 44.5,37.5 50,58 32,47 14,58 19.5,37.5 3,24 24.5,22.5"
             fill={color}
           />
         </svg>
@@ -82,15 +92,22 @@ export function SuitIcon({
     default:
       return (
         <svg {...common}>
-          <circle cx="32" cy="32" r="28" fill="none" stroke={color} strokeWidth="4" />
+          <circle
+            cx="32"
+            cy="32"
+            r="28"
+            fill="none"
+            stroke={color}
+            strokeWidth="4.5"
+          />
           <text
             x="32"
-            y="41"
+            y="42"
             textAnchor="middle"
             fill={RED_MID}
-            fontSize="22"
+            fontSize="24"
             fontWeight="800"
-            fontFamily="Georgia, serif"
+            fontFamily="Georgia, 'Times New Roman', serif"
           >
             W
           </text>

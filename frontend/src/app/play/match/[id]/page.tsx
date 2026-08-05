@@ -35,6 +35,7 @@ import {
   unlockMoveSound,
 } from "@/lib/moveSound";
 import { MatchChat } from "@/components/MatchChat";
+import { MatchResultPanel } from "@/components/MatchResultPanel";
 import type { Address } from "viem";
 
 function rebuildGame(
@@ -825,9 +826,16 @@ export default function MatchPage() {
             </p>
             <h2 style={{ margin: "0 0 8px" }}>Both players click Ready</h2>
             <p className="muted" style={{ marginTop: 0 }}>
-              Tickets are staked. The game starts only when you and your
-              opponent both ready up.
+              Both players locked <strong>1 Megapot ticket</strong> each.
+              Winner takes both after dual confirm. Ready up to start.
             </p>
+            <div className="stake-lock-banner" aria-hidden>
+              <span className="stake-lock-pill">🎟 You locked</span>
+              <span className="stake-lock-pill">🎟 Opp locked</span>
+              <span className="stake-lock-pill stake-lock-win">
+                Winner takes both
+              </span>
+            </div>
 
             <div
               style={{
@@ -1073,39 +1081,20 @@ export default function MatchPage() {
           </div>
         )}
         {settledWinner && (
-          <div className="arena-confirm" style={{ textAlign: "center" }}>
-            <p
-              style={{
-                margin: "0 0 10px",
-                fontSize: "0.85rem",
-                color: "#d4c4b0",
-                fontWeight: 600,
-              }}
-            >
-              {submitted || myOnChainResult
-                ? "You confirmed. Opponent must confirm the same winner before tickets move."
-                : settledWinner === humanPlayer
-                  ? "You won — both players must sign the result on-chain."
-                  : "Opponent wins — confirm so tickets can transfer."}
-            </p>
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={isPending || submitted || !!myOnChainResult}
-              onClick={() => void onConfirmWinner()}
-              style={{ minWidth: 220 }}
-            >
-              {isPending
-                ? "Confirm in wallet…"
-                : submitted || myOnChainResult
-                  ? "Waiting for opponent…"
-                  : `Confirm ${settledWinner === humanPlayer ? "you won" : "opponent won"}`}
-            </button>
+          <div className="arena-confirm arena-confirm-result">
+            <MatchResultPanel
+              won={settledWinner === humanPlayer}
+              matchId={matchId.toString()}
+              submitted={submitted || !!myOnChainResult}
+              pending={isPending}
+              onConfirm={() => void onConfirmWinner()}
+              opponentName={humanPlayer === "p1" ? p2Name : p1Name}
+            />
             {(submitted || myOnChainResult) && (
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
-                style={{ marginLeft: 8 }}
+                style={{ marginTop: 8 }}
                 onClick={() => void refetch()}
               >
                 Refresh status
@@ -1132,34 +1121,25 @@ export default function MatchPage() {
               ← Play
             </Link>
           </header>
-          <div className="card-panel stack" style={{ maxWidth: 480 }}>
-            <h2 style={{ marginTop: 0 }}>Confirm match result</h2>
-            <p className="muted">
-              {settledWinner === humanPlayer
-                ? "You are the winner. Both wallets must confirm so tickets transfer."
-                : "Opponent is the winner. Confirm so the dual-submit can finish."}
-            </p>
-            {msg && <div className="alert">{msg}</div>}
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={isPending || submitted || !!myOnChainResult}
-              onClick={() => void onConfirmWinner()}
-            >
-              {isPending
-                ? "Confirm in wallet…"
-                : submitted || myOnChainResult
-                  ? "Waiting for opponent…"
-                  : `Confirm ${settledWinner === humanPlayer ? "you won" : "opponent won"}`}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => void refetch()}
-            >
-              Refresh on-chain status
-            </button>
-          </div>
+          {msg && <div className="alert">{msg}</div>}
+          <MatchResultPanel
+            won={settledWinner === humanPlayer}
+            matchId={matchId.toString()}
+            submitted={submitted || !!myOnChainResult}
+            pending={isPending}
+            onConfirm={() => void onConfirmWinner()}
+            opponentName={
+              settledWinner === "p1" ? p2Name : p1Name
+            }
+          />
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ marginTop: 12 }}
+            onClick={() => void refetch()}
+          >
+            Refresh on-chain status
+          </button>
         </div>
       </div>
     );
@@ -1221,15 +1201,23 @@ export default function MatchPage() {
           )}
 
           {match.status === MatchStatus.Resolved && (
-            <div className="banner win" style={{ marginTop: 12 }}>
-              Match settled. Tickets went to the winner.{" "}
-              <Link
-                href={`/play/match/${matchId.toString()}/tickets`}
-                style={{ color: "inherit", textDecoration: "underline" }}
-              >
-                Open tickets &amp; claim Megapot prizes
-              </Link>
-              .
+            <div style={{ marginTop: 16 }}>
+              <MatchResultPanel
+                won={
+                  !!address &&
+                  !!match.winner &&
+                  (match.winner as string).toLowerCase() ===
+                    address.toLowerCase()
+                }
+                matchId={matchId.toString()}
+                submitted
+                pending={false}
+                onConfirm={() => undefined}
+                resolved
+                opponentName={
+                  humanPlayer === "p1" ? p2Name : p1Name
+                }
+              />
             </div>
           )}
 
