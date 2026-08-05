@@ -72,15 +72,6 @@ type FxKind =
   | "whot"
   | "impact";
 
-const FX_BANNER: Partial<Record<Exclude<FxKind, null | "impact">, string>> = {
-  pick_two: "PICK TWO",
-  pick_three: "PICK THREE",
-  general_market: "GENERAL MARKET",
-  hold_on: "HOLD ON",
-  suspension: "SUSPENSION",
-  whot: "WHOT — CALL A SHAPE",
-};
-
 function fanPose(i: number, n: number, spread = 42, lift = 10) {
   if (n <= 1) return { rotate: 0, x: 0, y: 0 };
   const t = n === 1 ? 0.5 : i / (n - 1);
@@ -449,8 +440,6 @@ export function GameBoard({
       ? "Free"
       : `${stakeTickets} each`;
 
-  const fxBanner =
-    fx && fx !== "impact" ? FX_BANNER[fx as keyof typeof FX_BANNER] : null;
   const handCount = me.hand.length;
 
   return (
@@ -890,106 +879,80 @@ export function GameBoard({
             </div>
           </section>
 
-          {/* Special FX banner + particles */}
-          <div className="table-fx" aria-hidden>
-            {fxBanner && (
-              <div key={`fxb-${fx}-${impactKey}`} className={`table-fx-banner fx-${fx}`}>
-                {fxBanner}
-              </div>
-            )}
-            {(fx === "pick_two" || fx === "pick_three") &&
-              Array.from({ length: fx === "pick_three" ? 3 : 2 }).map(
-                (_, i) => (
-                  <span
-                    key={i}
-                    className={`table-fx-card ${
-                      state.turn === humanPlayer ? "fly-me" : "fly-opp"
-                    }`}
-                    style={{ animationDelay: `${i * 0.08}s` }}
-                  />
-                )
-              )}
-            {fx === "general_market" &&
-              [0, 1, 2, 3, 4].map((i) => (
-                <span
-                  key={i}
-                  className="table-fx-card fly-market"
-                  style={
-                    {
-                      animationDelay: `${i * 0.06}s`,
-                      ["--dx" as string]: `${(i - 2) * 40}px`,
-                    } as React.CSSProperties
-                  }
-                />
-              ))}
-          </div>
         </div>
 
-        {/* Live feed — what happened this game */}
-        {feedOpen ? (
-          <div className="table-feed-float" aria-label="Live feed">
-            <div className="table-feed-head">
-              <strong>Live feed</strong>
-              <button
-                type="button"
-                className="table-icon-btn sm"
-                onClick={() => setFeedOpen(false)}
-                aria-label="Minimize feed"
-              >
-                −
-              </button>
+        {/* Live feed + chat stacked top-right (same size, chat under feed) */}
+        <div className="table-side-panels">
+          {feedOpen ? (
+            <div className="table-feed-float" aria-label="Live feed">
+              <div className="table-feed-head">
+                <strong>Live feed</strong>
+                <button
+                  type="button"
+                  className="table-icon-btn sm"
+                  onClick={() => setFeedOpen(false)}
+                  aria-label="Minimize feed"
+                >
+                  −
+                </button>
+              </div>
+              <div className="table-feed-log">
+                {state.log.length === 0 && (
+                  <p className="table-feed-empty">Waiting for the first move…</p>
+                )}
+                {[...state.log].map((line, i) => (
+                  <div
+                    key={`${i}-${line.slice(0, 24)}`}
+                    className="table-feed-line"
+                  >
+                    {line}
+                  </div>
+                ))}
+                <div ref={feedEndRef} />
+              </div>
             </div>
-            <div className="table-feed-log">
-              {state.log.length === 0 && (
-                <p className="table-feed-empty">Waiting for the first move…</p>
-              )}
-              {[...state.log].map((line, i) => (
-                <div key={`${i}-${line.slice(0, 24)}`} className="table-feed-line">
-                  {line}
-                </div>
-              ))}
-              <div ref={feedEndRef} />
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="table-feed-fab"
-            onClick={() => setFeedOpen(true)}
-          >
-            Live feed
-          </button>
-        )}
-
-        {/* Multiplayer live chat — same convo layout as waiting room */}
-        {chatContent && chatOpen && (
-          <div className="table-chat-float landing-premium ds">
+          ) : (
             <button
               type="button"
-              className="table-chat-close"
-              onClick={() => {
-                chatClosedByUser.current = true;
-                setChatOpen(false);
-              }}
-              aria-label="Close chat"
+              className="table-feed-fab"
+              onClick={() => setFeedOpen(true)}
             >
-              ×
+              Live feed
             </button>
-            <div className="table-chat-float-body">{chatContent}</div>
-          </div>
-        )}
-        {chatContent && !chatOpen && (
-          <button
-            type="button"
-            className="table-chat-fab"
-            onClick={() => {
-              chatClosedByUser.current = false;
-              setChatOpen(true);
-            }}
-          >
-            Chat
-          </button>
-        )}
+          )}
+
+          {chatContent && chatOpen && (
+            <div className="table-chat-float landing-premium ds">
+              <div className="table-feed-head table-chat-head">
+                <strong>Chat</strong>
+                <button
+                  type="button"
+                  className="table-icon-btn sm"
+                  onClick={() => {
+                    chatClosedByUser.current = true;
+                    setChatOpen(false);
+                  }}
+                  aria-label="Close chat"
+                >
+                  −
+                </button>
+              </div>
+              <div className="table-chat-float-body">{chatContent}</div>
+            </div>
+          )}
+          {chatContent && !chatOpen && (
+            <button
+              type="button"
+              className="table-chat-fab"
+              onClick={() => {
+                chatClosedByUser.current = false;
+                setChatOpen(true);
+              }}
+            >
+              Chat
+            </button>
+          )}
+        </div>
       </div>
 
       {leaving && (

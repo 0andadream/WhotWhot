@@ -1211,58 +1211,65 @@ img {
   line-height: 1;
 }
 
-/* Special-card accents */
+/* Special-card accents — bold labels on the card only (no play overlays) */
 .whot-card.special-hold-on {
   box-shadow:
-    0 0 0 1px rgba(96, 165, 250, 0.35),
-    0 6px 16px rgba(0, 0, 0, 0.2);
+    0 0 0 2px rgba(37, 99, 235, 0.55),
+    0 6px 16px rgba(0, 0, 0, 0.22);
 }
 .whot-card.special-pick-two,
 .whot-card.special-pick-three {
   box-shadow:
-    0 0 0 1px rgba(248, 113, 113, 0.4),
-    0 6px 16px rgba(0, 0, 0, 0.2);
+    0 0 0 2px rgba(185, 28, 28, 0.6),
+    0 6px 16px rgba(0, 0, 0, 0.22);
 }
 .whot-card.special-suspension {
   box-shadow:
-    0 0 0 1px rgba(167, 139, 250, 0.4),
-    0 6px 16px rgba(0, 0, 0, 0.2);
+    0 0 0 2px rgba(109, 40, 217, 0.55),
+    0 6px 16px rgba(0, 0, 0, 0.22);
 }
 .whot-card.special-general-market {
   box-shadow:
-    0 0 0 1px rgba(251, 191, 36, 0.4),
-    0 6px 16px rgba(0, 0, 0, 0.2);
+    0 0 0 2px rgba(180, 83, 9, 0.65),
+    0 6px 16px rgba(0, 0, 0, 0.22);
 }
 .whot-special-badge {
   position: absolute;
   left: 50%;
-  bottom: 26%;
+  bottom: 22%;
   transform: translateX(-50%);
   z-index: 2;
-  font-size: 0.52rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
-  padding: 2px 5px;
+  padding: 3px 6px;
   border-radius: 4px;
-  background: rgba(139, 0, 0, 0.92);
+  background: #8b0000;
   color: #fff8f0;
   pointer-events: none;
   line-height: 1.1;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.whot-card.sm .whot-special-badge {
+  font-size: 0.45rem;
+  padding: 2px 4px;
+  bottom: 20%;
 }
 .whot-card.special-hold-on .whot-special-badge {
-  background: rgba(37, 99, 235, 0.92);
+  background: #1d4ed8;
 }
 .whot-card.special-suspension .whot-special-badge {
-  background: rgba(109, 40, 217, 0.92);
+  background: #6d28d9;
 }
 .whot-card.special-general-market .whot-special-badge {
-  background: rgba(180, 83, 9, 0.95);
+  background: #b45309;
 }
 .whot-card.special-pick-two .whot-special-badge,
 .whot-card.special-pick-three .whot-special-badge {
-  background: rgba(185, 28, 28, 0.95);
+  background: #b91c1c;
 }
 
 .whot-card.whot-wild {
