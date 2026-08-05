@@ -823,76 +823,6 @@ button.table-leave {
   color: rgba(255, 255, 255, 0.55);
 }
 
-/* Required shape — large, persistent */
-.table-must-match {
-  position: absolute;
-  left: 52%;
-  top: calc(46% + min(102px, 20vw));
-  transform: translateX(-50%);
-  z-index: 8;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 16px 10px;
-  min-width: min(200px, 56vw);
-  border-radius: 16px;
-  background: rgba(12, 8, 6, 0.88);
-  border: 1.5px solid rgba(248, 241, 227, 0.18);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  pointer-events: none;
-}
-.table-must-match.is-hot {
-  border-color: rgba(252, 165, 165, 0.55);
-  box-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.45),
-    0 0 24px rgba(196, 30, 58, 0.28);
-  animation: table-must-pulse 1.6s ease-in-out infinite;
-}
-@keyframes table-must-pulse {
-  0%,
-  100% {
-    box-shadow:
-      0 10px 28px rgba(0, 0, 0, 0.45),
-      0 0 16px rgba(196, 30, 58, 0.2);
-  }
-  50% {
-    box-shadow:
-      0 10px 28px rgba(0, 0, 0, 0.45),
-      0 0 28px rgba(196, 30, 58, 0.4);
-  }
-}
-.table-must-kicker {
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
-}
-.table-must-main {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.table-must-main strong {
-  display: block;
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-}
-.table-must-main em {
-  display: block;
-  font-style: normal;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #fecaca;
-  margin-top: 1px;
-}
-
 /* Turn + timer + instructions — stacked above YOU name (left bottom) */
 .table-status,
 .table-status-dock {
@@ -1688,29 +1618,6 @@ button.table-leave {
     margin-top: 2px;
   }
 
-  .table-must-match {
-    left: 54%;
-    top: calc(44% + min(72px, 20vw));
-    min-width: min(160px, 48vw);
-    padding: 5px 10px 6px;
-    border-radius: 12px;
-  }
-  .table-must-kicker {
-    font-size: 0.52rem;
-  }
-  .table-must-main {
-    gap: 6px;
-  }
-  .table-must-main strong {
-    font-size: 0.85rem;
-  }
-  .table-must-main em {
-    font-size: 0.62rem;
-  }
-  .table-must-main .suit-icon {
-    width: 20px !important;
-    height: 20px !important;
-  }
   .table-status,
   .table-status-dock {
     gap: 4px 6px;
@@ -1837,10 +1744,6 @@ button.table-leave {
   .table-draw-stack .whot-card {
     --card-w: 36px;
     --card-h: 52px;
-  }
-  .table-must-match {
-    top: calc(42% + min(62px, 18vw));
-    padding: 4px 8px;
   }
   .table-status,
   .table-status-dock {

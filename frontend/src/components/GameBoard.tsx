@@ -449,8 +449,6 @@ export function GameBoard({
       ? "Free"
       : `${stakeTickets} each`;
 
-  const requiredShape: Shape =
-    state.currentShape === "whot" ? "circle" : state.currentShape;
   const fxBanner =
     fx && fx !== "impact" ? FX_BANNER[fx as keyof typeof FX_BANNER] : null;
   const handCount = me.hand.length;
@@ -680,9 +678,8 @@ export function GameBoard({
             </div>
           )}
 
-          {/* Play pile — center pad + required shape */}
+          {/* Play pile — center pad */}
           <div className={`table-play-pad${myTurn ? " is-turn" : ""}`}>
-            <span className="table-pile-label top">Play pile</span>
             <motion.div
               key={top?.id || "empty"}
               className="table-play-card"
@@ -702,26 +699,6 @@ export function GameBoard({
               <WhotCard card={top} />
             </motion.div>
           </div>
-
-          {/* Required match — large & persistent */}
-          {!gameOver && (
-            <div
-              className={`table-must-match${myTurn ? " is-hot" : ""}`}
-              aria-live="polite"
-            >
-              <span className="table-must-kicker">Must match</span>
-              <div className="table-must-main">
-                <SuitIcon shape={requiredShape} size={28} />
-                <div>
-                  <strong>{SHAPE_LABEL[requiredShape]}</strong>
-                  {state.currentNumber !== 20 && (
-                    <em>or number {state.currentNumber}</em>
-                  )}
-                  {state.currentNumber === 20 && <em>or any number</em>}
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* You — BOTTOM LEFT: turn/timer/instructions above name; hand to the right */}
           <section
