@@ -7,7 +7,13 @@ import { motion, useReducedMotion } from "framer-motion";
 import { SiteNav } from "@/components/SiteNav";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { HeroCardFan } from "@/components/landing/HeroCardFan";
-import { useAccount, useConnect, usePublicClient, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useConnect,
+  usePublicClient,
+  useReadContract,
+  useWriteContract,
+} from "wagmi";
 import { useCountdown, useJackpotInfo } from "@/hooks/useMegapot";
 import { useUserTickets } from "@/hooks/useUserTickets";
 import {
@@ -21,6 +27,7 @@ import { ADDRESSES, erc20Abi, randomBuyerAbi } from "@/lib/contracts";
 import { stringToHex, parseUnits, type Address } from "viem";
 import { getProfile } from "@/lib/profile";
 import { WHOT_EASE } from "@/components/landing/motion";
+import { waitForBaseReceipt } from "@/lib/waitForReceipt";
 
 type Screen = "modes" | "friends";
 type HistoryTab = "live" | "past";
@@ -52,6 +59,17 @@ export default function PlayLobbyPage() {
     useOpenTables();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient({ chainId: 8453 });
+  const { data: usdcAllowance, refetch: refetchAllowance } = useReadContract({
+    address: ADDRESSES.usdc,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args:
+      address && ADDRESSES.jackpotRandomTicketBuyer
+        ? [address, ADDRESSES.jackpotRandomTicketBuyer]
+        : undefined,
+    chainId: 8453,
+    query: { enabled: !!address, refetchInterval: 20_000 },
+  });
   const [buyStep, setBuyStep] = useState<
     "idle" | "approve" | "buy" | "confirming"
   >("idle");
@@ -105,21 +123,33 @@ export default function PlayLobbyPage() {
 
   const onBuyTicket = async () => {
     if (!address || !jackpot.ticketPriceRaw) return;
+    const price = jackpot.ticketPriceRaw;
     try {
       setStatusMsg(null);
       setBuyError(null);
-      setBuyStep("approve");
-      setStatusMsg("Approve USDC in your wallet…");
-      const approveHash = await writeContractAsync({
-        address: ADDRESSES.usdc,
-        abi: erc20Abi,
-        functionName: "approve",
-        args: [ADDRESSES.jackpotRandomTicketBuyer, jackpot.ticketPriceRaw],
-        chainId: 8453,
-      });
-      if (publicClient) {
-        setStatusMsg("Waiting for USDC approval…");
-        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+
+      // Skip approve if allowance already covers this ticket
+      let allowance = usdcAllowance ?? 0n;
+      try {
+        const fresh = await refetchAllowance();
+        if (typeof fresh.data === "bigint") allowance = fresh.data;
+      } catch {
+        /* use cached */
+      }
+
+      if (allowance < price) {
+        setBuyStep("approve");
+        setStatusMsg("Approve USDC in your wallet…");
+        const approveHash = await writeContractAsync({
+          address: ADDRESSES.usdc,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [ADDRESSES.jackpotRandomTicketBuyer, price],
+          chainId: 8453,
+        });
+        setStatusMsg("Waiting for USDC approval on Base…");
+        await waitForBaseReceipt(approveHash, { client: publicClient });
+        void refetchAllowance();
       }
 
       setBuyStep("buy");
@@ -148,8 +178,32 @@ export default function PlayLobbyPage() {
 
       setBuyStep("confirming");
       setStatusMsg("Purchase submitted — waiting for Base confirmation…");
-      if (publicClient) {
-        await publicClient.waitForTransactionReceipt({ hash: buyHash });
+      try {
+        await waitForBaseReceipt(buyHash, {
+          client: publicClient,
+          timeoutMs: 180_000,
+          pollMs: 2_000,
+        });
+      } catch (waitErr: unknown) {
+        // Tx may still land; refresh tickets instead of hard-failing the buy
+        setStatusMsg(
+          "Confirmation is slow on public RPC — checking if your ticket arrived…"
+        );
+        await refetchTickets();
+        await new Promise((r) => setTimeout(r, 4000));
+        await refetchTickets();
+        const msg =
+          waitErr instanceof Error
+            ? waitErr.message
+            : "Confirmation timed out";
+        setBuyStep("idle");
+        setStatusMsg(
+          `${msg} If the wallet shows success, wait a few seconds and your ticket count will update.`
+        );
+        window.setTimeout(() => void refetchTickets(), 3000);
+        window.setTimeout(() => void refetchTickets(), 8000);
+        window.setTimeout(() => setStatusMsg(null), 14_000);
+        return;
       }
 
       setBuyStep("idle");
@@ -165,8 +219,16 @@ export default function PlayLobbyPage() {
     } catch (e: unknown) {
       setBuyStep("idle");
       const err = e instanceof Error ? e.message : "Purchase failed";
+      // User rejected in wallet — short message
+      if (/user rejected|denied|cancelled|canceled/i.test(err)) {
+        setBuyError("Wallet cancelled the transaction.");
+        setStatusMsg(null);
+        return;
+      }
       setBuyError(err);
       setStatusMsg(err);
+      // Still refresh — buy may have mined despite a wait error
+      window.setTimeout(() => void refetchTickets(), 2000);
     }
   };
 

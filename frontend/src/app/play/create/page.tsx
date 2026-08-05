@@ -32,6 +32,7 @@ import {
   normalizeTableCode,
   registerTableCode,
 } from "@/lib/tableCode";
+import { waitForBaseReceipt } from "@/lib/waitForReceipt";
 
 export default function CreateMatchPage() {
   const { isConnected, address } = useAccount();
@@ -123,8 +124,11 @@ export default function CreateMatchPage() {
         hash = await createMatch(id);
       }
 
-      if (publicClient) {
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      try {
+        const receipt = await waitForBaseReceipt(hash, {
+          client: publicClient,
+          timeoutMs: 120_000,
+        });
         for (const log of receipt.logs) {
           try {
             const decoded = decodeEventLog({
@@ -155,6 +159,11 @@ export default function CreateMatchPage() {
             /* not our event */
           }
         }
+      } catch {
+        setError(
+          "Stake submitted but confirmation is slow. Check Open tables / your Live matches in a moment."
+        );
+        return;
       }
       setError("Match created. Check open lobby if redirect failed.");
     } catch (e: unknown) {
