@@ -90,8 +90,7 @@ export function useBuyRandomTicket() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: confirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  const referrer = (process.env.NEXT_PUBLIC_REFERRER_ADDRESS ||
-    "0x0000000000000000000000000000000000000000") as `0x${string}`;
+  const referrer = ADDRESSES.megapotReferrer;
   const source = stringToHex(process.env.NEXT_PUBLIC_SOURCE_TAG || "whotwhot", {
     size: 32,
   });
@@ -113,6 +112,7 @@ export function useBuyRandomTicket() {
   const buyAfterApprove = () => {
     if (!address) return;
     const hasReferrer =
+      !!referrer &&
       referrer !== "0x0000000000000000000000000000000000000000";
     writeContract({
       address: ADDRESSES.jackpotRandomTicketBuyer,

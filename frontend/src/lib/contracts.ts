@@ -14,6 +14,12 @@ export const ADDRESSES = {
    */
   whotEscrow: (process.env.NEXT_PUBLIC_WHOT_ESCROW_ADDRESS ||
     "0xEC8cA16E0C751f45c3Bea800c9cB4be7710A81D8") as Address,
+  /**
+   * Megapot referrer wallet — earns purchase + win-share fees on ticket buys
+   * from this app. Override with NEXT_PUBLIC_REFERRER_ADDRESS.
+   */
+  megapotReferrer: (process.env.NEXT_PUBLIC_REFERRER_ADDRESS ||
+    "0xFD3f8634674C8e8d3A3dec78B90bC9417Ebef2f0") as Address,
 } as const;
 
 export const erc721Abi = [

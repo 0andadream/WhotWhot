@@ -154,13 +154,13 @@ export default function PlayLobbyPage() {
 
       setBuyStep("buy");
       setStatusMsg("Confirm ticket purchase in your wallet…");
-      const referrer = (process.env.NEXT_PUBLIC_REFERRER_ADDRESS ||
-        "0x0000000000000000000000000000000000000000") as `0x${string}`;
+      const referrer = ADDRESSES.megapotReferrer;
       const source = stringToHex(
         process.env.NEXT_PUBLIC_SOURCE_TAG || "whotwhot",
         { size: 32 }
       );
       const hasReferrer =
+        !!referrer &&
         referrer !== "0x0000000000000000000000000000000000000000";
       const buyHash = await writeContractAsync({
         address: ADDRESSES.jackpotRandomTicketBuyer,
@@ -170,6 +170,7 @@ export default function PlayLobbyPage() {
           1n,
           address,
           hasReferrer ? [referrer] : [],
+          // 100% of referral weight to site wallet (1e18 = 100%)
           hasReferrer ? [parseUnits("1", 18)] : [],
           source,
         ],
