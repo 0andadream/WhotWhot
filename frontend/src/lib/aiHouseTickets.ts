@@ -5,7 +5,6 @@
 import {
   encodeFunctionData,
   maxUint256,
-  parseUnits,
   stringToHex,
   type Account,
   type Hash,
@@ -226,16 +225,14 @@ export async function buyHouseTicket(opts: {
     need,
   });
 
-  const referrer = ADDRESSES.megapotReferrer;
+  // Attribution only — do NOT set Agent as its own referrer (self-referral
+  // can break fee accounting and revert the buy). Inventory buys use empty referrers.
   const source = stringToHex(
     process.env.NEXT_PUBLIC_SOURCE_TAG
       ? `${process.env.NEXT_PUBLIC_SOURCE_TAG}-ai`
       : "whotwhot-ai",
     { size: 32 }
   );
-  const hasRef =
-    !!referrer &&
-    referrer !== "0x0000000000000000000000000000000000000000";
 
   // Final allowance check right before buy
   const buyerAllow = await readUsdcAllowance(
@@ -249,20 +246,38 @@ export async function buyHouseTicket(opts: {
     );
   }
 
-  const buyHash = await sendAndWait(publicClient, wallet, account, {
-    to: ADDRESSES.jackpotRandomTicketBuyer,
-    data: encodeFunctionData({
+  // Prefer writeContract when available (better abi encoding / gas estimate)
+  let buyHash: Hash;
+  try {
+    buyHash = await wallet.writeContract({
+      account,
+      chain: base,
+      address: ADDRESSES.jackpotRandomTicketBuyer,
       abi: randomBuyerAbi,
       functionName: "buyTickets",
-      args: [
-        1n,
-        house,
-        hasRef ? [referrer] : [],
-        hasRef ? [parseUnits("1", 18)] : [],
-        source,
-      ],
-    }),
+      args: [1n, house, [], [], source],
+    });
+  } catch {
+    buyHash = await sendAndWait(publicClient, wallet, account, {
+      to: ADDRESSES.jackpotRandomTicketBuyer,
+      data: encodeFunctionData({
+        abi: randomBuyerAbi,
+        functionName: "buyTickets",
+        args: [1n, house, [], [], source],
+      }),
+    });
+    return buyHash;
+  }
+  const receipt = await publicClient.waitForTransactionReceipt({
+    hash: buyHash,
+    confirmations: 1,
+    timeout: 120_000,
   });
+  if (receipt.status !== "success") {
+    throw new Error(
+      `Agent buyTickets reverted (${buyHash}). Check Agent USDC (~$1+) and ETH gas on Base.`
+    );
+  }
   return buyHash;
 }
 
