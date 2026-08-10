@@ -463,7 +463,7 @@ function PlayAiInner() {
               >
                 <span className="ai-pay-badge paid">Stake</span>
                 <h2>Challenge Agent</h2>
-                <p>1 ticket each · Escrow · Winner takes both</p>
+                <p>Stake tickets · Winner takes both</p>
                 <span className="ai-pay-cta">Stake ticket</span>
               </button>
             </div>
