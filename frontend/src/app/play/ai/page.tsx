@@ -22,6 +22,7 @@ import {
 import { useUserTickets } from "@/hooks/useUserTickets";
 import { waitForBaseReceipt } from "@/lib/waitForReceipt";
 import type { PlayerId } from "@/lib/whot/types";
+import { AGENT_AVATAR } from "@/lib/profile";
 
 type Gate = "pick" | "stake" | "play" | "settle";
 
@@ -322,7 +323,7 @@ function PlayAiInner() {
         seed={freeSeed}
         vsAi
         p1Name={profile?.username || "You"}
-        p2Name="AI"
+        p2Name="Agent"
         showSoundToggle
         stakeTickets={0}
         potTickets={0}
@@ -336,7 +337,11 @@ function PlayAiInner() {
               }
             : { username: "You", avatar: "🃏", color: "#c41e3a" }
         }
-        oppProfile={{ username: "AI", avatar: "", color: "#3b82f6" }}
+        oppProfile={{
+          username: "Agent",
+          avatar: AGENT_AVATAR,
+          color: "#c41e3a",
+        }}
         backHref="/play"
       />
     );
@@ -366,7 +371,11 @@ function PlayAiInner() {
               }
             : { username: "You", avatar: "🃏", color: "#c41e3a" }
         }
-        oppProfile={{ username: "Agent", avatar: "", color: "#3b82f6" }}
+        oppProfile={{
+          username: "Agent",
+          avatar: AGENT_AVATAR,
+          color: "#c41e3a",
+        }}
         backHref="/play"
       />
     );

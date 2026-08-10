@@ -161,9 +161,13 @@ export function isImageAvatar(avatar?: string | null): boolean {
     avatar.startsWith("data:image") ||
     avatar.startsWith("http://") ||
     avatar.startsWith("https://") ||
-    avatar.startsWith("blob:")
+    avatar.startsWith("blob:") ||
+    avatar.startsWith("/") // local public assets e.g. /agent-avatar.jpg
   );
 }
+
+/** In-game Agent (stake-vs-AI / practice) profile art */
+export const AGENT_AVATAR = "/agent-avatar.jpg";
 
 /**
  * Resize + compress a gallery image to a data URL safe for localStorage.

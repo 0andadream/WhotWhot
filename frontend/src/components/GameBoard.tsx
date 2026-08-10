@@ -22,7 +22,7 @@ import {
 } from "@/lib/whot/engine";
 import { PLAYABLE_SHAPES, SHAPE_LABEL } from "@/lib/whot/deck";
 import type { Card, GameState, PlayerId, Shape } from "@/lib/whot/types";
-import type { PlayerProfile } from "@/lib/profile";
+import { AGENT_AVATAR, type PlayerProfile } from "@/lib/profile";
 import {
   isMoveSoundMuted,
   playOpponentMoveSound,
@@ -359,7 +359,7 @@ export function GameBoard({
   };
   const oppBits: ProfileBits = oppProfile || {
     username: opp.name,
-    avatar: vsAi ? "🤖" : "🃏",
+    avatar: vsAi ? AGENT_AVATAR : "🃏",
     color: "#3b82f6",
   };
 
@@ -566,20 +566,7 @@ export function GameBoard({
           >
             <div className="table-seat-row">
               <div className="table-seat-id">
-                {vsAi ? (
-                  <span
-                    className="profile-avatar table-avatar-empty"
-                    style={{
-                      width: 44,
-                      height: 44,
-                      minWidth: 44,
-                      minHeight: 44,
-                    }}
-                    aria-hidden
-                  />
-                ) : (
-                  <ProfileAvatar profile={oppBits} size={44} />
-                )}
+                <ProfileAvatar profile={oppBits} size={44} />
                 <div>
                   <strong>{oppName}</strong>
                   <span>{opp.hand.length} cards</span>
