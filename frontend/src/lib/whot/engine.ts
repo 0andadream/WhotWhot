@@ -284,13 +284,50 @@ export function reduce(state: GameState, action: GameAction): GameState {
   return state;
 }
 
-/** Simple AI: play first legal card; call most common shape in hand; else draw/accept */
+/** Shape with the most non-Whot cards remaining in hand (control). */
+function bestCallShape(hand: Card[]): Shape {
+  const counts: Partial<Record<Shape, number>> = {};
+  for (const c of hand) {
+    if (c.shape !== "whot") counts[c.shape] = (counts[c.shape] || 0) + 1;
+  }
+  let best: Shape = "circle";
+  let bestN = -1;
+  for (const sh of PLAYABLE_SHAPES) {
+    const n = counts[sh] || 0;
+    if (n > bestN) {
+      bestN = n;
+      best = sh;
+    }
+  }
+  return best;
+}
+
+function shapeCount(hand: Card[], shape: Shape): number {
+  return hand.filter((c) => c.shape === shape && c.special !== "whot").length;
+}
+
+/**
+ * House-strength AI for Agent / practice.
+ * Scores legal plays with 1-ply look-ahead: dump specials, keep suit control,
+ * finish hands, punish opponent — not a random first-legal-card bot.
+ */
 export function aiChooseAction(state: GameState, player: PlayerId): GameAction {
+  const me = playerIndex(player);
+  const opp = playerIndex(other(player));
+  const myHand = state.players[me].hand;
+  const oppHandSize = state.players[opp].hand.length;
+
+  // ── Penalty: always stack if possible (house never eats free picks) ──
   if (state.pendingPenalty && state.turn === player) {
     const stack = legalMoves(state, player);
     if (stack.length > 0) {
-      const c = stack[0];
-      return { type: "PLAY_CARD", player, cardId: c.id };
+      // Prefer stacking highest chain impact (pick three > pick two)
+      const pick = [...stack].sort((a, b) => {
+        const rank = (c: Card) =>
+          c.special === "pick_three" ? 3 : c.special === "pick_two" ? 2 : 0;
+        return rank(b) - rank(a);
+      })[0];
+      return { type: "PLAY_CARD", player, cardId: pick.id };
     }
     return { type: "ACCEPT_PENALTY", player };
   }
@@ -300,31 +337,151 @@ export function aiChooseAction(state: GameState, player: PlayerId): GameAction {
     return { type: "DRAW", player };
   }
 
-  // Prefer specials slightly, then any
-  const sorted = [...moves].sort((a, b) => {
-    const score = (c: Card) =>
-      c.special === "whot" ? 3 : c.special ? 2 : c.number === state.currentNumber ? 1 : 0;
-    return score(b) - score(a);
-  });
-  const card = sorted[0];
-  if (card.special === "whot") {
-    const hand = state.players[playerIndex(player)].hand;
-    const counts: Partial<Record<Shape, number>> = {};
-    for (const c of hand) {
-      if (c.shape !== "whot") counts[c.shape] = (counts[c.shape] || 0) + 1;
+  type Cand = { action: GameAction; score: number };
+  const cands: Cand[] = [];
+
+  for (const card of moves) {
+    const calledShape =
+      card.special === "whot" ? bestCallShape(myHand) : undefined;
+    const action: GameAction = {
+      type: "PLAY_CARD",
+      player,
+      cardId: card.id,
+      calledShape,
+    };
+
+    let score = 0;
+    const handAfter = myHand.length - 1;
+
+    // Empty hand = win
+    if (handAfter === 0) score += 10_000;
+
+    // Specials that hurt opponent or keep tempo (house edge — aggressive)
+    const oppLow = oppHandSize <= 3;
+    switch (card.special) {
+      case "pick_three":
+        score += 140 + Math.min(oppHandSize, 10) * 10 + (oppLow ? 40 : 0);
+        break;
+      case "pick_two":
+        score += 110 + Math.min(oppHandSize, 10) * 8 + (oppLow ? 35 : 0);
+        break;
+      case "suspension":
+        // Extra turn is strong; brutal when opp is about to win
+        score += handAfter <= 2 ? 130 : oppLow ? 100 : 70;
+        break;
+      case "hold_on":
+        score += handAfter <= 2 ? 140 : handAfter <= 3 ? 90 : 60;
+        break;
+      case "general_market":
+        score += 70 + (oppLow ? 50 : 15);
+        break;
+      case "whot":
+        // Save Whot for finish / control; avoid early waste
+        score += handAfter <= 1 ? 120 : handAfter <= 3 ? 55 : 8;
+        score += shapeCount(myHand, calledShape!) * 16;
+        if (oppLow) score += 30; // seize control when they threaten
+        break;
+      default:
+        break;
     }
-    let best: Shape = "circle";
-    let bestN = -1;
-    for (const sh of PLAYABLE_SHAPES) {
-      const n = counts[sh] || 0;
-      if (n > bestN) {
-        bestN = n;
-        best = sh;
+
+    // House pressure: if opponent is low, dump any punish card first
+    if (oppLow && card.special && card.special !== "whot") {
+      score += 45;
+    }
+
+    // Prefer number-matches that switch shape to a suit we dominate
+    if (!card.special || card.special === null) {
+      const nextShape = card.shape;
+      score += shapeCount(myHand, nextShape) * 8;
+      // Dump singles (reduce shape diversity) when not critical
+      if (shapeCount(myHand, card.shape) === 1 && handAfter > 2) score += 6;
+      // Prefer higher numbers slightly (clear awkward ranks)
+      score += card.number * 0.15;
+      // Matching number (cross-suit) to change to our best suit
+      if (card.number === state.currentNumber && card.shape !== state.currentShape) {
+        score += shapeCount(myHand, card.shape) * 5 + 10;
+      }
+      // Matching shape keeps control if we still have that shape after play
+      if (card.shape === state.currentShape) {
+        score += shapeCount(myHand, card.shape) > 1 ? 12 : 4;
       }
     }
-    return { type: "PLAY_CARD", player, cardId: card.id, calledShape: best };
+
+    // 1-ply look-ahead: simulate and score position
+    try {
+      const next = reduce(state, action);
+      if (next.winner === player) {
+        score += 10_000;
+      } else {
+        const myNext = next.players[me].hand.length;
+        const oppNext = next.players[opp].hand.length;
+        score += (oppNext - myNext) * 18;
+        // Opponent under penalty is great for house
+        if (next.pendingPenalty && next.turn === other(player)) {
+          score += 55 + next.pendingPenalty.amount * 12;
+        }
+        // We get another turn (hold on / suspension)
+        if (next.turn === player && !next.winner) {
+          score += 50;
+          if (myNext <= 2) score += 55;
+        }
+        // Opponent's upcoming turn
+        if (next.turn === other(player) && !next.winner) {
+          const oppMoves = legalMoves(next, other(player));
+          if (oppMoves.length === 0 && !next.pendingPenalty) {
+            score += 40; // they must market-draw
+          }
+          if (next.pendingPenalty && oppMoves.length === 0) {
+            score += 70; // they must eat the pick
+          }
+          // Don't hand them an instant win on their next card
+          for (const om of oppMoves.slice(0, 8)) {
+            try {
+              const oAct: GameAction =
+                om.special === "whot"
+                  ? {
+                      type: "PLAY_CARD",
+                      player: other(player),
+                      cardId: om.id,
+                      calledShape: bestCallShape(
+                        next.players[playerIndex(other(player))].hand
+                      ),
+                    }
+                  : {
+                      type: "PLAY_CARD",
+                      player: other(player),
+                      cardId: om.id,
+                    };
+              const afterOpp = reduce(next, oAct);
+              if (afterOpp.winner === other(player)) {
+                score -= 250; // avoid giving them a free finish
+              }
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+        // Deny opponent finishes
+        if (oppNext === 1 && myNext > 1) score -= 45;
+        if (oppNext === 0) score -= 800;
+        // Prefer positions where we have fewer cards than them
+        if (myNext < oppNext) score += 15;
+      }
+    } catch {
+      /* ignore bad sim */
+    }
+
+    // Tiny deterministic jitter from card id so play isn't identical every game
+    let jitter = 0;
+    for (let i = 0; i < card.id.length; i++) jitter += card.id.charCodeAt(i);
+    score += (jitter % 7) * 0.01;
+
+    cands.push({ action, score });
   }
-  return { type: "PLAY_CARD", player, cardId: card.id };
+
+  cands.sort((a, b) => b.score - a.score);
+  return cands[0].action;
 }
 
 export function serializeAction(action: GameAction): string {
