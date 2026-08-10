@@ -22,8 +22,6 @@ type MatchShape = {
   player2Result?: Address;
 };
 
-const RESULT_TIMEOUT_SEC = 2 * 60 * 60;
-
 function Balls({
   normals,
   bonus,
@@ -149,16 +147,12 @@ export function MatchTicketsPanel({
   address,
   p1Name,
   p2Name,
-  onCancelActive,
-  cancelPending,
 }: {
   match: MatchShape;
   matchId: bigint;
   address?: Address;
   p1Name: string;
   p2Name: string;
-  onCancelActive?: () => Promise<void>;
-  cancelPending?: boolean;
 }) {
   const tickets = useMatchTickets(match);
   const { claim, isPending, confirming, isSuccess, error, reset } =
@@ -191,13 +185,6 @@ export function MatchTicketsPanel({
   const isPlayer =
     !!me &&
     (match.player1.toLowerCase() === me || match.player2.toLowerCase() === me);
-
-  const startedAt = match.startedAt != null ? Number(match.startedAt) : 0;
-  const cancelEligible =
-    match.status === MatchStatus.Active &&
-    startedAt > 0 &&
-    Math.floor(Date.now() / 1000) - startedAt >= RESULT_TIMEOUT_SEC &&
-    isPlayer;
 
   const onClaim = useCallback(
     async (ids: bigint[]) => {
@@ -339,35 +326,12 @@ export function MatchTicketsPanel({
         </div>
       )}
 
-      {cancelEligible && onCancelActive && (
-        <div style={{ marginTop: 14 }}>
-          <p className="muted" style={{ fontSize: "0.85rem", marginBottom: 8 }}>
-            Match stuck over 2 hours with no dual confirm. Either player can
-            cancel and get their own ticket back.
-          </p>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            disabled={cancelPending}
-            onClick={() => void onCancelActive()}
-          >
-            {cancelPending
-              ? "Cancelling…"
-              : `Cancel match #${matchId.toString()} (return tickets)`}
-          </button>
-        </div>
+      {isPlayer && match.status === MatchStatus.Active && (
+        <p className="muted" style={{ marginTop: 12, fontSize: "0.8rem" }}>
+          Game started — finish the match and dual-confirm so the winner receives
+          both tickets. Cancel is only available before an opponent joins.
+        </p>
       )}
-
-      {isPlayer &&
-        match.status === MatchStatus.Active &&
-        !cancelEligible &&
-        startedAt > 0 && (
-          <p className="muted" style={{ marginTop: 12, fontSize: "0.8rem" }}>
-            Cancel available{" "}
-            {new Date((startedAt + RESULT_TIMEOUT_SEC) * 1000).toLocaleString()}{" "}
-            if the match never dual-confirms.
-          </p>
-        )}
     </div>
   );
 }

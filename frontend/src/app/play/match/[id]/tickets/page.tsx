@@ -7,7 +7,7 @@ import { useAccount } from "wagmi";
 import type { Address } from "viem";
 import { SiteNav } from "@/components/SiteNav";
 import { MatchTicketsPanel } from "@/components/MatchTicketsPanel";
-import { useEscrowActions, useMatch } from "@/hooks/useEscrow";
+import { useMatch } from "@/hooks/useEscrow";
 import { MatchStatus } from "@/lib/contracts";
 import {
   getMatchNames,
@@ -31,8 +31,7 @@ export default function MatchTicketsPage() {
 
   const matchKey = matchId != null ? matchId.toString() : "";
   const { address } = useAccount();
-  const { match, refetch, isLoading } = useMatch(matchId);
-  const { cancelActive, isPending } = useEscrowActions();
+  const { match, isLoading } = useMatch(matchId);
   const [msg, setMsg] = useState<string | null>(null);
   const [p1Name, setP1Name] = useState("Host");
   const [p2Name, setP2Name] = useState("Opponent");
@@ -63,22 +62,6 @@ export default function MatchTicketsPage() {
     setP1Name(n1);
     setP2Name(n2);
   }, [match, matchKey, humanPlayer]);
-
-  const onCancelActive = useCallback(async () => {
-    if (!matchId) return;
-    try {
-      setMsg(
-        "Confirm cancel in wallet. Both tickets return to original stakers."
-      );
-      await cancelActive(matchId);
-      setMsg(
-        "Match cancelled. Tickets returned. Claim any Megapot prizes below if you own a winning NFT."
-      );
-      refetch();
-    } catch (e: unknown) {
-      setMsg(e instanceof Error ? e.message : "Cancel failed");
-    }
-  }, [matchId, cancelActive, refetch]);
 
   if (matchId == null) {
     return (
@@ -161,8 +144,6 @@ export default function MatchTicketsPage() {
             address={address}
             p1Name={p1Name}
             p2Name={p2Name}
-            onCancelActive={onCancelActive}
-            cancelPending={isPending}
           />
         )}
 

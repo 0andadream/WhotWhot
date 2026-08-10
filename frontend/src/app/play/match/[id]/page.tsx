@@ -121,8 +121,7 @@ export default function MatchPage() {
     // Poll chain faster while dual-confirm is pending
     refetchIntervalMs: settleMode ? 5_000 : 12_000,
   });
-  const { submitResult, cancelWaiting, cancelActive, isPending } =
-    useEscrowActions();
+  const { submitResult, cancelWaiting, isPending } = useEscrowActions();
 
   const [game, setGame] = useState<GameState | null>(null);
   const [actions, setActions] = useState<GameAction[]>([]);
@@ -1204,7 +1203,9 @@ export default function MatchPage() {
               {humanPlayer === "p1" && (
                 <div style={{ marginTop: 16 }}>
                   <p className="muted" style={{ fontSize: "0.88rem", marginBottom: 10 }}>
-                    No opponent yet. Cancel to return your staked ticket.
+                    Waiting for opponent — game has not started. Cancel to
+                    return your ticket. Once both stake, the match must finish
+                    and the winner takes both.
                   </p>
                   <button
                     type="button"

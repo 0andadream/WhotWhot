@@ -661,7 +661,7 @@ function HistoryLive({
                 >
                   {busyId === idStr || cancelPending
                     ? "Cancelling…"
-                    : "Cancel & refund"}
+                    : "Cancel (before start)"}
                 </button>
               )}
             </div>
