@@ -324,7 +324,8 @@ export default function PlayLobbyPage() {
         {screen === "modes" && (
           <ModeSelect
             reduce={!!reduce}
-            onAi={() => router.push("/play/ai")}
+            onAiFree={() => router.push("/play/ai?mode=free")}
+            onAiPaid={() => router.push("/play/ai?mode=paid")}
             onFriends={() => setScreen("friends")}
             escrowReady={escrowReady}
           />
@@ -487,12 +488,14 @@ export default function PlayLobbyPage() {
 }
 
 function ModeSelect({
-  onAi,
+  onAiFree,
+  onAiPaid,
   onFriends,
   escrowReady,
   reduce,
 }: {
-  onAi: () => void;
+  onAiFree: () => void;
+  onAiPaid: () => void;
   onFriends: () => void;
   escrowReady: boolean;
   reduce: boolean;
@@ -508,18 +511,31 @@ function ModeSelect({
 
       <HeroCardFan showFloaters={false} compact />
 
-      <div className="play-v2-mode-grid">
+      <div className="play-v2-mode-grid play-v2-mode-grid-3">
         <motion.button
           type="button"
           className="play-v2-mode-card teal"
-          onClick={onAi}
+          onClick={onAiFree}
           whileHover={reduce ? undefined : { scale: 1.02, y: -2 }}
           whileTap={reduce ? undefined : { scale: 0.99 }}
           transition={{ type: "spring", stiffness: 400, damping: 22 }}
         >
-          <h2>Play vs AI</h2>
-          <p>Practice free · No wallet needed · Learn the rules</p>
-          <span className="play-v2-mode-start">Start</span>
+          <h2>Practice vs AI</h2>
+          <p>Free · No wallet · Learn the rules</p>
+          <span className="play-v2-mode-start">Start free</span>
+        </motion.button>
+
+        <motion.button
+          type="button"
+          className="play-v2-mode-card gold"
+          onClick={onAiPaid}
+          whileHover={reduce ? undefined : { scale: 1.02, y: -2 }}
+          whileTap={reduce ? undefined : { scale: 0.99 }}
+          transition={{ type: "spring", stiffness: 400, damping: 22 }}
+        >
+          <h2>Challenge AI</h2>
+          <p>$1 USDC entry · Supports WhotWhot · Wallet required</p>
+          <span className="play-v2-mode-start">Pay &amp; play</span>
         </motion.button>
 
         <motion.button
@@ -538,7 +554,7 @@ function ModeSelect({
           transition={{ type: "spring", stiffness: 400, damping: 22 }}
         >
           <h2>Play with Friends</h2>
-          <p>Stake tickets · Create or join a table · Winner takes both</p>
+          <p>Stake tickets · Winner takes both</p>
           <span className="play-v2-mode-start">Start</span>
         </motion.button>
       </div>
