@@ -1,64 +1,105 @@
 # WhotWhot
 
-**Multiplayer onchain Whot** (Nigerian card game) for the **Inco × Megapot Summer Game Jam** on **Base**.
+**Classic Nigerian Whot, onchain on Base** — stake **Megapot ticket NFTs**, play live, **winner takes both**.
 
-Stake **1 Megapot ticket** each → play Whot → **winner receives both ticket NFTs**.
+**Live:** [whotwhot.xyz](https://whotwhot.xyz)
 
-**Live escrow (Base):** [`0xEC8cA16E0C751f45c3Bea800c9cB4be7710A81D8`](https://basescan.org/address/0xEC8cA16E0C751f45c3Bea800c9cB4be7710A81D8)
+**Escrow (Base):** [`0xEC8cA16E0C751f45c3Bea800c9cB4be7710A81D8`](https://basescan.org/address/0xEC8cA16E0C751f45c3Bea800c9cB4be7710A81D8)
+
+---
+
+## How you play
+
+| Mode | Stake | What happens |
+| ---- | ----- | ------------ |
+| **Practice vs Agent** | Free | Learn rules offline. No wallet required. |
+| **Challenge Agent** | 1 ticket each | You stake; the **Agent** wallet stakes (buys a ticket if needed). Both lock in escrow. Winner takes both NFTs. |
+| **Play with Friends** | 1 ticket each | Create/join a table. Dual-confirm on-chain. Winner takes both. |
+
+Lobby also shows **live Megapot jackpot** size, draw countdown, and your **Megapot ticket count** (number only — no NFT gallery).
+
+---
+
+## Core loop (stake matches)
+
+```
+Own / buy Megapot ticket ($1 USDC on Base)
+        ↓
+createMatch(ticketId)  or  joinMatch(matchId, ticketId)
+        ↓
+Both ticket NFTs locked in WhotMatchEscrow
+        ↓
+Play Whot off-chain (shared gameSeed + move relay)
+        ↓
+Both sides submitResult(matchId, winner)
+        ↓
+Agreement → both NFTs transfer to the winner
+```
+
+**Agent challenge** uses the same escrow: you create the match; the server signs as the Agent to `joinMatch` and later `submitResult`.
+
+---
+
+## Where do the tickets go?
+
+### A) Whot stake (NFTs in escrow)
+
+| Situation | Result |
+| --------- | ------ |
+| Both confirm the **same** winner | **Both NFTs → winner** |
+| Match abandoned while **Active** | After **2 hours**, either side can `cancelActive` → **each ticket returns to original staker** |
+| **Waiting** (no opponent) | Host can `cancelWaiting` → host’s ticket returns |
+
+Card plays do **not** cost gas. Wallet txs: stake (create/join), cancel, confirm winner.
+
+### B) Megapot lottery (daily draw)
+
+A staked ticket is still a real Megapot entry. Lottery claim follows **NFT ownership**:
+
+- While locked in escrow → claim only after the match resolves or cancels.
+- After Whot resolve → **Whot winner** owns both tickets and can claim any prizes on them.
+
+If Megapot draws while tickets are in escrow, the draw still runs; prizes stay with the NFT. Finish or cancel so ownership is back in a player wallet before claiming.
+
+---
+
+## Revenue
+
+### Megapot referral fees (ticket buys on WhotWhot)
+
+Buys through the app pass `_referrers` + `_source` (`whotwhot`) so the site can earn Megapot purchase fees (~10% of ticket price, live on-chain) and win-share when referred players claim lottery prizes.
+
+- Default referrer / treasury: `0xFD3f8634674C8e8d3A3dec78B90bC9417Ebef2f0`
+- Override: `NEXT_PUBLIC_REFERRER_ADDRESS`
+- Fees **accrue** on the Megapot Jackpot contract — **not auto-sent**. Claim with `claimReferralFees()` from that wallet (or Megapot UI).
+
+### Challenge Agent
+
+- Player **loses** → Agent keeps **both** tickets.
+- Player **wins** → player receives **both**.
+- Agent buys tickets with its USDC when inventory is empty (referral applies when the Agent buys).
+
+---
 
 ## Quick start
 
 ```bash
-# Install (from repo root)
+# From repo root
 npm install
 
-# Compile & test contracts
+# Contracts
 npm run contracts:compile
 npm run contracts:test
 
-# Frontend
+# Frontend env
 cp .env.example .env
-# Set NEXT_PUBLIC_WHOT_ESCROW_ADDRESS after deploy (see DEPLOYED.md)
-# optional: NEXT_PUBLIC_REFERRER_ADDRESS=0x... for Megapot referral fees
+# See env section below
+
 npm run dev
 # → http://localhost:3000
 
-# Production build (same as Vercel)
-npm run build
+npm run build   # production build (workspace)
 ```
-
-### Deploy on Vercel
-
-**Recommended settings** (monorepo):
-
-| Setting | Value |
-| -------- | ----- |
-| Root Directory | `frontend` |
-| Framework | Next.js |
-| Build Command | `npm run build` (default) |
-| Install Command | `npm install` (default) |
-
-Or deploy from **repo root** (uses root `vercel.json`): install at root, `npm run build -w frontend`.
-
-Env:
-
-```
-NEXT_PUBLIC_WHOT_ESCROW_ADDRESS=0xEC8cA16E0C751f45c3Bea800c9cB4be7710A81D8
-# Required on Vercel for multiplayer (free Upstash Redis)
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-```
-
-### Multiplayer move relay (no wallet popups mid-game)
-
-| Action | Wallet? | Where |
-|--------|---------|--------|
-| Create / join (stake tickets) | Yes | On-chain escrow |
-| Each card / draw | **No** | Relay API (`/api/match/:id/moves`) |
-| Confirm winner | Yes (once each) | On-chain `submitResult` |
-
-Both players poll the relay so every play shows on both phones.  
-Locally, memory store works. On **Vercel**, set free [Upstash Redis](https://console.upstash.com) env vars so instances share the same log.
 
 ### Deploy escrow (Base)
 
@@ -66,90 +107,111 @@ Locally, memory store works. On **Vercel**, set free [Upstash Redis](https://con
 # .env: PRIVATE_KEY, BASE_RPC_URL, BASESCAN_API_KEY
 cd contracts
 npx hardhat run scripts/deploy.ts --network base
-# Set NEXT_PUBLIC_WHOT_ESCROW_ADDRESS in frontend .env / Vercel
+# Set NEXT_PUBLIC_WHOT_ESCROW_ADDRESS
 ```
 
-On Base mainnet the escrow uses official Megapot **JackpotTicketNFT**:
-
+**Megapot JackpotTicketNFT (Base):**  
 `0x48FfE35AbB9f4780a4f1775C2Ce1c46185b366e4`
 
 ---
 
-## Where do the tickets go?
+## Vercel
 
-There are **two different “wins.”** Don’t mix them up.
+| Setting | Value |
+| ------- | ----- |
+| Root Directory | `frontend` |
+| Framework | Next.js |
+| Build / Install | defaults (`npm run build` / `npm install`) |
 
-### A) Whot stake (both ticket NFTs in the match)
+Or deploy from **repo root** if using root `vercel.json`.
 
-When you create/join a match, each player’s Megapot **ticket NFT is transferred into `WhotMatchEscrow`**.
+### Required env (production)
 
-| Situation | Where the two tickets go |
-| --------- | ------------------------ |
-| Both players **confirm the same Whot winner** on-chain (`submitResult`) | **Both NFTs → that winner’s wallet** |
-| You never play / never confirm a winner | Tickets **stay locked in escrow** |
-| **Active match** abandoned → after **2 hours**, either player calls `cancelActive` | **Each player gets their own ticket back** (no “winner takes both”) |
-| **Waiting** (no opponent yet) → host calls `cancelWaiting` | **Host’s ticket returns** to the host |
+```bash
+NEXT_PUBLIC_WHOT_ESCROW_ADDRESS=0xEC8cA16E0C751f45c3Bea800c9cB4be7710A81D8
+NEXT_PUBLIC_CHAIN_ID=8453
 
-**Important:** Playing cards does **not** cost gas. Wallet fees only apply to stake (create/join), cancel, and **confirm winner**.
+# Multiplayer relay + chat (Upstash Redis or Vercel KV)
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+# or: KV_REST_API_URL + KV_REST_API_TOKEN
 
-### B) Megapot lottery win (daily drawing)
+# Megapot referral on ticket buys
+NEXT_PUBLIC_REFERRER_ADDRESS=0xFD3f8634674C8e8d3A3dec78B90bC9417Ebef2f0
+NEXT_PUBLIC_SOURCE_TAG=whotwhot
 
-A staked ticket is still a real Megapot ticket for its drawing. The **lottery payout is tied to the NFT**, not to “who started the Whot match.”
+# Challenge Agent (server-only — never NEXT_PUBLIC_)
+NEXT_PUBLIC_AGENT_ADDRESS=0xFD3f8634674C8e8d3A3dec78B90bC9417Ebef2f0
+AGENT_PRIVATE_KEY=0x...   # private key for that same wallet
+# Fund Agent with ETH (gas) + USDC (buy tickets). Env alone is not enough without funding.
+# Redeploy after adding secrets. Status: GET /api/ai-match/status → ready: true
+```
 
-| Who owns the ticket NFT | Who can claim Megapot winnings |
-| ----------------------- | ------------------------------ |
-| **Escrow** (match not finished) | **Neither player** can claim until the NFT leaves escrow — claim is by owner |
-| After Whot resolves → winner owns both tickets | **Whot winner** can claim lottery prizes on those tickets (if any) |
-| After timeout cancel → original tickets returned | **Each original owner** can claim on their own ticket |
+Legacy alias: `AI_HOUSE_PRIVATE_KEY` is accepted if `AGENT_PRIVATE_KEY` is unset.
 
-If Megapot **draws while tickets are still in escrow**:
+Optional: `NEXT_PUBLIC_BASE_RPC` (private RPC reduces public rate limits).
 
-- The draw still runs as normal for those ticket numbers.
-- Prize USDC is **claimable by whoever owns the NFT** when they call `claimWinnings`.
-- While locked, ownership is the **escrow contract**, so players should **finish or cancel the match** before they can claim.
+After changing env vars on Vercel, **redeploy** so the runtime picks them up.
 
-The drawing does **not** auto-send jackpot money to the original buyer if the ticket is sitting in escrow.
+---
 
-### Practical tips
+## Multiplayer move relay
 
-- Not playing and no opponent yet → **cancel waiting** and get your ticket back.
-- Both staked but abandoned → wait for the **2h cancel** (or both confirm a winner if you finished the game).
-- Want lottery claim after a win → win/cancel first so the NFT is in **your** wallet, then claim on Megapot/Jackpot.
+| Action | Wallet? | Where |
+|--------|---------|--------|
+| Create / join (stake) | Yes | On-chain escrow |
+| Each card / draw | **No** | `/api/match/:id/moves` (+ Redis) |
+| Ready-up, chat, profiles | No | Match APIs + Redis |
+| Confirm winner | Yes (once each) | On-chain `submitResult` |
+
+Locally, an in-memory store works. On **Vercel**, Redis is required so both wallets share one log.
 
 ---
 
 ## Architecture
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) and [DEPLOYED.md](./DEPLOYED.md).
-
 | Layer | Role |
 | ----- | ---- |
-| `WhotMatchEscrow.sol` | Create/join match, lock 2 ticket NFTs, dual-confirm winner → transfer both |
-| `frontend/src/lib/whot` | Full Nigerian Whot rules (match shape/number + specials) |
-| Lobby UI | Ticket **count** + tap-to-select tickets; live Megapot jackpot + countdown |
-| Megapot | Buy random $1 tickets via `JackpotRandomTicketBuyer` |
+| `contracts/src/WhotMatchEscrow.sol` | Create/join, lock 2 tickets, dual-confirm → transfer both |
+| `frontend/src/lib/whot` | Full Whot rules engine + practice AI |
+| `frontend/src/app/api/ai-match/*` | Agent join + dual-confirm (server wallet) |
+| Lobby | Modes, jackpot strip, ticket count, buy flow |
+| Megapot | Random $1 tickets via `JackpotRandomTicketBuyer` |
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) and [DEPLOYED.md](./DEPLOYED.md).
+
+### Agent health
+
+```
+GET /api/ai-match/status
+→ { ready, hasPrivateKey, agentAddress, env: { AGENT_PRIVATE_KEY, ... } }
+```
+
+---
 
 ## Whot rules (v1)
 
 - Match **shape** (Circle, Triangle, Cross, Square, Star) or **number**
-- **1** Hold On (play again)
-- **2** Pick Two (stackable)
-- **5** Pick Three (stackable)
-- **8** Suspension / skip
-- **14** General Market (opponent draws 1)
-- **20** Whot wild — call any shape
-- First to empty hand wins
+- **1** Hold On · **2** Pick Two · **5** Pick Three · **8** Suspension · **14** General Market · **20** Whot (wild)
+- First empty hand wins
 
-Full player-facing guide: `/guide` in the app.
+In-app guide: `/guide`.
 
-## Demo paths
+---
 
-1. **Practice vs AI** — no wallet/tickets required  
-2. **Stake match** — name + pick ticket → create/join → play free → both `submitResult` → winner gets both tickets  
+## Stack
 
-## Jam notes
+- **Next.js 14** + React + TypeScript  
+- **wagmi / viem** (Base)  
+- **Framer Motion** + cream/red Whot UI  
+- **Upstash Redis / Vercel KV** for multiplayer state  
+- **Hardhat** for escrow  
 
-- Gameplay is **off-chain via relay** (both ends see every move); only stake / cancel / confirm winner are on-chain.
-- Payout is **trust-minimized** via dual confirmation (both players must agree on the winner).
-- Inco confidential compute not integrated in v1 (escrow + public play is enough for a playable demo).
+---
 
+## Notes
+
+- Gameplay is **off-chain** (relay); only stake / cancel / confirm are on-chain.
+- Dual confirmation prevents one side from unilaterally claiming the pot.
+- Agent auto-confirms the reported outcome for Challenge Agent (same dual-confirm path as friends).
+- Do **not** commit private keys. Keep `AGENT_PRIVATE_KEY` / `PRIVATE_KEY` in Vercel / local `.env` only.
