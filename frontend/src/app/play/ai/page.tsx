@@ -2,6 +2,7 @@
 
 import { GameBoard } from "@/components/GameBoard";
 import { SiteNav } from "@/components/SiteNav";
+import { TicketPicker } from "@/components/TicketPicker";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -10,22 +11,19 @@ import {
   useAccount,
   useConnect,
   usePublicClient,
-  useReadContract,
-  useWriteContract,
 } from "wagmi";
-import { formatUnits } from "viem";
-import { ADDRESSES, erc20Abi } from "@/lib/contracts";
+import { decodeEventLog, type Address, type Hex } from "viem";
+import { ADDRESSES, MatchStatus, whotEscrowAbi } from "@/lib/contracts";
 import {
-  AI_ENTRY_USDC,
-  aiEntryFeeRaw,
-  aiEntryLabel,
-  aiTreasury,
-  getAiPaidSession,
-  setAiPaidSession,
-} from "@/lib/aiPaid";
+  rememberMatchId,
+  useEscrowActions,
+  useEscrowReady,
+} from "@/hooks/useEscrow";
+import { useUserTickets } from "@/hooks/useUserTickets";
 import { waitForBaseReceipt } from "@/lib/waitForReceipt";
+import type { PlayerId } from "@/lib/whot/types";
 
-type Gate = "pick" | "pay" | "play";
+type Gate = "pick" | "stake" | "play" | "settle";
 
 function isMobile() {
   if (typeof navigator === "undefined") return false;
@@ -33,8 +31,9 @@ function isMobile() {
 }
 
 /**
- * Play vs AI — free practice or paid challenge (USDC entry → treasury).
- * Paid revenue goes to ADDRESSES.megapotReferrer / NEXT_PUBLIC_AI_TREASURY_ADDRESS.
+ * Play vs AI:
+ * - free: local practice, no stake
+ * - paid: stake 1 Megapot ticket; house buys/stakes 1; both in escrow; winner takes both
  */
 export default function PlayAiPage() {
   return (
@@ -58,53 +57,68 @@ function PlayAiInner() {
   const modeParam = search.get("mode"); // free | paid | null
   const { address, isConnected } = useAccount();
   const { connect, connectors, isPending: connectPending } = useConnect();
-  const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient({ chainId: 8453 });
+  const escrowReady = useEscrowReady();
+  const { createMatch, submitResult, isPending } = useEscrowActions();
+  const {
+    stakeableTickets,
+    stakeableCount,
+    loading: ticketsLoading,
+    error: ticketsError,
+    refetch: refetchTickets,
+  } = useUserTickets();
 
   const [gate, setGate] = useState<Gate>(() => {
-    if (modeParam === "paid") return "pay";
+    if (modeParam === "paid") return "stake";
     if (modeParam === "free") return "play";
     return "pick";
   });
-  const [paid, setPaid] = useState(false);
+  const [ticketId, setTicketId] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [houseReady, setHouseReady] = useState<boolean | null>(null);
+  const [houseAddress, setHouseAddress] = useState<string | null>(null);
 
-  const seed = useMemo(
-    () => `ai-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    // new seed when entering play so rematches after pay stay fresh
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [gate, paid]
+  const [matchId, setMatchId] = useState<string | null>(null);
+  const [gameSeed, setGameSeed] = useState<string | null>(null);
+  const [winnerAddr, setWinnerAddr] = useState<Address | null>(null);
+  const [settleMsg, setSettleMsg] = useState<string | null>(null);
+  const [settling, setSettling] = useState(false);
+
+  const freeSeed = useMemo(
+    () => `ai-free-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    []
   );
 
   const profile = address ? getProfile(address) : null;
-  const feeRaw = aiEntryFeeRaw();
-  const treasury = aiTreasury();
-
-  const { data: usdcBalance, refetch: refetchBal } = useReadContract({
-    address: ADDRESSES.usdc,
-    abi: erc20Abi,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    chainId: 8453,
-    query: { enabled: !!address && gate === "pay", refetchInterval: 12_000 },
-  });
-
-  // Restore paid session (2h) so refresh doesn't re-charge mid-game
-  useEffect(() => {
-    if (!address) return;
-    const s = getAiPaidSession(address);
-    if (s) {
-      setPaid(true);
-      if (modeParam === "paid" || gate === "pay") setGate("play");
-    }
-  }, [address, modeParam, gate]);
 
   useEffect(() => {
-    if (modeParam === "paid") setGate("pay");
+    if (modeParam === "paid") setGate("stake");
     if (modeParam === "free") setGate("play");
   }, [modeParam]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/ai-match/status", { cache: "no-store" });
+        const data = (await res.json()) as {
+          ready?: boolean;
+          houseAddress?: string;
+        };
+        if (!cancelled) {
+          setHouseReady(!!data.ready);
+          setHouseAddress(data.houseAddress || null);
+        }
+      } catch {
+        if (!cancelled) setHouseReady(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const onConnect = () => {
     const hasInjected =
@@ -121,99 +135,295 @@ function PlayAiInner() {
     else setError("Install MetaMask or open this site in a wallet browser.");
   };
 
-  const onPay = useCallback(async () => {
+  const startStakeMatch = useCallback(async () => {
     if (!address) {
       onConnect();
       return;
     }
+    if (!escrowReady) {
+      setError("Escrow not configured.");
+      return;
+    }
+    if (!houseReady) {
+      setError(
+        "AI house is not configured on the server (AI_HOUSE_PRIVATE_KEY). Free practice still works."
+      );
+      return;
+    }
+    if (!ticketId) {
+      setError("Select a stakeable Megapot ticket.");
+      return;
+    }
     setError(null);
-    setStatus(null);
+    setBusy(true);
     try {
-      const bal = usdcBalance ?? 0n;
-      if (bal < feeRaw) {
-        setError(
-          `Need ${aiEntryLabel()} on Base. Buy USDC or a Megapot ticket from the lobby, then come back.`
-        );
-        return;
-      }
-      setBusy(true);
-      setStatus(`Confirm ${aiEntryLabel()} entry fee in your wallet…`);
-      const hash = await writeContractAsync({
-        address: ADDRESSES.usdc,
-        abi: erc20Abi,
-        functionName: "transfer",
-        args: [treasury, feeRaw],
-        chainId: 8453,
+      setStatus("Approve ticket + create match (you stake 1)…");
+      const hash = await createMatch(BigInt(ticketId));
+      setStatus("Waiting for your stake on Base…");
+      const receipt = await waitForBaseReceipt(hash, {
+        client: publicClient,
+        timeoutMs: 120_000,
       });
-      setStatus("Payment submitted — confirming on Base…");
-      try {
-        await waitForBaseReceipt(hash, {
-          client: publicClient,
-          timeoutMs: 120_000,
-        });
-      } catch {
-        // May still succeed — unlock if we got a hash; user can re-check
-        setStatus(
-          "Confirmation slow — if your wallet shows success, you’re in."
+      let newMatchId: string | null = null;
+      for (const log of receipt.logs) {
+        try {
+          const decoded = decodeEventLog({
+            abi: whotEscrowAbi,
+            data: log.data,
+            topics: log.topics,
+          });
+          if (decoded.eventName === "MatchCreated") {
+            newMatchId = (
+              decoded.args as { matchId: bigint }
+            ).matchId.toString();
+            break;
+          }
+        } catch {
+          /* not our event */
+        }
+      }
+      if (!newMatchId) {
+        throw new Error(
+          "Match created but id not found in receipt. Check Live matches."
         );
       }
-      setAiPaidSession(address, hash);
-      setPaid(true);
-      setGate("play");
+      rememberMatchId(BigInt(newMatchId));
+      setMatchId(newMatchId);
+
+      setStatus("AI house is staking its ticket (may buy one if needed)…");
+      const joinRes = await fetch("/api/ai-match/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId: newMatchId }),
+      });
+      const joinData = (await joinRes.json()) as {
+        ok?: boolean;
+        error?: string;
+        gameSeed?: string;
+        houseAddress?: string;
+      };
+      if (!joinRes.ok || !joinData.ok) {
+        throw new Error(joinData.error || "AI house could not join");
+      }
+      if (joinData.houseAddress) setHouseAddress(joinData.houseAddress);
+      const seed = joinData.gameSeed || null;
+      if (!seed || seed === "0x" + "0".repeat(64)) {
+        // refetch match
+        if (publicClient) {
+          const m = (await publicClient.readContract({
+            address: ADDRESSES.whotEscrow,
+            abi: whotEscrowAbi,
+            functionName: "getMatch",
+            args: [BigInt(newMatchId)],
+          })) as { gameSeed: Hex; status: number };
+          if (m.status !== MatchStatus.Active) {
+            throw new Error("Match not active after AI join");
+          }
+          setGameSeed(m.gameSeed);
+        } else {
+          throw new Error("No game seed after AI join");
+        }
+      } else {
+        setGameSeed(seed);
+      }
       setStatus(null);
-      void refetchBal();
+      setGate("play");
+      void refetchTickets();
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Payment failed";
+      const msg = e instanceof Error ? e.message : "Could not start AI match";
       if (/user rejected|denied|cancelled|canceled/i.test(msg)) {
-        setError("Wallet cancelled the payment.");
+        setError("Wallet cancelled.");
       } else {
         setError(msg);
       }
     } finally {
       setBusy(false);
+      setStatus(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address, feeRaw, treasury, usdcBalance, writeContractAsync, publicClient, refetchBal]);
+  }, [
+    address,
+    escrowReady,
+    houseReady,
+    ticketId,
+    createMatch,
+    publicClient,
+    refetchTickets,
+  ]);
 
-  const board = (
-    <GameBoard
-      seed={seed}
-      vsAi
-      p1Name={profile?.username || "You"}
-      p2Name="AI"
-      showSoundToggle
-      stakeTickets={paid ? 1 : 0}
-      potTickets={paid ? 1 : 0}
-      ticketBalance={
-        paid
-          ? `Paid · ${aiEntryLabel()} entry`
-          : "Practice · free"
+  const settleOnChain = useCallback(
+    async (winner: Address) => {
+      if (!matchId || !address) return;
+      setSettling(true);
+      setSettleMsg("Confirm result in wallet (you)…");
+      try {
+        await submitResult(BigInt(matchId), winner);
+        setSettleMsg("AI house confirming so tickets transfer…");
+        const res = await fetch("/api/ai-match/result", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ matchId, winner }),
+        });
+        const data = (await res.json()) as {
+          ok?: boolean;
+          error?: string;
+          resolved?: boolean;
+        };
+        if (!res.ok || !data.ok) {
+          setSettleMsg(
+            data.error ||
+              "House confirm failed — try again or wait; you already submitted."
+          );
+        } else if (data.resolved) {
+          setSettleMsg(
+            winner.toLowerCase() === address.toLowerCase()
+              ? "Resolved! Both tickets transferred to you."
+              : "Resolved. Both tickets went to the AI house."
+          );
+        } else {
+          setSettleMsg(
+            "Both sides submitted. Refresh tickets in a moment if transfer is pending."
+          );
+        }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Settle failed";
+        setSettleMsg(msg);
+      } finally {
+        setSettling(false);
+        void refetchTickets();
       }
-      meProfile={
-        profile
-          ? {
-              username: profile.username,
-              avatar: profile.avatar,
-              color: profile.color,
-            }
-          : { username: "You", avatar: "🃏", color: "#c41e3a" }
-      }
-      oppProfile={{ username: "AI", avatar: "", color: "#3b82f6" }}
-      backHref="/play"
-    />
+    },
+    [matchId, address, submitResult, refetchTickets]
   );
 
-  if (gate === "play") {
-    return board;
+  const onWin = useCallback(
+    (w: PlayerId) => {
+      if (!matchId || !address || !houseAddress) return;
+      const winner =
+        w === "p1" ? (address as Address) : (houseAddress as Address);
+      setWinnerAddr(winner);
+      setGate("settle");
+      void settleOnChain(winner);
+    },
+    [matchId, address, houseAddress, settleOnChain]
+  );
+
+  const onTimeoutForfeit = useCallback(
+    (w: PlayerId) => {
+      onWin(w);
+    },
+    [onWin]
+  );
+
+  // ── Free practice ──
+  if (gate === "play" && !matchId) {
+    return (
+      <GameBoard
+        seed={freeSeed}
+        vsAi
+        p1Name={profile?.username || "You"}
+        p2Name="AI"
+        showSoundToggle
+        stakeTickets={0}
+        potTickets={0}
+        ticketBalance="Practice · free"
+        meProfile={
+          profile
+            ? {
+                username: profile.username,
+                avatar: profile.avatar,
+                color: profile.color,
+              }
+            : { username: "You", avatar: "🃏", color: "#c41e3a" }
+        }
+        oppProfile={{ username: "AI", avatar: "", color: "#3b82f6" }}
+        backHref="/play"
+      />
+    );
   }
 
-  const balLabel =
-    usdcBalance !== undefined
-      ? `$${Number(formatUnits(usdcBalance, 6)).toFixed(2)} USDC`
-      : isConnected
-        ? "…"
-        : "—";
+  // ── Paid stake match in progress ──
+  if (gate === "play" && matchId && gameSeed) {
+    return (
+      <GameBoard
+        seed={gameSeed}
+        vsAi
+        humanPlayer="p1"
+        p1Name={profile?.username || "You"}
+        p2Name="AI House"
+        showSoundToggle
+        stakeTickets={1}
+        potTickets={2}
+        ticketBalance="1 staked · winner takes both"
+        onWin={onWin}
+        onTimeoutForfeit={onTimeoutForfeit}
+        meProfile={
+          profile
+            ? {
+                username: profile.username,
+                avatar: profile.avatar,
+                color: profile.color,
+              }
+            : { username: "You", avatar: "🃏", color: "#c41e3a" }
+        }
+        oppProfile={{ username: "AI House", avatar: "", color: "#3b82f6" }}
+        backHref="/play"
+      />
+    );
+  }
 
+  // ── Settlement screen ──
+  if (gate === "settle" && matchId) {
+    const youWon =
+      !!address &&
+      !!winnerAddr &&
+      winnerAddr.toLowerCase() === address.toLowerCase();
+    return (
+      <div className="landing-premium ds">
+        <SiteNav />
+        <main className="prem-main ai-pay-main">
+          <div className="ai-pay-panel">
+            <p className="prem-how-eyebrow">Match #{matchId}</p>
+            <h1 className="prem-h1 prem-h1-page">
+              {youWon ? "You won both tickets" : "AI house wins both"}
+            </h1>
+            <p className="prem-lede">
+              Dual confirm settles escrow. You and the AI house both submit the
+              winner so both Megapot tickets transfer.
+            </p>
+            {settleMsg && (
+              <div className={youWon ? "banner win" : "alert"} style={{ marginTop: 16 }}>
+                {settleMsg}
+              </div>
+            )}
+            <div className="ai-pay-actions" style={{ marginTop: 20 }}>
+              {winnerAddr && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={settling || isPending}
+                  onClick={() => void settleOnChain(winnerAddr)}
+                >
+                  {settling || isPending ? "Working…" : "Retry settle"}
+                </button>
+              )}
+              <Link
+                href={`/play/match/${matchId}/tickets`}
+                className="btn btn-ghost"
+              >
+                Tickets &amp; prizes
+              </Link>
+              <Link href="/play" className="btn btn-ghost">
+                Lobby
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ── Mode pick / stake gate ──
   return (
     <div className="landing-premium ds">
       <SiteNav />
@@ -223,10 +433,9 @@ function PlayAiInner() {
             <p className="prem-how-eyebrow">Play vs AI</p>
             <h1 className="prem-h1 prem-h1-page">Choose how you play</h1>
             <p className="prem-lede" style={{ maxWidth: "36em" }}>
-              Practice free anytime, or pay a small entry fee to challenge the AI
-              for real — fees go to the WhotWhot treasury on Base.
+              Practice free, or stake 1 Megapot ticket. The AI house stakes
+              another — both lock in escrow. Winner takes both tickets.
             </p>
-
             <div className="ai-pay-grid">
               <button
                 type="button"
@@ -238,107 +447,114 @@ function PlayAiInner() {
                 <p>No wallet · Learn rules · Replay anytime</p>
                 <span className="ai-pay-cta">Start free</span>
               </button>
-
               <button
                 type="button"
                 className="ai-pay-card paid"
-                onClick={() => setGate("pay")}
+                onClick={() => setGate("stake")}
               >
-                <span className="ai-pay-badge paid">Paid</span>
+                <span className="ai-pay-badge paid">Stake</span>
                 <h2>Challenge AI</h2>
-                <p>
-                  {aiEntryLabel()} entry · USDC on Base · Supports the table
-                </p>
-                <span className="ai-pay-cta">Continue</span>
+                <p>1 ticket each · Escrow · Winner takes both</p>
+                <span className="ai-pay-cta">Stake ticket</span>
               </button>
             </div>
-
-            <p className="ai-pay-note muted">
-              Paid entry is a flat fee (not a stake pot). You keep your Megapot
-              tickets. Want tickets?{" "}
-              <Link href="/play">Buy from the lobby</Link> — that also earns
-              protocol referral fees for the site.
-            </p>
-            <Link href="/play" className="prem-btn-ghost sm" style={{ marginTop: 12 }}>
+            <Link href="/play" className="prem-btn-ghost sm" style={{ marginTop: 16 }}>
               ← Lobby
             </Link>
           </div>
         )}
 
-        {gate === "pay" && (
-          <div className="ai-pay-panel">
-            <p className="prem-how-eyebrow">Paid challenge</p>
-            <h1 className="prem-h1 prem-h1-page">
-              Pay {aiEntryLabel()} to play AI
+        {gate === "stake" && (
+          <div className="ai-pay-panel" style={{ textAlign: "left" }}>
+            <p className="prem-how-eyebrow">Stake vs AI</p>
+            <h1 className="prem-h1 prem-h1-page" style={{ textAlign: "left", maxWidth: "none" }}>
+              Lock 1 ticket — AI locks 1
             </h1>
-            <p className="prem-lede">
-              One-time entry for this session (about 2 hours). USDC is sent to
-              the WhotWhot treasury on Base — not locked in escrow.
+            <p className="muted">
+              You stake a current-draw Megapot ticket. The AI house buys/stakes
+              its own ticket into the same escrow. Play Whot —{" "}
+              <strong style={{ color: "#fff" }}>winner takes both NFTs</strong>.
             </p>
 
-            <div className="ai-pay-summary">
-              <div>
-                <em>Entry fee</em>
-                <strong>{aiEntryLabel()}</strong>
+            {houseReady === false && (
+              <div className="alert" style={{ marginTop: 12 }}>
+                AI house is offline (server needs{" "}
+                <code>AI_HOUSE_PRIVATE_KEY</code> funded with ETH gas + USDC for
+                tickets). Free practice still works.
               </div>
-              <div>
-                <em>Your USDC</em>
-                <strong>{balLabel}</strong>
-              </div>
-              <div>
-                <em>Treasury</em>
-                <strong className="ai-pay-addr">
-                  {treasury.slice(0, 6)}…{treasury.slice(-4)}
+            )}
+            {houseReady && houseAddress && (
+              <p className="muted" style={{ fontSize: "0.85rem" }}>
+                AI house:{" "}
+                <strong style={{ color: "#fff" }}>
+                  {houseAddress.slice(0, 6)}…{houseAddress.slice(-4)}
                 </strong>
+              </p>
+            )}
+
+            <div className="ticket-badge" style={{ margin: "16px 0" }}>
+              <div>
+                <div className="muted">Your stakeable tickets</div>
+                <strong>{isConnected ? stakeableCount : "—"}</strong>
               </div>
             </div>
 
-            {error && <div className="alert">{error}</div>}
-            {status && !error && (
+            {!isConnected ? (
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={connectPending}
+                onClick={onConnect}
+              >
+                {connectPending ? "…" : "Connect wallet"}
+              </button>
+            ) : (
+              <TicketPicker
+                tickets={stakeableTickets}
+                loading={ticketsLoading}
+                error={ticketsError}
+                selectedId={ticketId}
+                onSelect={setTicketId}
+              />
+            )}
+
+            {error && <div className="alert" style={{ marginTop: 12 }}>{error}</div>}
+            {status && (
               <p className="muted" style={{ marginTop: 12 }}>
                 {status}
               </p>
             )}
 
-            <div className="ai-pay-actions">
-              {!isConnected ? (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={connectPending || busy}
-                  onClick={onConnect}
-                >
-                  {connectPending ? "…" : "Connect wallet"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={busy}
-                  onClick={() => void onPay()}
-                >
-                  {busy
-                    ? "Confirm in wallet…"
-                    : `Pay ${aiEntryLabel()} & play`}
-                </button>
-              )}
+            <div className="ai-pay-actions" style={{ justifyContent: "flex-start", marginTop: 18 }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={
+                  busy ||
+                  isPending ||
+                  !isConnected ||
+                  !ticketId ||
+                  !houseReady ||
+                  !escrowReady
+                }
+                onClick={() => void startStakeMatch()}
+              >
+                {busy || isPending
+                  ? "Working…"
+                  : "Stake ticket & call AI"}
+              </button>
               <button
                 type="button"
                 className="btn btn-ghost"
                 disabled={busy}
                 onClick={() => setGate("play")}
               >
-                Play free instead
+                Practice free
               </button>
               <Link href="/play" className="btn btn-ghost">
                 ← Lobby
               </Link>
             </div>
-
-            <p className="ai-pay-note muted">
-              Fee amount: {AI_ENTRY_USDC} USDC (6 decimals on Base). Need funds?{" "}
-              <Link href="/play">Buy a Megapot ticket</Link> from the lobby.
-            </p>
           </div>
         )}
       </main>

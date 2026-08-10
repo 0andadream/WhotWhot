@@ -534,8 +534,8 @@ function ModeSelect({
           transition={{ type: "spring", stiffness: 400, damping: 22 }}
         >
           <h2>Challenge AI</h2>
-          <p>$1 USDC entry · Supports WhotWhot · Wallet required</p>
-          <span className="play-v2-mode-start">Pay &amp; play</span>
+          <p>1 ticket each · Escrow · Winner takes both</p>
+          <span className="play-v2-mode-start">Stake &amp; play</span>
         </motion.button>
 
         <motion.button
