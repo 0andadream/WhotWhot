@@ -291,11 +291,10 @@ export default function CreateMatchPage() {
                 </li>
               </ul>
               <p className="stake-confirm-note muted">
-                If no one joins or the match is abandoned for 2 hours, either
-                player can cancel and tickets return. If a Megapot drawing
-                finishes while tickets sit in escrow, prize rights stay with the
-                ticket NFTs — claim on the match tickets page after settle or
-                cancel.
+                No join or abandoned match: either side can cancel after 2 hours
+                and tickets return. If Megapot draws while tickets are locked,
+                prizes stay on the NFTs — claim on the tickets page after settle
+                or cancel.
               </p>
               <div className="stake-confirm-status">
                 <span>

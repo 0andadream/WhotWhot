@@ -360,17 +360,17 @@ export default function PlayLobbyPage() {
 
             <div className="play-v2-trust">
               <p>
-                <strong>Winner takes both</strong> — each player locks 1 ticket;
-                dual confirm moves both NFTs to the winner.
+                <strong>Winner takes both</strong> — one ticket each; dual
+                confirm sends both NFTs to the winner.
               </p>
               <p>
-                <strong>2-hour cancel</strong> — if a match is abandoned, either
-                side can cancel after 2 hours and tickets return.
+                <strong>2-hour cancel</strong> — abandoned match? Either side
+                can cancel after 2 hours and get their ticket back.
               </p>
               <p>
                 <strong>Mid-escrow draw</strong> — if Megapot draws while tickets
-                are locked, prize rights stay on the NFTs; claim after settle or
-                cancel on the tickets page.
+                are locked, prizes stay on the NFTs. Claim on the tickets page
+                after settle or cancel.
               </p>
             </div>
 
