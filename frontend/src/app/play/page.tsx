@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { SiteNav } from "@/components/SiteNav";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
@@ -42,7 +42,25 @@ function isMobile() {
 const ease = WHOT_EASE;
 
 export default function PlayLobbyPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="landing-premium ds play-lobby-v2">
+          <SiteNav />
+          <main className="play-v2">
+            <p className="play-v2-empty-text">Loading…</p>
+          </main>
+        </div>
+      }
+    >
+      <PlayLobbyInner />
+    </Suspense>
+  );
+}
+
+function PlayLobbyInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const reduce = useReducedMotion();
   const { isConnected, address } = useAccount();
   const { connect, connectors, isPending: connectPending } = useConnect();
@@ -83,7 +101,26 @@ export default function PlayLobbyPage() {
   >("idle");
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [buyError, setBuyError] = useState<string | null>(null);
-  const [screen, setScreen] = useState<Screen>("modes");
+  const viewParam = searchParams.get("view");
+  const [screen, setScreenState] = useState<Screen>(() =>
+    viewParam === "friends" ? "friends" : "modes"
+  );
+  const setScreen = useCallback(
+    (next: Screen) => {
+      setScreenState(next);
+      if (next === "friends") {
+        router.replace("/play?view=friends", { scroll: false });
+      } else {
+        router.replace("/play", { scroll: false });
+      }
+    },
+    [router]
+  );
+  // Sync when landing with /play?view=friends (e.g. back from create)
+  useEffect(() => {
+    if (viewParam === "friends") setScreenState("friends");
+    else if (viewParam == null || viewParam === "") setScreenState("modes");
+  }, [viewParam]);
   const [historyTab, setHistoryTab] = useState<HistoryTab>("live");
   const [openProfiles, setOpenProfiles] = useState<
     Record<string, { username: string; avatar: string; color: string }>

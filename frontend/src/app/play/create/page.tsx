@@ -178,8 +178,8 @@ export default function CreateMatchPage() {
       <SiteNav />
       <div className="app-shell shell-wide create-desk">
         <header className="header create-desk-header">
-          <Link href="/play" className="btn btn-ghost btn-sm">
-            ← Play
+          <Link href="/play?view=friends" className="btn btn-ghost btn-sm">
+            ← Play with Friends
           </Link>
           {profile && isConnected && (
             <div className="create-desk-you">
