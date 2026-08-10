@@ -121,11 +121,13 @@ export default function MatchPage() {
     // Poll chain faster while dual-confirm is pending
     refetchIntervalMs: settleMode ? 5_000 : 12_000,
   });
-  const { submitResult, isPending } = useEscrowActions();
+  const { submitResult, cancelWaiting, cancelActive, isPending } =
+    useEscrowActions();
 
   const [game, setGame] = useState<GameState | null>(null);
   const [actions, setActions] = useState<GameAction[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [posting, setPosting] = useState(false);
   const [forfeitWinner, setForfeitWinner] = useState<PlayerId | null>(null);
@@ -1197,7 +1199,41 @@ export default function MatchPage() {
           )}
 
           {match.status === MatchStatus.Waiting && (
-            <ShareWaitingMatch matchId={matchId.toString()} />
+            <>
+              <ShareWaitingMatch matchId={matchId.toString()} />
+              {humanPlayer === "p1" && (
+                <div style={{ marginTop: 16 }}>
+                  <p className="muted" style={{ fontSize: "0.88rem", marginBottom: 10 }}>
+                    No opponent yet. Cancel to return your staked ticket.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    disabled={cancelBusy || isPending}
+                    onClick={() => {
+                      if (!matchId) return;
+                      setCancelBusy(true);
+                      setMsg(null);
+                      void cancelWaiting(matchId)
+                        .then(() => {
+                          setMsg("Match cancelled. Ticket returned to your wallet.");
+                          void refetch();
+                        })
+                        .catch((e: unknown) => {
+                          setMsg(
+                            e instanceof Error ? e.message : "Cancel failed"
+                          );
+                        })
+                        .finally(() => setCancelBusy(false));
+                    }}
+                  >
+                    {cancelBusy || isPending
+                      ? "Confirm in wallet…"
+                      : "Cancel & refund ticket"}
+                  </button>
+                </div>
+              )}
+            </>
           )}
 
           {match.status === MatchStatus.Resolved && (
@@ -1250,6 +1286,8 @@ export default function MatchPage() {
             {match.status === MatchStatus.Waiting && (
               <p className="muted" style={{ marginTop: 8 }}>
                 Share your table code. Chat is open for the host now.
+                {humanPlayer === "p1" &&
+                  " Host can cancel above to refund the ticket."}
               </p>
             )}
           </div>

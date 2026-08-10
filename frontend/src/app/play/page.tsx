@@ -18,6 +18,7 @@ import { useCountdown, useJackpotInfo } from "@/hooks/useMegapot";
 import { useUserTickets } from "@/hooks/useUserTickets";
 import {
   useEscrowReady,
+  useEscrowActions,
   useMyMatches,
   useOpenTables,
   MatchStatus,
@@ -55,6 +56,7 @@ export default function PlayLobbyPage() {
     loading: myLoading,
     refetch: refetchMine,
   } = useMyMatches();
+  const { cancelWaiting, isPending: cancelPending } = useEscrowActions();
   const { tables: openTables, loading: openLoading, refetch: refetchOpen } =
     useOpenTables();
   const { writeContractAsync } = useWriteContract();
@@ -470,6 +472,12 @@ export default function PlayLobbyPage() {
                   matches={myMatches}
                   loading={myLoading}
                   address={address}
+                  cancelPending={cancelPending}
+                  onCancelWaiting={async (id) => {
+                    await cancelWaiting(id);
+                    void refetchMine();
+                    void refetchTickets();
+                  }}
                 />
               )}
               {historyTab === "past" && (
@@ -566,11 +574,18 @@ function HistoryLive({
   matches,
   loading,
   address,
+  cancelPending,
+  onCancelWaiting,
 }: {
   matches: MatchSummary[];
   loading: boolean;
   address?: Address;
+  cancelPending?: boolean;
+  onCancelWaiting?: (id: bigint) => Promise<void>;
 }) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
   if (loading) {
     return <p className="play-v2-empty-text">Loading your tables…</p>;
   }
@@ -590,16 +605,26 @@ function HistoryLive({
   }
   return (
     <div className="play-v2-history-list">
+      {err && (
+        <div className="alert" style={{ marginBottom: 10 }}>
+          {err}
+        </div>
+      )}
       {matches.map((m) => {
         const href =
           m.status === MatchStatus.Waiting && m.role === "guest"
             ? `/play/join?matchId=${m.id}`
             : `/play/match/${m.id.toString()}`;
+        const canCancel =
+          m.status === MatchStatus.Waiting &&
+          m.role === "host" &&
+          !!onCancelWaiting;
+        const idStr = m.id.toString();
         return (
-          <div key={m.id.toString()} className="play-v2-history-card">
+          <div key={idStr} className="play-v2-history-card">
             <div>
               <div className="play-v2-history-title">
-                Table #{m.id.toString()}
+                Table #{idStr}
                 <span
                   className={`play-v2-badge ${
                     m.status === MatchStatus.Active ? "live" : "wait"
@@ -612,9 +637,34 @@ function HistoryLive({
                 {m.role === "host" ? "You host" : "You joined"} · 1 ticket
               </p>
             </div>
-            <Link href={href} className="prem-btn-white sm">
-              Open
-            </Link>
+            <div className="play-v2-history-actions">
+              <Link href={href} className="prem-btn-white sm">
+                Open
+              </Link>
+              {canCancel && (
+                <button
+                  type="button"
+                  className="prem-btn-ghost sm"
+                  disabled={cancelPending || busyId === idStr}
+                  onClick={() => {
+                    setErr(null);
+                    setBusyId(idStr);
+                    void onCancelWaiting!(m.id)
+                      .then(() => setBusyId(null))
+                      .catch((e: unknown) => {
+                        setBusyId(null);
+                        setErr(
+                          e instanceof Error ? e.message : "Cancel failed"
+                        );
+                      });
+                  }}
+                >
+                  {busyId === idStr || cancelPending
+                    ? "Cancelling…"
+                    : "Cancel & refund"}
+                </button>
+              )}
+            </div>
           </div>
         );
       })}
