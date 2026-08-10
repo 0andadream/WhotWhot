@@ -47,12 +47,7 @@ export function TicketPicker({
   const stakeable = tickets.filter((t) => t.stakeable && !t.resultsSeen);
 
   if (stakeable.length === 0) {
-    return (
-      <p className="muted">
-        {emptyHint ||
-          "No open-draw tickets to stake. Buy a fresh Megapot ticket for the current round. Already-drawn NFTs (including no-win tickets after you view results) are hidden."}
-      </p>
-    );
+    return null;
   }
 
   return (
