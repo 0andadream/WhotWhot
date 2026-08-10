@@ -103,7 +103,7 @@ export function MatchResultPanel({
   return (
     <div className={`match-result-panel${won ? " is-win" : " is-loss"}`}>
       <p className="match-result-eyebrow">
-        {won ? "You won the table" : "Opponent wins"}
+        {won ? "You won the table" : `${opponentName} wins`}
       </p>
       <h2 className="match-result-title">
         {won ? "Claim both tickets" : "Confirm so tickets can transfer"}
@@ -124,7 +124,7 @@ export function MatchResultPanel({
         <span className="match-result-arrow">→</span>
         <div className="match-result-lock winner">
           <span>🎟🎟</span>
-          <em>{won ? "You" : "Winner"}</em>
+          <em>{won ? "You" : opponentName}</em>
         </div>
       </div>
       <div className="match-result-actions">
@@ -137,10 +137,10 @@ export function MatchResultPanel({
           {pending
             ? "Confirm in wallet…"
             : submitted
-              ? "Waiting for opponent…"
+              ? `Waiting for ${opponentName}…`
               : won
                 ? "Claim both tickets"
-                : "Confirm opponent won"}
+                : `Confirm ${opponentName} won`}
         </button>
         {won && (
           <button
