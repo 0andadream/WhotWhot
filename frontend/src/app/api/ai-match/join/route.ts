@@ -90,15 +90,29 @@ export async function POST(req: NextRequest) {
 
     await ensureEscrowApproval({ publicClient, wallet, account });
 
+    const joinData = encodeFunctionData({
+      abi: whotEscrowAbi,
+      functionName: "joinMatch",
+      args: [matchId, ticketId],
+    });
+    let joinGas = 500_000n;
+    try {
+      const est = await publicClient.estimateGas({
+        account: account.address,
+        to: ADDRESSES.whotEscrow,
+        data: joinData,
+      });
+      const padded = (est * 15_000n) / 10_000n;
+      if (padded > joinGas) joinGas = padded;
+    } catch {
+      /* use floor */
+    }
     const joinHash = await wallet.sendTransaction({
       account,
       chain: publicClient.chain,
       to: ADDRESSES.whotEscrow,
-      data: encodeFunctionData({
-        abi: whotEscrowAbi,
-        functionName: "joinMatch",
-        args: [matchId, ticketId],
-      }),
+      data: joinData,
+      gas: joinGas,
     });
     const receipt = await publicClient.waitForTransactionReceipt({
       hash: joinHash,

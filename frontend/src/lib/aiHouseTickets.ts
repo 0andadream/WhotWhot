@@ -33,17 +33,44 @@ function winningTicketOf(state: unknown): bigint {
   return 0n;
 }
 
+/** Megapot random buys can exceed simple estimates; pad hard. */
+const BUY_GAS_FLOOR = 1_500_000n;
+const BUY_GAS_BUFFER_BPS = 15_000n; // 1.5x
+
+async function estimateGasWithBuffer(
+  publicClient: PublicClient,
+  account: Account,
+  tx: { to: `0x${string}`; data: `0x${string}` },
+  floor: bigint = 300_000n
+): Promise<bigint> {
+  try {
+    const est = await publicClient.estimateGas({
+      account: account.address,
+      to: tx.to,
+      data: tx.data,
+    });
+    const padded = (est * BUY_GAS_BUFFER_BPS) / 10_000n;
+    return padded > floor ? padded : floor;
+  } catch {
+    // If estimate fails (RPC flaky), use the caller floor as-is.
+    return floor;
+  }
+}
+
 async function sendAndWait(
   publicClient: PublicClient,
   wallet: WalletClient,
   account: Account,
-  tx: { to: `0x${string}`; data: `0x${string}` }
+  tx: { to: `0x${string}`; data: `0x${string}` },
+  gasFloor: bigint = 300_000n
 ): Promise<Hash> {
+  const gas = await estimateGasWithBuffer(publicClient, account, tx, gasFloor);
   const hash = await wallet.sendTransaction({
     account,
     chain: base,
     to: tx.to,
     data: tx.data,
+    gas,
   });
   const receipt = await publicClient.waitForTransactionReceipt({
     hash,
@@ -51,7 +78,16 @@ async function sendAndWait(
     timeout: 120_000,
   });
   if (receipt.status !== "success") {
-    throw new Error(`Transaction reverted (${hash})`);
+    const used = receipt.gasUsed ?? 0n;
+    const pct =
+      gas > 0n ? Number((used * 10000n) / gas) / 100 : 0;
+    throw new Error(
+      `Transaction reverted (${hash})${
+        pct >= 95
+          ? ` — ran out of gas (${used}/${gas}). Retry.`
+          : ""
+      }`
+    );
   }
   return hash;
 }
@@ -246,38 +282,20 @@ export async function buyHouseTicket(opts: {
     );
   }
 
-  // Prefer writeContract when available (better abi encoding / gas estimate)
-  let buyHash: Hash;
-  try {
-    buyHash = await wallet.writeContract({
-      account,
-      chain: base,
-      address: ADDRESSES.jackpotRandomTicketBuyer,
-      abi: randomBuyerAbi,
-      functionName: "buyTickets",
-      args: [1n, house, [], [], source],
-    });
-  } catch {
-    buyHash = await sendAndWait(publicClient, wallet, account, {
-      to: ADDRESSES.jackpotRandomTicketBuyer,
-      data: encodeFunctionData({
-        abi: randomBuyerAbi,
-        functionName: "buyTickets",
-        args: [1n, house, [], [], source],
-      }),
-    });
-    return buyHash;
-  }
-  const receipt = await publicClient.waitForTransactionReceipt({
-    hash: buyHash,
-    confirmations: 1,
-    timeout: 120_000,
+  // Empty referrers: Agent must not self-refer (referrer wallet == buyer).
+  // High gas floor — failed 0xf302… used ~890k limit and OOGed at 98% used.
+  const buyData = encodeFunctionData({
+    abi: randomBuyerAbi,
+    functionName: "buyTickets",
+    args: [1n, house, [], [], source],
   });
-  if (receipt.status !== "success") {
-    throw new Error(
-      `Agent buyTickets reverted (${buyHash}). Check Agent USDC (~$1+) and ETH gas on Base.`
-    );
-  }
+  const buyHash = await sendAndWait(
+    publicClient,
+    wallet,
+    account,
+    { to: ADDRESSES.jackpotRandomTicketBuyer, data: buyData },
+    BUY_GAS_FLOOR
+  );
   return buyHash;
 }
 
@@ -315,12 +333,18 @@ export async function ensureEscrowApproval(opts: {
     args: [house, ADDRESSES.whotEscrow],
   })) as boolean;
   if (approved) return;
-  await sendAndWait(opts.publicClient, opts.wallet, opts.account, {
-    to: ADDRESSES.jackpotTicketNft,
-    data: encodeFunctionData({
-      abi: erc721Abi,
-      functionName: "setApprovalForAll",
-      args: [ADDRESSES.whotEscrow, true],
-    }),
-  });
+  await sendAndWait(
+    opts.publicClient,
+    opts.wallet,
+    opts.account,
+    {
+      to: ADDRESSES.jackpotTicketNft,
+      data: encodeFunctionData({
+        abi: erc721Abi,
+        functionName: "setApprovalForAll",
+        args: [ADDRESSES.whotEscrow, true],
+      }),
+    },
+    200_000n
+  );
 }
