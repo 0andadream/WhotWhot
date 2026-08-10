@@ -13,14 +13,24 @@ export const revalidate = 0;
 export async function GET() {
   const configured = isAiHouseConfigured();
   const house = getAiHouseAddress();
+  // Diagnostics only — never return secret values
+  const hasAgentKey = Boolean(process.env.AGENT_PRIVATE_KEY?.trim());
+  const hasLegacyKey = Boolean(process.env.AI_HOUSE_PRIVATE_KEY?.trim());
+  const hasPrivateKeyEnv = Boolean(process.env.PRIVATE_KEY?.trim());
   return NextResponse.json(
     {
       configured,
       houseAddress: house,
       agentAddress: house,
       ready: configured && !!house,
-      /** true only when AGENT_PRIVATE_KEY (or AI_HOUSE_PRIVATE_KEY) is set server-side */
+      /** true when AGENT_PRIVATE_KEY or AI_HOUSE_PRIVATE_KEY is set server-side */
       hasPrivateKey: configured,
+      env: {
+        AGENT_PRIVATE_KEY: hasAgentKey,
+        AI_HOUSE_PRIVATE_KEY: hasLegacyKey,
+        /** Deploy key name — not used for Agent unless aliased */
+        PRIVATE_KEY: hasPrivateKeyEnv,
+      },
       checkedAt: new Date().toISOString(),
     },
     {
