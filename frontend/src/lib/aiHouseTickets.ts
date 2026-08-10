@@ -1,6 +1,7 @@
 /**
  * Ensure the Agent wallet has a stakeable open-draw Megapot ticket.
- * Buys one via JackpotRandomTicketBuyer if inventory is empty (needs USDC + ETH gas).
+ * Buys via Jackpot.buyTickets (custom numbers) — not RandomTicketBuyer —
+ * so gas is lower/more predictable and only Jackpot USDC allowance is needed.
  */
 import {
   encodeFunctionData,
@@ -18,7 +19,6 @@ import {
   erc721Abi,
   jackpotAbi,
   jackpotTicketNftAbi,
-  randomBuyerAbi,
 } from "@/lib/contracts";
 
 function winningTicketOf(state: unknown): bigint {
@@ -33,9 +33,9 @@ function winningTicketOf(state: unknown): bigint {
   return 0n;
 }
 
-/** Megapot random buys can exceed simple estimates; pad hard. */
-const BUY_GAS_FLOOR = 1_500_000n;
-const BUY_GAS_BUFFER_BPS = 15_000n; // 1.5x
+/** Jackpot.buyTickets ~780k; pad hard so Agent never OOGs mid-buy. */
+const BUY_GAS_FLOOR = 1_200_000n;
+const GAS_BUFFER_BPS = 15_000n; // 1.5x
 
 async function estimateGasWithBuffer(
   publicClient: PublicClient,
@@ -49,10 +49,9 @@ async function estimateGasWithBuffer(
       to: tx.to,
       data: tx.data,
     });
-    const padded = (est * BUY_GAS_BUFFER_BPS) / 10_000n;
+    const padded = (est * GAS_BUFFER_BPS) / 10_000n;
     return padded > floor ? padded : floor;
   } catch {
-    // If estimate fails (RPC flaky), use the caller floor as-is.
     return floor;
   }
 }
@@ -79,13 +78,10 @@ async function sendAndWait(
   });
   if (receipt.status !== "success") {
     const used = receipt.gasUsed ?? 0n;
-    const pct =
-      gas > 0n ? Number((used * 10000n) / gas) / 100 : 0;
+    const pct = gas > 0n ? Number((used * 10000n) / gas) / 100 : 0;
     throw new Error(
       `Transaction reverted (${hash})${
-        pct >= 95
-          ? ` — ran out of gas (${used}/${gas}). Retry.`
-          : ""
+        pct >= 95 ? ` — ran out of gas (${used}/${gas}). Retry.` : ""
       }`
     );
   }
@@ -160,6 +156,29 @@ async function ensureUsdcAllowance(opts: {
   );
 }
 
+/** Crypto-safe pick of n unique balls in [1, max]. */
+function pickUniqueBalls(count: number, max: number): number[] {
+  if (count > max) throw new Error(`Cannot pick ${count} unique balls from 1..${max}`);
+  const set = new Set<number>();
+  const buf = new Uint32Array(1);
+  while (set.size < count) {
+    crypto.getRandomValues(buf);
+    set.add(1 + (buf[0]! % max));
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
+function pickRandomTicket(ballMax: number, bonusballMax: number): {
+  normals: number[];
+  bonusball: number;
+} {
+  const normals = pickUniqueBalls(5, ballMax);
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  const bonusball = 1 + (buf[0]! % bonusballMax);
+  return { normals, bonusball };
+}
+
 export async function findHouseStakeableTicket(
   publicClient: PublicClient,
   house: `0x${string}`
@@ -226,11 +245,23 @@ export async function buyHouseTicket(opts: {
     abi: jackpotAbi,
     functionName: "getDrawingState",
     args: [drawingId],
-  })) as { ticketPrice: bigint };
+  })) as {
+    ticketPrice: bigint;
+    ballMax: number;
+    bonusballMax: number;
+    jackpotLock: boolean;
+    winningTicket: bigint;
+  };
+
+  if (st.jackpotLock || winningTicketOf(st) !== 0n) {
+    throw new Error(
+      "Megapot drawing is locked/closed — Agent cannot buy a stake ticket right now. Retry after the next draw opens."
+    );
+  }
 
   const price = BigInt(st.ticketPrice);
-  // Random buyer may pull slightly more than face price on some paths — pad headroom
-  const need = price * 2n;
+  const ballMax = Number(st.ballMax) || 30;
+  const bonusballMax = Number(st.bonusballMax) || 10;
 
   const bal = (await publicClient.readContract({
     address: ADDRESSES.usdc,
@@ -244,25 +275,16 @@ export async function buyHouseTicket(opts: {
     );
   }
 
-  // Buyer contract pulls USDC from msg.sender — must be approved for random buyer.
-  // Also approve Jackpot in case the buyer routes transferFrom through it.
-  await ensureUsdcAllowance({
-    publicClient,
-    wallet,
-    account,
-    spender: ADDRESSES.jackpotRandomTicketBuyer,
-    need,
-  });
+  // Jackpot pulls USDC from msg.sender — approve Jackpot only (not RandomTicketBuyer).
   await ensureUsdcAllowance({
     publicClient,
     wallet,
     account,
     spender: ADDRESSES.jackpot,
-    need,
+    need: price,
   });
 
-  // Attribution only — do NOT set Agent as its own referrer (self-referral
-  // can break fee accounting and revert the buy). Inventory buys use empty referrers.
+  // Empty referrers: Agent wallet is also the site referrer; self-referral is skipped.
   const source = stringToHex(
     process.env.NEXT_PUBLIC_SOURCE_TAG
       ? `${process.env.NEXT_PUBLIC_SOURCE_TAG}-ai`
@@ -270,33 +292,90 @@ export async function buyHouseTicket(opts: {
     { size: 32 }
   );
 
-  // Final allowance check right before buy
-  const buyerAllow = await readUsdcAllowance(
+  // Pick a unique line (retries if already sold this draw).
+  let ticket: { normals: number[]; bonusball: number } | null = null;
+  for (let i = 0; i < 12; i++) {
+    const candidate = pickRandomTicket(ballMax, bonusballMax);
+    try {
+      const taken = (await publicClient.readContract({
+        address: ADDRESSES.jackpot,
+        abi: [
+          {
+            type: "function",
+            name: "checkIfTicketsBought",
+            stateMutability: "view",
+            inputs: [
+              { name: "_drawingId", type: "uint256" },
+              {
+                name: "_tickets",
+                type: "tuple[]",
+                components: [
+                  { name: "normals", type: "uint8[]" },
+                  { name: "bonusball", type: "uint8" },
+                ],
+              },
+            ],
+            outputs: [{ type: "bool[]" }],
+          },
+        ] as const,
+        functionName: "checkIfTicketsBought",
+        args: [drawingId, [candidate]],
+      })) as readonly boolean[];
+      if (taken?.[0]) continue;
+    } catch {
+      /* if check fails, still try buy — contract reverts on duplicate */
+    }
+    ticket = candidate;
+    break;
+  }
+  if (!ticket) {
+    throw new Error("Could not find an open Megapot number line for Agent. Retry.");
+  }
+
+  const jackpotAllow = await readUsdcAllowance(
     publicClient,
     house,
-    ADDRESSES.jackpotRandomTicketBuyer
+    ADDRESSES.jackpot
   );
-  if (buyerAllow < price) {
+  if (jackpotAllow < price) {
     throw new Error(
-      `USDC allowance for ticket buyer still too low (${buyerAllow} < ${price}).`
+      `USDC allowance for Jackpot still too low (${jackpotAllow} < ${price}).`
     );
   }
 
-  // Empty referrers: Agent must not self-refer (referrer wallet == buyer).
-  // High gas floor — failed 0xf302… used ~890k limit and OOGed at 98% used.
+  // Direct Jackpot.buyTickets — ~780k gas vs RandomTicketBuyer ~930k+ that OOGed at 890k.
   const buyData = encodeFunctionData({
-    abi: randomBuyerAbi,
+    abi: jackpotAbi,
     functionName: "buyTickets",
-    args: [1n, house, [], [], source],
+    args: [
+      [
+        {
+          normals: ticket.normals.map((n) => n),
+          bonusball: ticket.bonusball,
+        },
+      ],
+      house,
+      [],
+      [],
+      source,
+    ],
   });
-  const buyHash = await sendAndWait(
-    publicClient,
-    wallet,
-    account,
-    { to: ADDRESSES.jackpotRandomTicketBuyer, data: buyData },
-    BUY_GAS_FLOOR
-  );
-  return buyHash;
+
+  try {
+    const buyHash = await sendAndWait(
+      publicClient,
+      wallet,
+      account,
+      { to: ADDRESSES.jackpot, data: buyData },
+      BUY_GAS_FLOOR
+    );
+    return buyHash;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(
+      `Agent Jackpot.buyTickets failed: ${msg}. Check Agent USDC (~$1+) and ETH gas on Base (${house}).`
+    );
+  }
 }
 
 export async function ensureHouseTicket(opts: {
@@ -310,7 +389,7 @@ export async function ensureHouseTicket(opts: {
 
   await buyHouseTicket(opts);
   // NFT index can lag briefly
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 12; i++) {
     await new Promise((r) => setTimeout(r, 1500));
     ticket = await findHouseStakeableTicket(opts.publicClient, house);
     if (ticket != null) return ticket;
