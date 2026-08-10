@@ -1262,7 +1262,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
+}
+.play-v2-friends-waiting {
+  margin-top: 4px;
 }
 .play-v2-btn-primary,
 .play-v2-btn-secondary {
