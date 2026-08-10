@@ -60,7 +60,8 @@ function PlayAiInner() {
   const { connect, connectors, isPending: connectPending } = useConnect();
   const publicClient = usePublicClient({ chainId: 8453 });
   const escrowReady = useEscrowReady();
-  const { createMatch, submitResult, isPending } = useEscrowActions();
+  const { createMatch, submitResult, cancelWaiting, isPending } =
+    useEscrowActions();
   const {
     stakeableTickets,
     stakeableCount,
@@ -80,6 +81,8 @@ function PlayAiInner() {
   const [error, setError] = useState<string | null>(null);
   const [houseReady, setHouseReady] = useState<boolean | null>(null);
   const [houseAddress, setHouseAddress] = useState<string | null>(null);
+  /** Waiting match you host (ticket locked, no opponent yet) — refund via cancelWaiting */
+  const [stuckWaitingId, setStuckWaitingId] = useState<string | null>(null);
 
   const [matchId, setMatchId] = useState<string | null>(null);
   const [gameSeed, setGameSeed] = useState<string | null>(null);
@@ -120,6 +123,67 @@ function PlayAiInner() {
       cancelled = true;
     };
   }, []);
+
+  // Detect waiting matches you host (ticket still in escrow from failed Agent join)
+  useEffect(() => {
+    if (!address || !publicClient || !escrowReady) {
+      setStuckWaitingId(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const open = (await publicClient.readContract({
+          address: ADDRESSES.whotEscrow,
+          abi: whotEscrowAbi,
+          functionName: "getOpenMatches",
+        })) as readonly bigint[];
+        for (const id of open) {
+          const m = (await publicClient.readContract({
+            address: ADDRESSES.whotEscrow,
+            abi: whotEscrowAbi,
+            functionName: "getMatch",
+            args: [id],
+          })) as { player1: string; status: number };
+          if (
+            m.status === MatchStatus.Waiting &&
+            m.player1.toLowerCase() === address.toLowerCase()
+          ) {
+            if (!cancelled) setStuckWaitingId(id.toString());
+            return;
+          }
+        }
+        if (!cancelled) setStuckWaitingId(null);
+      } catch {
+        if (!cancelled) setStuckWaitingId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [address, publicClient, escrowReady, gate, busy]);
+
+  const onRefundWaiting = useCallback(async () => {
+    if (!stuckWaitingId) return;
+    setError(null);
+    setBusy(true);
+    try {
+      setStatus(`Confirm cancel in wallet — ticket returns from match #${stuckWaitingId}…`);
+      await cancelWaiting(BigInt(stuckWaitingId));
+      setStatus("Ticket refunded. You can stake again.");
+      setStuckWaitingId(null);
+      void refetchTickets();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Cancel failed";
+      if (/user rejected|denied|cancelled|canceled/i.test(msg)) {
+        setError("Wallet cancelled.");
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }, [stuckWaitingId, cancelWaiting, refetchTickets]);
 
   const onConnect = () => {
     const hasInjected =
@@ -490,6 +554,26 @@ function PlayAiInner() {
                 Agent is offline. Funding the wallet is not enough — Vercel must
                 have <code>AGENT_PRIVATE_KEY</code> set for the Agent wallet
                 (with ETH + USDC). Free practice still works.
+              </div>
+            )}
+
+            {stuckWaitingId && (
+              <div className="alert" style={{ marginTop: 12 }}>
+                <p style={{ margin: "0 0 10px" }}>
+                  Your ticket is locked in open match{" "}
+                  <strong>#{stuckWaitingId}</strong> (Agent never joined).
+                  Cancel to refund it to your wallet, then try again.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  disabled={busy || isPending}
+                  onClick={() => void onRefundWaiting()}
+                >
+                  {busy || isPending
+                    ? "Confirm in wallet…"
+                    : `Refund ticket (cancel #${stuckWaitingId})`}
+                </button>
               </div>
             )}
 
