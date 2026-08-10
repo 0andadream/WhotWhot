@@ -1,5 +1,5 @@
 /**
- * Ensure the AI house wallet has a stakeable open-draw Megapot ticket.
+ * Ensure the Agent wallet has a stakeable open-draw Megapot ticket.
  * Buys one via JackpotRandomTicketBuyer if inventory is empty (needs USDC + ETH gas).
  */
 import {
@@ -108,7 +108,7 @@ export async function buyHouseTicket(opts: {
   })) as bigint;
   if (bal < price) {
     throw new Error(
-      `AI house needs more USDC (has ${bal}, needs ${price}). Fund ${house} with USDC on Base.`
+      `Agent wallet needs more USDC (has ${bal}, needs ${price}). Fund ${house} with USDC on Base.`
     );
   }
 
@@ -179,7 +179,7 @@ export async function ensureHouseTicket(opts: {
     if (ticket != null) return ticket;
   }
   throw new Error(
-    "Bought a ticket for AI house but could not find it yet. Retry in a few seconds."
+    "Bought a ticket for Agent but could not find it yet. Retry in a few seconds."
   );
 }
 

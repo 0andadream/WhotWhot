@@ -8,7 +8,7 @@ import {
 } from "@/lib/aiHouseTickets";
 
 /**
- * AI house joins a Waiting match: buys/uses a Megapot ticket and joinMatch.
+ * Agent joins a Waiting match: buys/uses a Megapot ticket and joinMatch.
  * Player must already have createMatch'd (player1).
  */
 export async function POST(req: NextRequest) {
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "AI house wallet not configured. Set AI_HOUSE_PRIVATE_KEY on the server.",
+            "Agent wallet not configured. Set AGENT_PRIVATE_KEY (or AI_HOUSE_PRIVATE_KEY) on the server for 0xFD3f…ef2f0.",
         },
         { status: 503 }
       );
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
 
     if (m.player1.toLowerCase() === house.toLowerCase()) {
       return NextResponse.json(
-        { error: "House cannot play itself" },
+        { error: "Agent cannot play itself" },
         { status: 400 }
       );
     }
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     });
     if (ticketId === BigInt(m.ticket1)) {
       return NextResponse.json(
-        { error: "House ticket collides with player ticket" },
+        { error: "Agent ticket collides with player ticket" },
         { status: 409 }
       );
     }

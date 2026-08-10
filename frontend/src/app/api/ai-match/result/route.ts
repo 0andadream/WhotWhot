@@ -4,8 +4,8 @@ import { ADDRESSES, MatchStatus, whotEscrowAbi } from "@/lib/contracts";
 import { getAiHouseWalletClient } from "@/lib/aiHouseWallet";
 
 /**
- * AI house dual-confirms the match winner so both tickets transfer.
- * Call after the human has submitted (or house submits first — either order works).
+ * Agent dual-confirms the match winner so both tickets transfer.
+ * Call after the human has submitted (or agent submits first — either order works).
  */
 export async function POST(req: NextRequest) {
   try {
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     const houseCtx = getAiHouseWalletClient();
     if (!houseCtx) {
       return NextResponse.json(
-        { error: "AI house wallet not configured" },
+        { error: "Agent wallet not configured. Set AGENT_PRIVATE_KEY on the server." },
         { status: 503 }
       );
     }
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     const p2 = getAddress(m.player2);
     if (house !== p1 && house !== p2) {
       return NextResponse.json(
-        { error: "House is not a player in this match" },
+        { error: "Agent is not a player in this match" },
         { status: 403 }
       );
     }

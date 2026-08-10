@@ -146,7 +146,7 @@ function PlayAiInner() {
     }
     if (!houseReady) {
       setError(
-        "AI house is not configured on the server (AI_HOUSE_PRIVATE_KEY). Free practice still works."
+        "Agent is not configured on the server (AGENT_PRIVATE_KEY). Free practice still works."
       );
       return;
     }
@@ -190,7 +190,7 @@ function PlayAiInner() {
       rememberMatchId(BigInt(newMatchId));
       setMatchId(newMatchId);
 
-      setStatus("AI house is staking its ticket (may buy one if needed)…");
+      setStatus("Agent is staking its ticket (may buy one if needed)…");
       const joinRes = await fetch("/api/ai-match/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -203,7 +203,7 @@ function PlayAiInner() {
         houseAddress?: string;
       };
       if (!joinRes.ok || !joinData.ok) {
-        throw new Error(joinData.error || "AI house could not join");
+        throw new Error(joinData.error || "Agent could not join");
       }
       if (joinData.houseAddress) setHouseAddress(joinData.houseAddress);
       const seed = joinData.gameSeed || null;
@@ -258,7 +258,7 @@ function PlayAiInner() {
       setSettleMsg("Confirm result in wallet (you)…");
       try {
         await submitResult(BigInt(matchId), winner);
-        setSettleMsg("AI house confirming so tickets transfer…");
+        setSettleMsg("Agent confirming so tickets transfer…");
         const res = await fetch("/api/ai-match/result", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -278,7 +278,7 @@ function PlayAiInner() {
           setSettleMsg(
             winner.toLowerCase() === address.toLowerCase()
               ? "Resolved! Both tickets transferred to you."
-              : "Resolved. Both tickets went to the AI house."
+              : "Resolved. Both tickets went to the Agent."
           );
         } else {
           setSettleMsg(
@@ -350,7 +350,7 @@ function PlayAiInner() {
         vsAi
         humanPlayer="p1"
         p1Name={profile?.username || "You"}
-        p2Name="AI House"
+        p2Name="Agent"
         showSoundToggle
         stakeTickets={1}
         potTickets={2}
@@ -366,7 +366,7 @@ function PlayAiInner() {
               }
             : { username: "You", avatar: "🃏", color: "#c41e3a" }
         }
-        oppProfile={{ username: "AI House", avatar: "", color: "#3b82f6" }}
+        oppProfile={{ username: "Agent", avatar: "", color: "#3b82f6" }}
         backHref="/play"
       />
     );
@@ -385,10 +385,10 @@ function PlayAiInner() {
           <div className="ai-pay-panel">
             <p className="prem-how-eyebrow">Match #{matchId}</p>
             <h1 className="prem-h1 prem-h1-page">
-              {youWon ? "You won both tickets" : "AI house wins both"}
+              {youWon ? "You won both tickets" : "Agent wins both"}
             </h1>
             <p className="prem-lede">
-              Dual confirm settles escrow. You and the AI house both submit the
+              Dual confirm settles escrow. You and the Agent both submit the
               winner so both Megapot tickets transfer.
             </p>
             {settleMsg && (
@@ -433,7 +433,7 @@ function PlayAiInner() {
             <p className="prem-how-eyebrow">Play vs AI</p>
             <h1 className="prem-h1 prem-h1-page">Choose how you play</h1>
             <p className="prem-lede" style={{ maxWidth: "36em" }}>
-              Practice free, or stake 1 Megapot ticket. The AI house stakes
+              Practice free, or stake 1 Megapot ticket. The Agent stakes
               another — both lock in escrow. Winner takes both tickets.
             </p>
             <div className="ai-pay-grid">
@@ -453,7 +453,7 @@ function PlayAiInner() {
                 onClick={() => setGate("stake")}
               >
                 <span className="ai-pay-badge paid">Stake</span>
-                <h2>Challenge AI</h2>
+                <h2>Challenge Agent</h2>
                 <p>1 ticket each · Escrow · Winner takes both</p>
                 <span className="ai-pay-cta">Stake ticket</span>
               </button>
@@ -466,26 +466,27 @@ function PlayAiInner() {
 
         {gate === "stake" && (
           <div className="ai-pay-panel" style={{ textAlign: "left" }}>
-            <p className="prem-how-eyebrow">Stake vs AI</p>
+            <p className="prem-how-eyebrow">Stake vs Agent</p>
             <h1 className="prem-h1 prem-h1-page" style={{ textAlign: "left", maxWidth: "none" }}>
-              Lock 1 ticket — AI locks 1
+              Lock 1 ticket — Agent locks 1
             </h1>
             <p className="muted">
-              You stake a current-draw Megapot ticket. The AI house buys/stakes
+              You stake a current-draw Megapot ticket. The Agent buys/stakes
               its own ticket into the same escrow. Play Whot —{" "}
               <strong style={{ color: "#fff" }}>winner takes both NFTs</strong>.
             </p>
 
             {houseReady === false && (
               <div className="alert" style={{ marginTop: 12 }}>
-                AI house is offline (server needs{" "}
-                <code>AI_HOUSE_PRIVATE_KEY</code> funded with ETH gas + USDC for
-                tickets). Free practice still works.
+                Agent is offline. Funding the wallet is not enough — Vercel must
+                have <code>AGENT_PRIVATE_KEY</code> set to the private key for{" "}
+                <code>0xFD3f…ef2f0</code> (and ETH + USDC on that wallet). Free
+                practice still works.
               </div>
             )}
             {houseReady && houseAddress && (
               <p className="muted" style={{ fontSize: "0.85rem" }}>
-                AI house:{" "}
+                Agent:{" "}
                 <strong style={{ color: "#fff" }}>
                   {houseAddress.slice(0, 6)}…{houseAddress.slice(-4)}
                 </strong>
@@ -541,7 +542,7 @@ function PlayAiInner() {
               >
                 {busy || isPending
                   ? "Working…"
-                  : "Stake ticket & call AI"}
+                  : "Stake ticket & call Agent"}
               </button>
               <button
                 type="button"
