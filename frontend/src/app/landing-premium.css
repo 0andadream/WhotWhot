@@ -1320,6 +1320,60 @@
   letter-spacing: -0.02em;
 }
 
+/* Live feed under mode select on "How do you want to play?" */
+.play-v2-feed {
+  margin-top: 36px;
+  padding-top: 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.play-v2-feed-eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--prem-muted);
+}
+.play-v2-feed-empty {
+  margin-bottom: 8px;
+}
+.play-v2-feed-vs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.play-v2-feed-vs-x {
+  display: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--prem-muted);
+  text-transform: uppercase;
+}
+.play-v2-feed-vs-mid {
+  margin: 0 6px;
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: var(--prem-muted);
+  text-transform: lowercase;
+}
+.play-v2-feed-past {
+  align-items: flex-start;
+}
+@media (max-width: 560px) {
+  .play-v2-feed {
+    margin-top: 28px;
+    padding-top: 22px;
+  }
+  .play-v2-feed-vs {
+    flex-wrap: wrap;
+  }
+}
+
 .play-v2-empty {
   text-align: center;
   padding: 28px 20px;

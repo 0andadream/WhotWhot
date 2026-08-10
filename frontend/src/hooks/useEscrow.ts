@@ -273,6 +273,123 @@ export function useMyMatches() {
   };
 }
 
+/**
+ * Site-wide feed for the lobby: recent finished/cancelled matches
+ * (any player). Scans recent match ids from escrow.
+ */
+export function useSitePastMatches(limit = 40) {
+  const publicClient = usePublicClient({ chainId: 8453 });
+  const [matches, setMatches] = useState<MatchSummary[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const { data: nextId, refetch: refetchNext } = useReadContract({
+    address: ADDRESSES.whotEscrow,
+    abi: whotEscrowAbi,
+    functionName: "nextMatchId",
+    chainId: 8453,
+    query: {
+      enabled: escrowReady,
+      refetchInterval: 20_000,
+    },
+  });
+
+  const load = useCallback(async () => {
+    if (!publicClient || !escrowReady || nextId === undefined) {
+      setMatches([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const max = Number(nextId as bigint);
+      if (max <= 1) {
+        setMatches([]);
+        return;
+      }
+      const start = Math.max(1, max - Math.max(limit * 2, 80));
+      const ids: number[] = [];
+      for (let i = start; i < max; i++) ids.push(i);
+
+      const rows = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            const m = await publicClient.readContract({
+              address: ADDRESSES.whotEscrow,
+              abi: whotEscrowAbi,
+              functionName: "getMatch",
+              args: [BigInt(id)],
+            });
+            return { id: BigInt(id), m };
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const zero = "0x0000000000000000000000000000000000000000";
+      const done: MatchSummary[] = [];
+      for (const row of rows) {
+        if (!row) continue;
+        const m = row.m as {
+          player1: Address;
+          player2: Address;
+          ticket1: bigint;
+          ticket2: bigint;
+          status: number;
+          gameSeed: `0x${string}`;
+          player1Result?: Address;
+          player2Result?: Address;
+          startedAt?: number | bigint;
+          createdAt?: number | bigint;
+        };
+        if (
+          m.status !== MatchStatus.Resolved &&
+          m.status !== MatchStatus.Cancelled
+        ) {
+          continue;
+        }
+
+        const r1 = (m.player1Result || "").toLowerCase();
+        const r2 = (m.player2Result || "").toLowerCase();
+        let winner: Address | null = null;
+        if (r1 && r1 !== zero && r1 === r2) {
+          winner = m.player1Result as Address;
+        }
+
+        done.push({
+          id: row.id,
+          player1: m.player1,
+          player2: m.player2,
+          ticket1: m.ticket1,
+          ticket2: m.ticket2,
+          status: m.status,
+          gameSeed: m.gameSeed,
+          role: "guest",
+          winner,
+          startedAt: m.startedAt != null ? Number(m.startedAt) : undefined,
+          createdAt: m.createdAt != null ? Number(m.createdAt) : undefined,
+        });
+      }
+      done.sort((a, b) => (a.id < b.id ? 1 : -1));
+      setMatches(done.slice(0, limit));
+    } finally {
+      setLoading(false);
+    }
+  }, [publicClient, nextId, limit]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return {
+    matches,
+    loading,
+    refetch: async () => {
+      await refetchNext();
+      await load();
+    },
+  };
+}
+
 /** Remember match ids locally as a fast path after create/join */
 export function rememberMatchId(matchId: string | number | bigint) {
   if (typeof window === "undefined") return;

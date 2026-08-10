@@ -21,6 +21,7 @@ import {
   useEscrowActions,
   useMyMatches,
   useOpenTables,
+  useSitePastMatches,
   MatchStatus,
   type MatchSummary,
 } from "@/hooks/useEscrow";
@@ -59,6 +60,11 @@ export default function PlayLobbyPage() {
   const { cancelWaiting, isPending: cancelPending } = useEscrowActions();
   const { tables: openTables, loading: openLoading, refetch: refetchOpen } =
     useOpenTables();
+  const {
+    matches: sitePast,
+    loading: sitePastLoading,
+    refetch: refetchSitePast,
+  } = useSitePastMatches(36);
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient({ chainId: 8453 });
   const { data: usdcAllowance, refetch: refetchAllowance } = useReadContract({
@@ -89,18 +95,22 @@ export default function PlayLobbyPage() {
   }, []);
   void tick;
 
-  // Load host profiles for open tables
+  // Load profiles for open tables + site past feed
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
+      const ids = new Set<string>();
+      for (const t of openTables) ids.add(t.id.toString());
+      for (const m of sitePast) ids.add(m.id.toString());
+      if (ids.size === 0) return;
+
       const next: typeof openProfiles = {};
       await Promise.all(
-        openTables.map(async (t) => {
+        [...ids].map(async (id) => {
           try {
-            const res = await fetch(
-              `/api/match/${t.id.toString()}/profiles`,
-              { cache: "no-store" }
-            );
+            const res = await fetch(`/api/match/${id}/profiles`, {
+              cache: "no-store",
+            });
             if (!res.ok) return;
             const data = (await res.json()) as {
               profiles?: Record<
@@ -108,8 +118,11 @@ export default function PlayLobbyPage() {
                 { username: string; avatar: string; color: string }
               >;
             };
-            const host = data.profiles?.[t.player1.toLowerCase()];
-            if (host) next[t.player1.toLowerCase()] = host;
+            if (data.profiles) {
+              for (const [k, v] of Object.entries(data.profiles)) {
+                next[k.toLowerCase()] = v;
+              }
+            }
           } catch {
             /* ignore */
           }
@@ -117,11 +130,11 @@ export default function PlayLobbyPage() {
       );
       if (!cancelled) setOpenProfiles((p) => ({ ...p, ...next }));
     };
-    if (openTables.length) void load();
+    void load();
     return () => {
       cancelled = true;
     };
-  }, [openTables]);
+  }, [openTables, sitePast]);
 
   const onBuyTicket = async () => {
     if (!address || !jackpot.ticketPriceRaw) return;
@@ -255,11 +268,19 @@ export default function PlayLobbyPage() {
     else void onBuyTicket();
   };
 
-  const hostLabel = useCallback(
+  const playerLabel = useCallback(
     (addr: Address) => {
-      const p = openProfiles[addr.toLowerCase()];
+      const lower = addr.toLowerCase();
+      if (lower === ADDRESSES.aiHouse.toLowerCase()) {
+        return {
+          username: "Agent",
+          avatar: "🦞",
+          color: "#c41e3a",
+        };
+      }
+      const p = openProfiles[lower];
       if (p?.username) return p;
-      if (address && addr.toLowerCase() === address.toLowerCase()) {
+      if (address && lower === address.toLowerCase()) {
         const mine = getProfile(address);
         if (mine) return mine;
       }
@@ -271,6 +292,7 @@ export default function PlayLobbyPage() {
     },
     [openProfiles, address]
   );
+  const hostLabel = playerLabel;
 
   const motionProps = reduce
     ? {}
@@ -324,13 +346,26 @@ export default function PlayLobbyPage() {
         )}
 
         {screen === "modes" && (
-          <ModeSelect
-            reduce={!!reduce}
-            onAiFree={() => router.push("/play/ai?mode=free")}
-            onAiPaid={() => router.push("/play/ai?mode=paid")}
-            onFriends={() => setScreen("friends")}
-            escrowReady={escrowReady}
-          />
+          <>
+            <ModeSelect
+              reduce={!!reduce}
+              onAiFree={() => router.push("/play/ai?mode=free")}
+              onAiPaid={() => router.push("/play/ai?mode=paid")}
+              onFriends={() => setScreen("friends")}
+              escrowReady={escrowReady}
+            />
+            <LobbyLiveFeed
+              reduce={!!reduce}
+              escrowReady={escrowReady}
+              openTables={openTables}
+              openLoading={openLoading}
+              onRefreshOpen={() => void refetchOpen()}
+              sitePast={sitePast}
+              sitePastLoading={sitePastLoading}
+              onRefreshPast={() => void refetchSitePast()}
+              playerLabel={playerLabel}
+            />
+          </>
         )}
 
         {screen === "friends" && (
@@ -495,6 +530,12 @@ export default function PlayLobbyPage() {
   );
 }
 
+type PlayerProfile = {
+  username: string;
+  avatar: string;
+  color: string;
+};
+
 function ModeSelect({
   onAiFree,
   onAiPaid,
@@ -567,6 +608,207 @@ function ModeSelect({
         </motion.button>
       </div>
     </motion.section>
+  );
+}
+
+/** Site-wide open tables + past matches under mode select */
+function LobbyLiveFeed({
+  reduce,
+  escrowReady,
+  openTables,
+  openLoading,
+  onRefreshOpen,
+  sitePast,
+  sitePastLoading,
+  onRefreshPast,
+  playerLabel,
+}: {
+  reduce: boolean;
+  escrowReady: boolean;
+  openTables: MatchSummary[];
+  openLoading: boolean;
+  onRefreshOpen: () => void;
+  sitePast: MatchSummary[];
+  sitePastLoading: boolean;
+  onRefreshPast: () => void;
+  playerLabel: (addr: Address) => PlayerProfile;
+}) {
+  if (!escrowReady) {
+    return (
+      <section className="play-v2-feed">
+        <p className="play-v2-empty-text">
+          Live tables unlock when escrow is configured.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <motion.div
+      className="play-v2-feed"
+      initial={reduce ? false : { opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease, delay: reduce ? 0 : 0.08 }}
+    >
+      <section className="play-v2-section">
+        <div className="play-v2-section-head">
+          <div>
+            <p className="play-v2-feed-eyebrow">Live feed</p>
+            <h2>Waiting for a player</h2>
+          </div>
+          <button
+            type="button"
+            className="prem-btn-ghost sm"
+            onClick={onRefreshOpen}
+          >
+            Refresh
+          </button>
+        </div>
+
+        {openLoading && openTables.length === 0 && (
+          <p className="play-v2-empty-text">Loading open tables…</p>
+        )}
+
+        {!openLoading && openTables.length === 0 && (
+          <div className="play-v2-empty play-v2-feed-empty">
+            <p>No open tables right now. Create one under Play with Friends.</p>
+            <Link href="/play/create" className="play-v2-btn-primary">
+              Create a Table
+            </Link>
+          </div>
+        )}
+
+        <div className="play-v2-open-list">
+          {openTables.map((t, i) => {
+            const host = playerLabel(t.player1);
+            return (
+              <motion.div
+                key={t.id.toString()}
+                className="play-v2-open-card"
+                initial={reduce ? false : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: reduce ? 0 : i * 0.04,
+                  duration: 0.3,
+                  ease,
+                }}
+              >
+                <div className="play-v2-open-host">
+                  <ProfileAvatar profile={host} size={40} />
+                  <div>
+                    <strong>{host.username}</strong>
+                    <span>Waiting for 1 more player</span>
+                  </div>
+                </div>
+                <div className="play-v2-open-meta">
+                  <span className="play-v2-stake">1 ticket stake</span>
+                  <span className="play-v2-table-id">#{t.id.toString()}</span>
+                </div>
+                <Link
+                  href={`/play/join?matchId=${t.id.toString()}`}
+                  className="play-v2-join-btn"
+                >
+                  Join
+                </Link>
+              </motion.div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="play-v2-section">
+        <div className="play-v2-section-head">
+          <div>
+            <p className="play-v2-feed-eyebrow">On this site</p>
+            <h2>Past matches</h2>
+          </div>
+          <button
+            type="button"
+            className="prem-btn-ghost sm"
+            onClick={onRefreshPast}
+          >
+            Refresh
+          </button>
+        </div>
+
+        {sitePastLoading && sitePast.length === 0 && (
+          <p className="play-v2-empty-text">Loading match history…</p>
+        )}
+
+        {!sitePastLoading && sitePast.length === 0 && (
+          <p className="play-v2-empty-text">
+            No finished matches yet. Be the first to play!
+          </p>
+        )}
+
+        <div className="play-v2-history-list">
+          {sitePast.map((m) => {
+            const p1 = playerLabel(m.player1);
+            const p2 = playerLabel(m.player2);
+            const cancelled = m.status === MatchStatus.Cancelled;
+            const winnerName =
+              m.winner != null
+                ? playerLabel(m.winner).username
+                : null;
+            const ts = m.startedAt || m.createdAt;
+            const date = ts
+              ? new Date(ts * 1000).toLocaleString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })
+              : "";
+            return (
+              <div
+                key={m.id.toString()}
+                className="play-v2-history-card past play-v2-feed-past"
+              >
+                <div className="play-v2-feed-vs">
+                  <ProfileAvatar profile={p1} size={32} />
+                  <span className="play-v2-feed-vs-x">vs</span>
+                  <ProfileAvatar profile={p2} size={32} />
+                  <div>
+                    <div className="play-v2-history-title">
+                      {p1.username}
+                      <span className="play-v2-feed-vs-mid">vs</span>
+                      {p2.username}
+                      {cancelled ? (
+                        <span className="play-v2-badge wait">Cancelled</span>
+                      ) : winnerName ? (
+                        <span className="play-v2-badge won">
+                          {winnerName} won
+                        </span>
+                      ) : (
+                        <span className="play-v2-badge wait">Finished</span>
+                      )}
+                    </div>
+                    <p className="play-v2-history-meta">
+                      Table #{m.id.toString()}
+                      {date ? ` · ${date}` : ""} · winner takes both
+                    </p>
+                  </div>
+                </div>
+                <div className="play-v2-history-actions">
+                  <Link
+                    href={`/play/match/${m.id.toString()}`}
+                    className="prem-btn-ghost sm"
+                  >
+                    View
+                  </Link>
+                  <Link
+                    href={`/play/match/${m.id.toString()}/tickets`}
+                    className="prem-btn-white sm"
+                  >
+                    Tickets
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    </motion.div>
   );
 }
 
