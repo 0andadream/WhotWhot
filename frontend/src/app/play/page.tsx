@@ -354,12 +354,9 @@ export default function PlayLobbyPage() {
               onFriends={() => setScreen("friends")}
               escrowReady={escrowReady}
             />
-            <LobbyLiveFeed
+            <LobbyPastFeed
               reduce={!!reduce}
               escrowReady={escrowReady}
-              openTables={openTables}
-              openLoading={openLoading}
-              onRefreshOpen={() => void refetchOpen()}
               sitePast={sitePast}
               sitePastLoading={sitePastLoading}
               onRefreshPast={() => void refetchSitePast()}
@@ -393,25 +390,12 @@ export default function PlayLobbyPage() {
               </Link>
             </div>
 
-            <div className="play-v2-trust">
-              <p>
-                <strong>Winner takes both</strong> — one ticket each; dual
-                confirm sends both NFTs to the winner.
-              </p>
-              <p>
-                <strong>2-hour cancel</strong> — abandoned match? Either side
-                can cancel after 2 hours and get their ticket back.
-              </p>
-              <p>
-                <strong>Mid-escrow draw</strong> — if Megapot draws while tickets
-                are locked, prizes stay on the NFTs. Claim on the tickets page
-                after settle or cancel.
-              </p>
-            </div>
-
-            <section className="play-v2-section">
+            <section className="play-v2-section play-v2-friends-waiting">
               <div className="play-v2-section-head">
-                <h2>Open tables waiting for players</h2>
+                <div>
+                  <p className="play-v2-feed-eyebrow">Live feed</p>
+                  <h2>Waiting for a player</h2>
+                </div>
                 <button
                   type="button"
                   className="prem-btn-ghost sm"
@@ -421,19 +405,13 @@ export default function PlayLobbyPage() {
                 </button>
               </div>
 
-              {openLoading && (
+              {openLoading && openTables.length === 0 && (
                 <p className="play-v2-empty-text">Loading open tables…</p>
               )}
 
               {!openLoading && openTables.length === 0 && (
-                <div className="play-v2-empty">
-                  <p>No open tables right now. Be the first — create one!</p>
-                  <Link
-                    href={escrowReady ? "/play/create" : "#"}
-                    className="play-v2-btn-primary"
-                  >
-                    Create a Table
-                  </Link>
+                <div className="play-v2-empty play-v2-feed-empty">
+                  <p>No open tables right now. Create one above!</p>
                 </div>
               )}
 
@@ -611,13 +589,10 @@ function ModeSelect({
   );
 }
 
-/** Site-wide open tables + past matches under mode select */
-function LobbyLiveFeed({
+/** Site-wide past matches under mode select */
+function LobbyPastFeed({
   reduce,
   escrowReady,
-  openTables,
-  openLoading,
-  onRefreshOpen,
   sitePast,
   sitePastLoading,
   onRefreshPast,
@@ -625,9 +600,6 @@ function LobbyLiveFeed({
 }: {
   reduce: boolean;
   escrowReady: boolean;
-  openTables: MatchSummary[];
-  openLoading: boolean;
-  onRefreshOpen: () => void;
   sitePast: MatchSummary[];
   sitePastLoading: boolean;
   onRefreshPast: () => void;
@@ -637,7 +609,7 @@ function LobbyLiveFeed({
     return (
       <section className="play-v2-feed">
         <p className="play-v2-empty-text">
-          Live tables unlock when escrow is configured.
+          Match history unlocks when escrow is configured.
         </p>
       </section>
     );
@@ -650,72 +622,6 @@ function LobbyLiveFeed({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease, delay: reduce ? 0 : 0.08 }}
     >
-      <section className="play-v2-section">
-        <div className="play-v2-section-head">
-          <div>
-            <p className="play-v2-feed-eyebrow">Live feed</p>
-            <h2>Waiting for a player</h2>
-          </div>
-          <button
-            type="button"
-            className="prem-btn-ghost sm"
-            onClick={onRefreshOpen}
-          >
-            Refresh
-          </button>
-        </div>
-
-        {openLoading && openTables.length === 0 && (
-          <p className="play-v2-empty-text">Loading open tables…</p>
-        )}
-
-        {!openLoading && openTables.length === 0 && (
-          <div className="play-v2-empty play-v2-feed-empty">
-            <p>No open tables right now. Create one under Play with Friends.</p>
-            <Link href="/play/create" className="play-v2-btn-primary">
-              Create a Table
-            </Link>
-          </div>
-        )}
-
-        <div className="play-v2-open-list">
-          {openTables.map((t, i) => {
-            const host = playerLabel(t.player1);
-            return (
-              <motion.div
-                key={t.id.toString()}
-                className="play-v2-open-card"
-                initial={reduce ? false : { opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: reduce ? 0 : i * 0.04,
-                  duration: 0.3,
-                  ease,
-                }}
-              >
-                <div className="play-v2-open-host">
-                  <ProfileAvatar profile={host} size={40} />
-                  <div>
-                    <strong>{host.username}</strong>
-                    <span>Waiting for 1 more player</span>
-                  </div>
-                </div>
-                <div className="play-v2-open-meta">
-                  <span className="play-v2-stake">1 ticket stake</span>
-                  <span className="play-v2-table-id">#{t.id.toString()}</span>
-                </div>
-                <Link
-                  href={`/play/join?matchId=${t.id.toString()}`}
-                  className="play-v2-join-btn"
-                >
-                  Join
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
-      </section>
-
       <section className="play-v2-section">
         <div className="play-v2-section-head">
           <div>
@@ -747,9 +653,7 @@ function LobbyLiveFeed({
             const p2 = playerLabel(m.player2);
             const cancelled = m.status === MatchStatus.Cancelled;
             const winnerName =
-              m.winner != null
-                ? playerLabel(m.winner).username
-                : null;
+              m.winner != null ? playerLabel(m.winner).username : null;
             const ts = m.startedAt || m.createdAt;
             const date = ts
               ? new Date(ts * 1000).toLocaleString(undefined, {
