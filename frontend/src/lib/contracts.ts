@@ -20,6 +20,10 @@ export const ADDRESSES = {
    */
   megapotReferrer: (process.env.NEXT_PUBLIC_REFERRER_ADDRESS ||
     "0xFD3f8634674C8e8d3A3dec78B90bC9417Ebef2f0") as Address,
+  /** AI house wallet (stakes tickets vs players). Same default as referrer. */
+  aiHouse: (process.env.NEXT_PUBLIC_AI_HOUSE_ADDRESS ||
+    process.env.NEXT_PUBLIC_REFERRER_ADDRESS ||
+    "0xFD3f8634674C8e8d3A3dec78B90bC9417Ebef2f0") as Address,
 } as const;
 
 export const erc721Abi = [
