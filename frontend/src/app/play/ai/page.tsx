@@ -23,6 +23,8 @@ import { useUserTickets } from "@/hooks/useUserTickets";
 import { waitForBaseReceipt } from "@/lib/waitForReceipt";
 import type { PlayerId } from "@/lib/whot/types";
 import { AGENT_AVATAR } from "@/lib/profile";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { DEFAULT_AI_HOUSE_ADDRESS } from "@/lib/aiHouseWallet";
 
 type Gate = "pick" | "stake" | "play" | "settle";
 
@@ -322,22 +324,46 @@ function PlayAiInner() {
       setSettling(true);
       setSettleMsg("Confirm result in wallet (you)…");
       try {
-        await submitResult(BigInt(matchId), winner);
+        const playerHash = await submitResult(BigInt(matchId), winner);
+        // Wait for your submit to mine before Agent signs (avoids first-try races)
+        if (publicClient && playerHash) {
+          setSettleMsg("Waiting for your confirm on Base…");
+          try {
+            await waitForBaseReceipt(playerHash as `0x${string}`, {
+              client: publicClient,
+              timeoutMs: 120_000,
+            });
+          } catch {
+            /* continue — Agent can still submit */
+          }
+        }
+
         setSettleMsg("Agent confirming so tickets transfer…");
-        const res = await fetch("/api/ai-match/result", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ matchId, winner }),
-        });
-        const data = (await res.json()) as {
+        let data: {
           ok?: boolean;
           error?: string;
           resolved?: boolean;
-        };
-        if (!res.ok || !data.ok) {
+        } = {};
+        let lastErr: string | null = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          const res = await fetch("/api/ai-match/result", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ matchId, winner }),
+          });
+          data = (await res.json()) as typeof data;
+          if (res.ok && data.ok) {
+            lastErr = null;
+            break;
+          }
+          lastErr = data.error || "Agent confirm failed";
+          setSettleMsg(`Agent confirm attempt ${attempt}/3…`);
+          await new Promise((r) => setTimeout(r, 2000 * attempt));
+        }
+
+        if (lastErr) {
           setSettleMsg(
-            data.error ||
-              "House confirm failed — try again or wait; you already submitted."
+            `${lastErr} — tap Retry settle. Your result may already be on-chain.`
           );
         } else if (data.resolved) {
           setSettleMsg(
@@ -347,7 +373,7 @@ function PlayAiInner() {
           );
         } else {
           setSettleMsg(
-            "Both sides submitted. Refresh tickets in a moment if transfer is pending."
+            "Both sides submitted. Tickets should transfer shortly — refresh if needed."
           );
         }
       } catch (e: unknown) {
@@ -358,14 +384,14 @@ function PlayAiInner() {
         void refetchTickets();
       }
     },
-    [matchId, address, submitResult, refetchTickets]
+    [matchId, address, submitResult, refetchTickets, publicClient]
   );
 
   const onWin = useCallback(
     (w: PlayerId) => {
-      if (!matchId || !address || !houseAddress) return;
-      const winner =
-        w === "p1" ? (address as Address) : (houseAddress as Address);
+      if (!matchId || !address) return;
+      const agent = (houseAddress || DEFAULT_AI_HOUSE_ADDRESS) as Address;
+      const winner = w === "p1" ? (address as Address) : agent;
       setWinnerAddr(winner);
       setGate("settle");
       void settleOnChain(winner);
@@ -451,12 +477,53 @@ function PlayAiInner() {
       !!address &&
       !!winnerAddr &&
       winnerAddr.toLowerCase() === address.toLowerCase();
+    const agentProfile = {
+      username: "Agent",
+      avatar: AGENT_AVATAR,
+      color: "#c41e3a",
+    };
     return (
       <div className="landing-premium ds">
         <SiteNav />
         <main className="prem-main ai-pay-main">
           <div className="ai-pay-panel">
             <p className="prem-how-eyebrow">Match #{matchId}</p>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                gap: 28,
+                alignItems: "center",
+                margin: "12px 0 18px",
+              }}
+            >
+              <div style={{ textAlign: "center" }}>
+                <ProfileAvatar
+                  profile={
+                    profile
+                      ? {
+                          username: profile.username,
+                          avatar: profile.avatar,
+                          color: profile.color,
+                        }
+                      : { username: "You", avatar: "🃏", color: "#c41e3a" }
+                  }
+                  size={56}
+                />
+                <div style={{ marginTop: 6, fontWeight: 800, color: "#fff" }}>
+                  You
+                </div>
+              </div>
+              <span style={{ color: "rgba(255,255,255,0.35)", fontWeight: 800 }}>
+                vs
+              </span>
+              <div style={{ textAlign: "center" }}>
+                <ProfileAvatar profile={agentProfile} size={56} />
+                <div style={{ marginTop: 6, fontWeight: 800, color: "#fff" }}>
+                  Agent
+                </div>
+              </div>
+            </div>
             <h1 className="prem-h1 prem-h1-page">
               {youWon ? "You won both tickets" : "Agent wins both"}
             </h1>
@@ -465,7 +532,10 @@ function PlayAiInner() {
               winner so both Megapot tickets transfer.
             </p>
             {settleMsg && (
-              <div className={youWon ? "banner win" : "alert"} style={{ marginTop: 16 }}>
+              <div
+                className={youWon ? "banner win" : "alert"}
+                style={{ marginTop: 16 }}
+              >
                 {settleMsg}
               </div>
             )}

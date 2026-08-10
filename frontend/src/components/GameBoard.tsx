@@ -423,17 +423,21 @@ export function GameBoard({
   const meName = meBits.username || me.name;
   const oppName = oppBits.username || opp.name;
 
+  const oppTurnLabel = vsAi
+    ? `${oppName === "AI" || !oppName ? "Agent" : oppName}'s turn`
+    : "Opponent's turn";
+
   const turnLabel = effectiveWinner
     ? timedOut && effectiveWinner !== humanPlayer
       ? "Time's up — you lose"
       : effectiveWinner === humanPlayer
         ? "You win!"
-        : `${oppName} wins`
+        : `${oppName === "AI" ? "Agent" : oppName} wins`
     : state.pendingPenalty
       ? `Pick ${state.pendingPenalty.amount} or stack`
       : myTurn
         ? "Your turn"
-        : "Opponent's turn";
+        : oppTurnLabel;
 
   const stakeLabel =
     stakeTickets === 0
