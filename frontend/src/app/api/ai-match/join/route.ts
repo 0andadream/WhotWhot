@@ -7,6 +7,9 @@ import {
   ensureHouseTicket,
 } from "@/lib/aiHouseTickets";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 /**
  * Agent joins a Waiting match: buys/uses a Megapot ticket and joinMatch.
  * Player must already have createMatch'd (player1).

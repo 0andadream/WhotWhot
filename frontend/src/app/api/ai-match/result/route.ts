@@ -3,6 +3,9 @@ import { encodeFunctionData, isAddress, getAddress } from "viem";
 import { ADDRESSES, MatchStatus, whotEscrowAbi } from "@/lib/contracts";
 import { getAiHouseWalletClient } from "@/lib/aiHouseWallet";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 /**
  * Agent dual-confirms the match winner so both tickets transfer.
  * Call after the human has submitted (or agent submits first — either order works).
