@@ -468,29 +468,20 @@ function PlayAiInner() {
           <div className="ai-pay-panel" style={{ textAlign: "left" }}>
             <p className="prem-how-eyebrow">Stake vs Agent</p>
             <h1 className="prem-h1 prem-h1-page" style={{ textAlign: "left", maxWidth: "none" }}>
-              Lock 1 ticket — Agent locks 1
+              Lock 1 ticket, Agent locks 1
             </h1>
             <p className="muted">
-              You stake a current-draw Megapot ticket. The Agent buys/stakes
-              its own ticket into the same escrow. Play Whot —{" "}
-              <strong style={{ color: "#fff" }}>winner takes both NFTs</strong>.
+              You stake a current draw Megapot ticket. The Agent buys and stakes
+              its own ticket into the same escrow. Play Whot.{" "}
+              <strong style={{ color: "#fff" }}>Winner takes both NFTs.</strong>
             </p>
 
             {houseReady === false && (
               <div className="alert" style={{ marginTop: 12 }}>
                 Agent is offline. Funding the wallet is not enough — Vercel must
-                have <code>AGENT_PRIVATE_KEY</code> set to the private key for{" "}
-                <code>0xFD3f…ef2f0</code> (and ETH + USDC on that wallet). Free
-                practice still works.
+                have <code>AGENT_PRIVATE_KEY</code> set for the Agent wallet
+                (with ETH + USDC). Free practice still works.
               </div>
-            )}
-            {houseReady && houseAddress && (
-              <p className="muted" style={{ fontSize: "0.85rem" }}>
-                Agent:{" "}
-                <strong style={{ color: "#fff" }}>
-                  {houseAddress.slice(0, 6)}…{houseAddress.slice(-4)}
-                </strong>
-              </p>
             )}
 
             <div className="ticket-badge" style={{ margin: "16px 0" }}>
