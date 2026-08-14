@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount } from "wagmi";
-import { getProfile, type PlayerProfile } from "@/lib/profile";
+import {
+  getProfile,
+  rememberPeerProfiles,
+  type PlayerProfile,
+} from "@/lib/profile";
 import {
   loadCachedProfiles,
   mergeProfiles,
@@ -32,6 +36,8 @@ export function useMatchProfiles(matchId: string | null, enabled: boolean) {
   const applyProfiles = useCallback(
     (incoming: Record<string, SharedProfile> | undefined | null) => {
       if (!matchId) return;
+      // Persist peers by wallet for lobby past-match feed
+      rememberPeerProfiles(incoming);
       setProfiles((prev) => {
         const merged = mergeProfiles(
           prev as Record<string, CachedProfile>,

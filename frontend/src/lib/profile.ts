@@ -80,7 +80,7 @@ export function getProfile(address?: string | null): PlayerProfile | null {
   const key = address.toLowerCase();
   const map = readMap();
   if (map[key]) return map[key];
-  // Legacy single-name fallback
+  // Legacy single-name fallback (only for the currently connected self map entry)
   try {
     const legacy = (localStorage.getItem("whotwhot:displayName") || "").trim();
     if (legacy) {
@@ -95,6 +95,80 @@ export function getProfile(address?: string | null): PlayerProfile | null {
   } catch {
     /* ignore */
   }
+  return null;
+}
+
+/**
+ * Remember another player's profile (from match share) so past-match
+ * feeds can show name/avatar without hitting expired match Redis keys.
+ */
+export function rememberPeerProfile(
+  data: {
+    address: string;
+    username: string;
+    avatar?: string;
+    color?: string;
+    updatedAt?: number;
+  } | null | undefined
+): void {
+  if (!data?.address || typeof window === "undefined") return;
+  const address = data.address.toLowerCase();
+  const username = sanitizeUsername(data.username || "");
+  if (username.length < 2) return;
+  const map = readMap();
+  const prev = map[address];
+  const incomingAt = Number(data.updatedAt) || Date.now();
+  // Prefer newer records; keep photo avatar if incoming is weaker
+  if (prev && (prev.updatedAt || 0) > incomingAt + 1000) return;
+
+  let avatar =
+    (data.avatar && data.avatar.length > 0 ? data.avatar : "") ||
+    prev?.avatar ||
+    AVATAR_PRESETS[0];
+  if (
+    prev?.avatar?.startsWith("data:image") &&
+    !avatar.startsWith("data:image")
+  ) {
+    avatar = prev.avatar;
+  }
+
+  map[address] = {
+    address,
+    username,
+    avatar,
+    color: data.color || prev?.color || COLOR_PRESETS[0],
+    updatedAt: Math.max(incomingAt, prev?.updatedAt || 0),
+  };
+  writeMap(map);
+}
+
+export function rememberPeerProfiles(
+  profiles: Record<
+    string,
+    { username?: string; avatar?: string; color?: string; updatedAt?: number }
+  > | null | undefined
+): void {
+  if (!profiles) return;
+  for (const [addr, p] of Object.entries(profiles)) {
+    if (!p?.username) continue;
+    rememberPeerProfile({
+      address: addr,
+      username: p.username,
+      avatar: p.avatar,
+      color: p.color,
+      updatedAt: p.updatedAt,
+    });
+  }
+}
+
+/** Lookup any known profile for an address (self or peer). */
+export function getKnownProfile(
+  address?: string | null
+): PlayerProfile | null {
+  if (!address || typeof window === "undefined") return null;
+  const key = address.toLowerCase();
+  const map = readMap();
+  if (map[key]?.username) return map[key]!;
   return null;
 }
 

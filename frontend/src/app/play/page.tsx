@@ -27,7 +27,14 @@ import {
 } from "@/hooks/useEscrow";
 import { ADDRESSES, erc20Abi, randomBuyerAbi } from "@/lib/contracts";
 import { stringToHex, parseUnits, type Address } from "viem";
-import { getProfile } from "@/lib/profile";
+import {
+  AGENT_AVATAR,
+  getKnownProfile,
+  getProfile,
+  rememberPeerProfiles,
+  shortWallet,
+} from "@/lib/profile";
+import { loadCachedProfiles } from "@/lib/matchShareCache";
 import { WHOT_EASE } from "@/components/landing/motion";
 import { waitForBaseReceipt } from "@/lib/waitForReceipt";
 
@@ -132,16 +139,47 @@ function PlayLobbyInner() {
   }, []);
   void tick;
 
-  // Load profiles for open tables + site past feed
+  // Load profiles for open tables + site past feed (match API, local cache, address index)
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       const ids = new Set<string>();
-      for (const t of openTables) ids.add(t.id.toString());
-      for (const m of sitePast) ids.add(m.id.toString());
-      if (ids.size === 0) return;
+      const addrs = new Set<string>();
+      for (const t of openTables) {
+        ids.add(t.id.toString());
+        addrs.add(t.player1.toLowerCase());
+      }
+      for (const m of sitePast) {
+        ids.add(m.id.toString());
+        addrs.add(m.player1.toLowerCase());
+        addrs.add(m.player2.toLowerCase());
+      }
+      if (ids.size === 0 && addrs.size === 0) return;
 
       const next: typeof openProfiles = {};
+
+      // 1) Client cache from matches this browser played
+      for (const id of ids) {
+        const cached = loadCachedProfiles(id);
+        for (const [k, v] of Object.entries(cached)) {
+          if (v?.username) next[k.toLowerCase()] = v;
+        }
+      }
+      rememberPeerProfiles(next);
+
+      // 2) Known local peer/self profiles by address
+      for (const a of addrs) {
+        const known = getKnownProfile(a);
+        if (known?.username) {
+          next[a] = {
+            username: known.username,
+            avatar: known.avatar,
+            color: known.color,
+          };
+        }
+      }
+
+      // 3) Per-match server profiles
       await Promise.all(
         [...ids].map(async (id) => {
           try {
@@ -152,12 +190,13 @@ function PlayLobbyInner() {
             const data = (await res.json()) as {
               profiles?: Record<
                 string,
-                { username: string; avatar: string; color: string }
+                { username: string; avatar: string; color: string; updatedAt?: number }
               >;
             };
             if (data.profiles) {
+              rememberPeerProfiles(data.profiles);
               for (const [k, v] of Object.entries(data.profiles)) {
-                next[k.toLowerCase()] = v;
+                if (v?.username) next[k.toLowerCase()] = v;
               }
             }
           } catch {
@@ -165,6 +204,34 @@ function PlayLobbyInner() {
           }
         })
       );
+
+      // 4) Global address profiles (survives expired match keys)
+      const missing = [...addrs].filter((a) => !next[a]?.username);
+      if (missing.length > 0) {
+        try {
+          const res = await fetch(
+            `/api/profiles?addresses=${missing.join(",")}`,
+            { cache: "no-store" }
+          );
+          if (res.ok) {
+            const data = (await res.json()) as {
+              profiles?: Record<
+                string,
+                { username: string; avatar: string; color: string; updatedAt?: number }
+              >;
+            };
+            if (data.profiles) {
+              rememberPeerProfiles(data.profiles);
+              for (const [k, v] of Object.entries(data.profiles)) {
+                if (v?.username) next[k.toLowerCase()] = v;
+              }
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
       if (!cancelled) setOpenProfiles((p) => ({ ...p, ...next }));
     };
     void load();
@@ -311,7 +378,7 @@ function PlayLobbyInner() {
       if (lower === ADDRESSES.aiHouse.toLowerCase()) {
         return {
           username: "Agent",
-          avatar: "🦞",
+          avatar: AGENT_AVATAR,
           color: "#c41e3a",
         };
       }
@@ -319,10 +386,12 @@ function PlayLobbyInner() {
       if (p?.username) return p;
       if (address && lower === address.toLowerCase()) {
         const mine = getProfile(address);
-        if (mine) return mine;
+        if (mine?.username) return mine;
       }
+      const known = getKnownProfile(lower);
+      if (known?.username) return known;
       return {
-        username: `${addr.slice(0, 6)}…${addr.slice(-4)}`,
+        username: shortWallet(addr),
         avatar: "🃏",
         color: "#c41e3a",
       };
@@ -535,6 +604,7 @@ function PlayLobbyInner() {
                   matches={pastMatches}
                   loading={myLoading}
                   address={address}
+                  playerLabel={playerLabel}
                 />
               )}
             </section>
@@ -859,10 +929,12 @@ function HistoryPast({
   matches,
   loading,
   address,
+  playerLabel,
 }: {
   matches: MatchSummary[];
   loading: boolean;
   address?: Address;
+  playerLabel: (addr: Address) => PlayerProfile;
 }) {
   if (loading) {
     return <p className="play-v2-empty-text">Loading history…</p>;
@@ -883,8 +955,9 @@ function HistoryPast({
   return (
     <div className="play-v2-history-list">
       {matches.map((m) => {
-        const opp =
+        const oppAddr =
           m.player1.toLowerCase() === me ? m.player2 : m.player1;
+        const opp = playerLabel(oppAddr);
         const won =
           m.winner && m.winner.toLowerCase() === me
             ? "won"
@@ -899,26 +972,29 @@ function HistoryPast({
             : "";
         return (
           <div key={m.id.toString()} className="play-v2-history-card past">
-            <div>
-              <div className="play-v2-history-title">
-                Table #{m.id.toString()}
-                {won === "won" && (
-                  <span className="play-v2-badge won">Won</span>
-                )}
-                {won === "lost" && (
-                  <span className="play-v2-badge lost">Lost</span>
-                )}
-                {won === "cancel" && (
-                  <span className="play-v2-badge wait">Cancelled</span>
-                )}
-                {won === "done" && (
-                  <span className="play-v2-badge wait">Finished</span>
-                )}
+            <div className="play-v2-feed-vs">
+              <ProfileAvatar profile={opp} size={32} />
+              <div>
+                <div className="play-v2-history-title">
+                  vs {opp.username}
+                  {won === "won" && (
+                    <span className="play-v2-badge won">Won</span>
+                  )}
+                  {won === "lost" && (
+                    <span className="play-v2-badge lost">Lost</span>
+                  )}
+                  {won === "cancel" && (
+                    <span className="play-v2-badge wait">Cancelled</span>
+                  )}
+                  {won === "done" && (
+                    <span className="play-v2-badge wait">Finished</span>
+                  )}
+                </div>
+                <p className="play-v2-history-meta">
+                  Table #{m.id.toString()}
+                  {date ? ` · ${date}` : ""} · tickets
+                </p>
               </div>
-              <p className="play-v2-history-meta">
-                vs {opp.slice(0, 6)}…{opp.slice(-4)} · tickets
-                {date ? ` · ${date}` : ""}
-              </p>
             </div>
             <div className="play-v2-history-actions">
               <Link

@@ -23,6 +23,7 @@ export type ProfilesPayload = {
 
 const g = globalThis as unknown as {
   __whotProfiles?: Map<string, ProfilesPayload>;
+  __whotAddrProfiles?: Map<string, SharedProfile>;
 };
 
 function mem(): Map<string, ProfilesPayload> {
@@ -30,9 +31,22 @@ function mem(): Map<string, ProfilesPayload> {
   return g.__whotProfiles;
 }
 
+function addrMem(): Map<string, SharedProfile> {
+  if (!g.__whotAddrProfiles) g.__whotAddrProfiles = new Map();
+  return g.__whotAddrProfiles;
+}
+
 function key(matchId: string) {
   return `whotwhot:profiles:${matchId}`;
 }
+
+function addrKey(address: string) {
+  return `whotwhot:profile:addr:${address.toLowerCase()}`;
+}
+
+/** Keep global address profiles longer than match-scoped (lobby past feed). */
+const ADDR_TTL_SEC = 60 * 60 * 24 * 90; // 90 days
+const MATCH_TTL_SEC = 604800; // 7 days
 
 function mergePayload(
   a: ProfilesPayload,
@@ -75,19 +89,128 @@ export async function getMatchProfiles(
   return local;
 }
 
+function slimAvatar(avatar: string | undefined): string {
+  if (
+    avatar?.startsWith("data:image") &&
+    avatar.length > 8000
+  ) {
+    return "🃏";
+  }
+  return avatar || "🃏";
+}
+
+/** Persist profile by wallet for site-wide past match feed. */
+export async function upsertAddressProfile(
+  profile: SharedProfile
+): Promise<SharedProfile> {
+  const address = profile.address.toLowerCase();
+  const next: SharedProfile = {
+    ...profile,
+    address,
+    updatedAt: Date.now(),
+  };
+  const prev = addrMem().get(address);
+  if (prev && (prev.updatedAt || 0) > (next.updatedAt || 0)) {
+    return prev;
+  }
+  // Prefer richer avatar when same/newer
+  if (
+    prev &&
+    prev.avatar?.startsWith("data:image") &&
+    !next.avatar?.startsWith("data:image")
+  ) {
+    next.avatar = prev.avatar;
+  }
+  addrMem().set(address, next);
+  if (upstashConfigured()) {
+    try {
+      await upstashCommand([
+        "SET",
+        addrKey(address),
+        JSON.stringify(next),
+        "EX",
+        ADDR_TTL_SEC,
+      ]);
+    } catch (e) {
+      console.error("addr profile redis set", e);
+      try {
+        const slim = { ...next, avatar: slimAvatar(next.avatar) };
+        await upstashCommand([
+          "SET",
+          addrKey(address),
+          JSON.stringify(slim),
+          "EX",
+          ADDR_TTL_SEC,
+        ]);
+        addrMem().set(address, slim);
+        return slim;
+      } catch (e2) {
+        console.error("addr profile redis set slim", e2);
+      }
+    }
+  }
+  return next;
+}
+
+export async function getAddressProfiles(
+  addresses: string[]
+): Promise<Record<string, SharedProfile>> {
+  const out: Record<string, SharedProfile> = {};
+  const unique = [
+    ...new Set(
+      addresses
+        .map((a) => a?.toLowerCase?.() || "")
+        .filter((a) => a.startsWith("0x") && a.length === 42)
+    ),
+  ];
+  if (unique.length === 0) return out;
+
+  for (const a of unique) {
+    const local = addrMem().get(a);
+    if (local) out[a] = local;
+  }
+
+  if (upstashConfigured()) {
+    await Promise.all(
+      unique.map(async (a) => {
+        try {
+          const data = await upstashCommand(["GET", addrKey(a)]);
+          const raw = data?.result;
+          if (!raw || typeof raw !== "string") return;
+          const remote = JSON.parse(raw) as SharedProfile;
+          if (!remote?.username) return;
+          const prev = out[a];
+          if (!prev || (remote.updatedAt || 0) >= (prev.updatedAt || 0)) {
+            out[a] = { ...remote, address: a };
+            addrMem().set(a, out[a]!);
+          }
+        } catch {
+          /* ignore */
+        }
+      })
+    );
+  }
+  return out;
+}
+
 export async function upsertMatchProfile(
   matchId: string,
   profile: SharedProfile
 ): Promise<ProfilesPayload> {
+  const addr = profile.address.toLowerCase();
+  const stored: SharedProfile = {
+    ...profile,
+    address: addr,
+    updatedAt: Date.now(),
+  };
+  // Always mirror to address index (lobby past feed)
+  void upsertAddressProfile(stored);
+
   const cur = await getMatchProfiles(matchId);
   const next: ProfilesPayload = {
     profiles: {
       ...cur.profiles,
-      [profile.address.toLowerCase()]: {
-        ...profile,
-        address: profile.address.toLowerCase(),
-        updatedAt: Date.now(),
-      },
+      [addr]: stored,
     },
     updatedAt: Date.now(),
   };
@@ -99,7 +222,7 @@ export async function upsertMatchProfile(
         key(matchId),
         JSON.stringify(next),
         "EX",
-        604800,
+        MATCH_TTL_SEC,
       ]);
     } catch (e) {
       // Large photo may exceed Redis limit — retry without data-URL avatar
@@ -111,10 +234,7 @@ export async function upsertMatchProfile(
       for (const [k, p] of Object.entries(next.profiles)) {
         slim.profiles[k] = {
           ...p,
-          avatar:
-            p.avatar?.startsWith("data:image") && p.avatar.length > 8000
-              ? "🃏"
-              : p.avatar,
+          avatar: slimAvatar(p.avatar),
         };
       }
       try {
@@ -123,7 +243,7 @@ export async function upsertMatchProfile(
           key(matchId),
           JSON.stringify(slim),
           "EX",
-          604800,
+          MATCH_TTL_SEC,
         ]);
         mem().set(matchId, slim);
         return slim;
