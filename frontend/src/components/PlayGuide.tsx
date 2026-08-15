@@ -134,9 +134,36 @@ export function PlayGuide({ compact = false }: { compact?: boolean }) {
         <section className="guide-block guide-stake">
           <h2 className="guide-heading">Onchain stakes (WhotWhot)</h2>
           <p className="guide-lead">
-            Optional: each player stakes 1 Megapot ticket. When both confirm the winner,
-            both tickets transfer to that player. Practice vs AI never needs a wallet.
+            Onchain play always uses real Megapot tickets. Each side locks{" "}
+            <strong>1 ticket</strong> in escrow. After the game, both players
+            dual-confirm the winner — <strong>winner takes both NFTs</strong>.
           </p>
+          <ul className="guide-list">
+            <li>
+              <strong>Challenge Agent</strong> — you stake 1 ticket; the Agent
+              wallet stakes 1 ticket (buys one if it has none). Play Whot vs the
+              house AI. Winner takes both tickets.
+            </li>
+            <li>
+              <strong>Play with Friends</strong> — create or join a table, each
+              player locks 1 ticket, then ready up. Same winner-takes-both settle
+              after dual confirm.
+            </li>
+            <li>
+              <strong>Practice vs AI</strong> — free, no wallet, no tickets.
+              Learn the rules and replay anytime. Not a stake match.
+            </li>
+            <li>
+              Abandoned Active matches can be cancelled after{" "}
+              <strong>2 hours</strong>; each ticket returns to its original
+              staker. Waiting tables (no opponent yet) can cancel anytime before
+              start.
+            </li>
+            <li>
+              If Megapot draws while tickets are still in escrow, prizes stay on
+              the NFT — claim on the match tickets page after settle or cancel.
+            </li>
+          </ul>
         </section>
       )}
     </div>

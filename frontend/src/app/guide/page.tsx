@@ -17,15 +17,15 @@ export default function GuidePage() {
           <p className="prem-how-eyebrow">Play guide</p>
           <h1 className="prem-h1 prem-h1-page">The cards &amp; what they do</h1>
           <p className="prem-lede">
-            Nigerian Whot in plain language, shapes, numbers, and every special
-            card.
+            Nigerian Whot in plain language — shapes, specials, and how onchain
+            stakes work (Challenge Agent or friends).
           </p>
           <div className="prem-hero-actions">
-            <Link href="/play/ai" className="prem-btn-white">
-              Practice vs AI
+            <Link href="/play" className="prem-btn-white">
+              Stake &amp; play
             </Link>
-            <Link href="/play" className="prem-btn-ghost">
-              Go to play
+            <Link href="/play/ai?mode=free" className="prem-btn-ghost">
+              Practice free
             </Link>
           </div>
         </header>
